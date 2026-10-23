@@ -1266,19 +1266,29 @@ class GStreamerHostedAudioPort(AudioPort):
         with self._lock:
             closed = self._closed
             native_expected = dict(self._native_dsd_expected or {})
-        if (
-            not closed
-            and kind == HostEvent.EOS.value
-            and native_expected
-            and payload.get("execution_id") == native_expected.get("execution_id")
-            and int(payload.get("host_generation") or self._supervisor.host_generation)
-            == int(native_expected.get("host_generation", 0))
-        ):
-            # Capture the identity NOW; the owner commit revalidates it. A
-            # later prepare B must never receive A's EOS.
-            execution_id = str(payload.get("execution_id"))
-            plan_id = str(payload.get("plan_id") or "")
-            self._enqueue(lambda: self._commit_native_eos(execution_id, plan_id))
+        native_eos = kind == HostEvent.EOS.value and bool(
+            payload.get("execution_id") or payload.get("plan_id")
+        )
+        if native_eos:
+            if (
+                not closed
+                and native_expected
+                and payload.get("execution_id") == native_expected.get("execution_id")
+                and int(
+                    payload.get("host_generation") or self._supervisor.host_generation
+                )
+                == int(native_expected.get("host_generation", 0))
+            ):
+                # Capture the identity NOW; the owner commit revalidates it.
+                # A later prepare B must never receive A's EOS.
+                execution_id = str(payload.get("execution_id"))
+                plan_id = str(payload.get("plan_id") or "")
+                self._enqueue(lambda: self._commit_native_eos(execution_id, plan_id))
+                return
+            # An EOS carrying Native identity NEVER falls through to the PCM
+            # end-of-media handler, even when stale/malformed.
+            with self._lock:
+                self._stale_events += 1
             return
         with self._lock:
             if self._closed or generation != self._command_generation:

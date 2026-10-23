@@ -219,3 +219,35 @@ def test_eos_identity_is_captured_before_a_new_preparation(tmp_path) -> None:
     port.dispatch_pending()
     assert eom == [True]
     assert native_eos == ["exec:2"]
+
+
+def test_native_eos_with_stale_identity_never_reaches_pcm(tmp_path) -> None:
+    port, _submit, _identity_a = _port(tmp_path)
+    eom: list[bool] = []
+    port.subscribe_end_of_media(lambda: eom.append(True))
+    stale_before = port._stale_events
+    port._on_host_event(
+        {
+            "payload": {
+                "event": "eos",
+                "execution_id": "exec:stale",
+                "plan_id": "native-dsd:stale",
+                "host_generation": 1,
+            },
+            "command_generation": 0,
+        }
+    )
+    port.dispatch_pending()
+    assert eom == []
+    assert port._stale_events > stale_before
+
+
+def test_pcm_eos_still_reaches_pcm_when_no_native_execution(tmp_path) -> None:
+    path = tmp_path / "source.dsf"
+    path.write_bytes(b"DSD ")
+    port = GStreamerHostedAudioPort(_Supervisor())
+    eom: list[bool] = []
+    port.subscribe_end_of_media(lambda: eom.append(True))
+    port._on_host_event({"payload": {"event": "eos"}, "command_generation": 0})
+    port.dispatch_pending()
+    assert eom == [True]

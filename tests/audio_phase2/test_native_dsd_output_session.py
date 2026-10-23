@@ -313,3 +313,29 @@ def test_abort_failure_retains_identity_for_retry() -> None:
     assert service.abort_native_dsd_after_play_failure("retry") is True
     assert service._native_dsd_prepared is None
     assert service.state is OutputSessionState.IDLE
+
+
+def test_late_playing_after_eos_is_rejected_and_new_execution_can_play() -> None:
+    recorder = SignalTruthRecorder()
+    service, _callbacks = _service(recorder=recorder)
+    path = Path("/tmp/source.dsf")
+    token = service.prepare_for_media(path)
+    service.commit_media(token, path)
+    assert service.notify_native_dsd_playing("exec:session") is True
+    assert service.notify_native_dsd_eos("exec:session") is True
+    assert service.notify_native_dsd_playing("exec:session") is False
+    assert recorder.output_family_events[-1].state is OutputFamilyState.UNAVAILABLE
+
+    token_b = service.prepare_for_media(path)
+    service.commit_media(token_b, path)
+    assert service.notify_native_dsd_playing("exec:session") is True
+    assert recorder.output_family_events[-1].state is OutputFamilyState.RUNNING
+
+
+def test_late_playing_after_host_loss_is_rejected() -> None:
+    service, _callbacks = _service()
+    path = Path("/tmp/source.dsf")
+    token = service.prepare_for_media(path)
+    service.commit_media(token, path)
+    service.notify_host_lost("host gone")
+    assert service.notify_native_dsd_playing("exec:session") is False

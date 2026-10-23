@@ -532,23 +532,38 @@ class PlaybackService:
         self._user_play_play_phase_complete = False
         try:
             self._audio.play()
-        except Exception:
+        except Exception as exc:
             if my_epoch != self._request_epoch:
                 raise
-            self._clear_pending()
-            native_abort = getattr(
-                self._output_tx, "abort_native_dsd_after_play_failure", None
-            )
-            if bool(getattr(self._output_tx, "native_dsd_active", False)) and callable(
-                native_abort
-            ):
-                native_abort("play_failed")
-            else:
-                self._abort_output_token("play_failed")
-            self._intent = False
-            self._accepted = False
-            self._state.status = PlaybackStatus.STOPPED
-            self._notify()
+            cleanup_error = None
+            try:
+                native_abort = getattr(
+                    self._output_tx, "abort_native_dsd_after_play_failure", None
+                )
+                if bool(
+                    getattr(self._output_tx, "native_dsd_active", False)
+                ) and callable(native_abort):
+                    native_abort("play_failed")
+                else:
+                    self._abort_output_token("play_failed")
+            except Exception as cleanup_exc:  # noqa: BLE001 - preserve primary
+                cleanup_error = cleanup_exc
+                logger.exception(
+                    "native/output cleanup failed after play failure; "
+                    "playback will still converge"
+                )
+            finally:
+                self._clear_pending()
+                self._intent = False
+                self._accepted = False
+                self._state.status = PlaybackStatus.STOPPED
+                self._notify()
+            if cleanup_error is not None:
+                logger.warning(
+                    "play failure %s retained; cleanup diagnostic: %s",
+                    exc,
+                    cleanup_error,
+                )
             raise
         # Sólo DESPUÉS de que play() retorne correctamente la fase está
         # completa; una aceptación latched se finaliza aquí (nunca dentro
@@ -558,7 +573,7 @@ class PlaybackService:
         if callable(notify_playing) and bool(
             getattr(self._output_tx, "native_dsd_active", False)
         ):
-            notify_playing()
+            notify_playing(getattr(self._output_tx, "active_execution_id", None))
         latched = self._user_play_acceptance_latched
         if latched is not None:
             self._finalize_media_acceptance(latched)

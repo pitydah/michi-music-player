@@ -682,6 +682,7 @@ class OutputSessionService:
         self._native_dsd_plan: NativeDsdOutputPlan | None = None
         self._native_dsd_prepared: NativeDsdSessionPrepared | None = None
         self._native_eos_execution: str | None = None
+        self._native_terminal_execution: str | None = None
         self._selected_device_id: str | None = None
         self._selected_profile_id: str | None = None
         self._error_code: str | None = None
@@ -837,6 +838,7 @@ class OutputSessionService:
             if self._native_eos_execution == execution_id:
                 return False
             self._native_eos_execution = execution_id
+            self._native_terminal_execution = execution_id
             self._record_native_dsd_family(
                 OutputFamilyState.UNAVAILABLE,
                 self._native_dsd_prepared,
@@ -845,14 +847,19 @@ class OutputSessionService:
             return True
         return False
 
-    def notify_native_dsd_playing(self) -> None:
+    def notify_native_dsd_playing(self, execution_id: str | None = None) -> bool:
         """Host-confirmed PLAYING for the CURRENT native execution."""
+        prepared = self._native_dsd_prepared
         if (
-            self._mode == "native_dsd"
-            and self._state is OutputSessionState.RUNNING
-            and self._native_dsd_prepared is not None
+            self._mode != "native_dsd"
+            or self._state is not OutputSessionState.RUNNING
+            or prepared is None
+            or self._native_terminal_execution == prepared.execution_id
+            or (execution_id is not None and execution_id != prepared.execution_id)
         ):
-            self._record_native_dsd_family(OutputFamilyState.RUNNING)
+            return False
+        self._record_native_dsd_family(OutputFamilyState.RUNNING)
+        return True
 
     @property
     def native_dsd_active(self) -> bool:
@@ -1480,6 +1487,7 @@ class OutputSessionService:
         self._native_dsd_plan = prepared.plan
         self._native_dsd_prepared = prepared
         self._native_eos_execution = None
+        self._native_terminal_execution = None
         self._plan = None
         self._managed_plan = None
         self._managed_prepared = None
@@ -1587,6 +1595,7 @@ class OutputSessionService:
         PROCESSED in the window before that release.
         """
         if self._mode == "native_dsd" and self._native_dsd_prepared is not None:
+            self._native_terminal_execution = self._native_dsd_prepared.execution_id
             self._record_native_dsd_family(
                 OutputFamilyState.UNAVAILABLE,
                 self._native_dsd_prepared,
@@ -2175,6 +2184,7 @@ class OutputSessionService:
         self._native_dsd_plan = None
         self._native_dsd_prepared = None
         self._native_eos_execution = None
+        self._native_terminal_execution = None
         self._path = None
         self._session_id = None
         self._mode = "lost" if wait_for_rebind else "shared"
@@ -2319,6 +2329,7 @@ class OutputSessionService:
         self._native_dsd_plan = None
         self._native_dsd_prepared = None
         self._native_eos_execution = None
+        self._native_terminal_execution = None
         self._path = None
         self._token_value = None
         self._executor = None

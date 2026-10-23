@@ -231,3 +231,35 @@ def test_native_device_loss_converges_without_autoplay() -> None:
     assert session.state in (OutputSessionState.LOST, OutputSessionState.IDLE)
     assert callbacks.stopped == 0  # loss, not a forged confirmed release
     assert callbacks.stopped == 0
+
+
+def test_cleanup_failure_does_not_block_playback_convergence() -> None:
+    plan = _plan()
+    callbacks = _NativeCallbacks()
+    session = OutputSessionService(
+        OutputPlanner(),
+        request_provider=_Provider(plan),
+        async_submit=None,
+        native_dsd_prepare=callbacks.prepare,
+        native_dsd_commit=callbacks.commit,
+        native_dsd_abort=callbacks.abort,
+        native_dsd_stop=callbacks.stop,
+        native_dsd_plan_still_current=lambda _plan: True,
+    )
+    audio = _FakeAudio()
+    audio.fail_play = True
+    playback = PlaybackService(audio, volume_port=_FakeVolume(), output_tx=session)
+
+    def _fail_abort(_prepared, _reason):
+        raise RuntimeError("abort transport down")
+
+    session._native_dsd_abort = _fail_abort
+    path = Path("/tmp/native-cleanup-fail.dsf")
+    import pytest
+
+    with pytest.raises(RuntimeError, match="host START failed"):
+        playback.load_and_play(path)
+    assert playback.state.status is PlaybackStatus.STOPPED
+    assert session.native_dsd_active is False
+    assert session._native_dsd_prepared is not None  # cleanup is not faked
+    assert session.state is OutputSessionState.RELEASING
