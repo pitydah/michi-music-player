@@ -675,6 +675,11 @@ class GStreamerHostedAudioPort(AudioPort):
         return identity
 
     # ── Native DSD (AP2-F08) ─────────────────────────────────────────
+    @property
+    def native_dsd_active(self) -> bool:
+        with self._lock:
+            return self._native_dsd_active
+
     def prepare_native_dsd(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Build/preroll the one dedicated Native DSD pipeline in the child."""
         with self._lock:
@@ -1254,6 +1259,19 @@ class GStreamerHostedAudioPort(AudioPort):
         kind = payload.get("event")
         generation = frame.get("command_generation")
         with self._lock:
+            closed = self._closed
+            native_expected = dict(self._native_dsd_expected or {})
+        if (
+            not closed
+            and kind == HostEvent.EOS.value
+            and native_expected
+            and payload.get("execution_id") == native_expected.get("execution_id")
+        ):
+            # Native EOS is an identity-correlated spontaneous event; a later
+            # command generation cannot invalidate it.
+            self._enqueue(self._commit_eos)
+            return
+        with self._lock:
             if self._closed or generation != self._command_generation:
                 self._stale_events += 1
                 return
@@ -1328,6 +1346,9 @@ class GStreamerHostedAudioPort(AudioPort):
                 callback(path, reason)
 
     def _commit_eos(self) -> None:
+        with self._lock:
+            if self._native_dsd_active:
+                self._native_dsd_state = "EOS"
         for callback in list(self._eom):
             with contextlib.suppress(Exception):
                 callback()

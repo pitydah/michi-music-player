@@ -47,6 +47,7 @@ class _NativeCallbacks:
 
     def stop(self, prepared, reason):
         self.stopped += 1
+        return {"released": True}
 
 
 class _FakeAudio:
@@ -57,6 +58,7 @@ class _FakeAudio:
         self.eom = None
         self.loads: list[Path] = []
         self.plays = 0
+        self.fail_play = False
 
     def subscribe_media_accepted(self, callback):
         self.accepted = callback
@@ -77,6 +79,8 @@ class _FakeAudio:
 
     def play(self):
         self.plays += 1
+        if self.fail_play:
+            raise RuntimeError("host START failed")
 
     def pause(self):
         assert self.state_cb is not None
@@ -142,3 +146,88 @@ def test_native_dsd_reaches_playing_through_playback_service() -> None:
     playback.stop()
     assert session.state is OutputSessionState.IDLE
     assert callbacks.stopped == 1
+
+
+def test_start_failure_compensates_the_committed_native_execution() -> None:
+    plan = _plan()
+    callbacks = _NativeCallbacks()
+    session = OutputSessionService(
+        OutputPlanner(),
+        request_provider=_Provider(plan),
+        async_submit=None,
+        native_dsd_prepare=callbacks.prepare,
+        native_dsd_commit=callbacks.commit,
+        native_dsd_abort=callbacks.abort,
+        native_dsd_stop=callbacks.stop,
+        native_dsd_plan_still_current=lambda _plan: True,
+    )
+    audio = _FakeAudio()
+    audio.fail_play = True
+    playback = PlaybackService(audio, volume_port=_FakeVolume(), output_tx=session)
+    path = Path("/tmp/native.dsf")
+    import pytest
+
+    with pytest.raises(RuntimeError):
+        playback.load_and_play(path)
+    assert session.native_dsd_active is False
+    assert session.state is OutputSessionState.IDLE
+    assert playback.state.status is PlaybackStatus.STOPPED
+
+
+def test_native_device_loss_converges_without_autoplay() -> None:
+    from michi.application.audio_device_registry import AudioDeviceTopologyChange
+    from michi.application.direct_output_lifecycle_coordinator import (
+        DirectOutputLifecycleCoordinator,
+    )
+    from michi.domain.playback import PlaybackStatus
+
+    class _Registry:
+        def generation_for(self, stable_device_id):
+            return 1
+
+        def available_ids(self):
+            return set()
+
+        def subscribe_topology_changed(self, callback):
+            return None
+
+        def unsubscribe_topology_changed(self, callback):
+            return None
+
+    plan = _plan()
+    callbacks = _NativeCallbacks()
+    session = OutputSessionService(
+        OutputPlanner(),
+        request_provider=_Provider(plan),
+        async_submit=None,
+        native_dsd_prepare=callbacks.prepare,
+        native_dsd_commit=callbacks.commit,
+        native_dsd_abort=callbacks.abort,
+        native_dsd_stop=callbacks.stop,
+        native_dsd_plan_still_current=lambda _plan: True,
+    )
+    audio = _FakeAudio()
+    playback = PlaybackService(audio, volume_port=_FakeVolume(), output_tx=session)
+    coordinator = DirectOutputLifecycleCoordinator(_Registry(), playback, session)
+    coordinator.start()
+    path = Path("/tmp/native-lost.dsf")
+    playback.load_and_play(path)
+    audio.state_cb(PlaybackStatus.PLAYING)
+    assert session.native_dsd_active is True
+
+    coordinator.handle_topology_changed(
+        AudioDeviceTopologyChange(
+            stable_device_id=plan.stable_device_id,
+            previous_available=True,
+            current_available=False,
+            previous_generation=1,
+            current_generation=1,
+            previous_bindings=(),
+            current_bindings=(),
+        )
+    )
+    assert playback.state.status is PlaybackStatus.STOPPED
+    assert session.native_dsd_active is False
+    assert session.state in (OutputSessionState.LOST, OutputSessionState.IDLE)
+    assert callbacks.stopped == 0  # loss, not a forged confirmed release
+    assert callbacks.stopped == 0

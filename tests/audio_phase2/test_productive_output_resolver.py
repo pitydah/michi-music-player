@@ -204,3 +204,120 @@ def test_ambiguous_alsa_endpoints_are_still_rejected_for_managed() -> None:
     with pytest.raises(OutputSessionError) as info:
         resolver(PATH)
     assert info.value.code == "MULTIPLE_ALSA_PLAYBACK_ENDPOINTS"
+
+
+class _DsdCharacterizer:
+    def __init__(self, status):
+        self.status = status
+
+    def characterize(self, _path):
+        from michi.domain.dsd_signal import (
+            DsdBitOrder,
+            DsdOrganization,
+            DsdPacking,
+            DsdSignalFormat,
+        )
+
+        return type(
+            "DsdTruth",
+            (),
+            {
+                "status": self.status,
+                "signal": DsdSignalFormat(
+                    2_822_400,
+                    2,
+                    DsdPacking.DSD_U8,
+                    DsdBitOrder.MSBF,
+                    DsdOrganization.PLANAR,
+                    ("FL", "FR"),
+                ),
+            },
+        )()
+
+
+def _dsd_qualification(_device, _binding, _source):
+    from michi.application.dsd_output_planner import (
+        AlsaDsdTuple,
+        NativeDsdQualification,
+    )
+    from michi.domain.dsd_signal import AlsaDsdGrouping
+
+    requested = AlsaDsdTuple(
+        format_name=AlsaDsdGrouping.DSD_U32_BE.alsa_format_name,
+        frame_rate_hz=88_200,
+        channels=2,
+        sample_width_bits=32,
+        source_bits_per_second_per_channel=2_822_400,
+    )
+    return (
+        NativeDsdQualification(
+            stable_device_id="dev:dac",
+            binding_generation=7,
+            requested=requested,
+            supported=True,
+            evidence_ref="alsa-dsd:test",
+        ),
+    )
+
+
+def _dsd_resolver(status, profile, engine=AudioEngineId.GSTREAMER):
+    from michi.application.dsd_output_planner import NativeDsdPlanner
+
+    return ProductiveOutputRequestResolver(
+        profiles=_Profiles(profile),
+        devices=_Devices(),
+        qualification=_Qualification(),
+        engines=_Engines(engine),
+        source_metadata=_Metadata(),
+        source_characterizer=_Characterizer(),
+        dsd_source_characterizer=_DsdCharacterizer(status),
+        dsd_planner=NativeDsdPlanner(),
+        dsd_qualification=_dsd_qualification,
+    )
+
+
+def test_dsd_source_under_shared_profile_is_refused_not_pcm() -> None:
+    from michi.application.dsd_source_characterizer import DsdSourceStatus
+
+    resolver = _dsd_resolver(
+        DsdSourceStatus.DSD_PROVEN, _profile(OutputPathPreference.DESKTOP)
+    )
+    with pytest.raises(OutputSessionError) as info:
+        resolver(PATH)
+    assert info.value.code == "DSD_REQUIRES_DIRECT_OUTPUT"
+
+
+def test_dsd_source_under_direct_profile_returns_native_request() -> None:
+    from michi.application.dsd_source_characterizer import DsdSourceStatus
+
+    resolver = _dsd_resolver(
+        DsdSourceStatus.DSD_PROVEN, _profile(OutputPathPreference.HARDWARE_DIRECT)
+    )
+    request = resolver(PATH)
+    assert request.native_dsd_plan is not None
+    assert request.native_dsd_plan.gst_format == "DSDU32BE"
+    assert request.facts is None
+
+
+def test_dsd_source_requires_gstreamer_engine() -> None:
+    from michi.application.dsd_source_characterizer import DsdSourceStatus
+
+    resolver = _dsd_resolver(
+        DsdSourceStatus.DSD_PROVEN,
+        _profile(OutputPathPreference.HARDWARE_DIRECT),
+        engine=AudioEngineId.MPD,
+    )
+    with pytest.raises(OutputSessionError) as info:
+        resolver(PATH)
+    assert info.value.code == "DSD_ENGINE_UNSUPPORTED"
+
+
+def test_unknown_source_still_uses_pcm_path() -> None:
+    from michi.application.dsd_source_characterizer import DsdSourceStatus
+
+    resolver = _dsd_resolver(
+        DsdSourceStatus.UNKNOWN, _profile(OutputPathPreference.HARDWARE_DIRECT)
+    )
+    request = resolver(PATH)
+    assert request.native_dsd_plan is None
+    assert request.facts is not None

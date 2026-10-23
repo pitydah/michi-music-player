@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from michi.application.audio_output_planner import OutputPlanner
 from michi.application.dsd_output_planner import (
     AlsaDsdTuple,
@@ -100,6 +102,7 @@ class _Callbacks:
 
     def stop(self, prepared, reason):
         self.stopped.append((prepared, reason))
+        return {"released": True}
 
 
 def _service(plan=None, *, recorder=None, callbacks=None):
@@ -134,6 +137,10 @@ def test_native_prepare_commit_release_and_truth() -> None:
 
     service.commit_media(token, path)
     assert service.state is OutputSessionState.RUNNING
+    assert [e.state for e in recorder.output_family_events] == [
+        OutputFamilyState.READY,
+    ]
+    service.notify_native_dsd_playing()
     assert [e.state for e in recorder.output_family_events] == [
         OutputFamilyState.READY,
         OutputFamilyState.RUNNING,
@@ -200,3 +207,40 @@ def test_native_prepare_is_async_and_keeps_the_same_mode() -> None:
     assert service.mode == "native_dsd"
     assert service.state is OutputSessionState.READY
     assert callbacks.prepared
+
+
+def test_post_commit_play_failure_compensates_the_execution() -> None:
+    recorder = SignalTruthRecorder()
+    service, callbacks = _service(recorder=recorder)
+    path = Path("/tmp/source.dsf")
+    token = service.prepare_for_media(path)
+    service.commit_media(token, path)
+    assert service.native_dsd_active is True
+    assert service.abort_native_dsd_after_play_failure("play_failed") is True
+    assert service.native_dsd_active is False
+    assert service.state is OutputSessionState.IDLE
+    assert callbacks.aborted[0][1] == "play_failed"
+    assert recorder.output_family_events[-1].state is OutputFamilyState.UNAVAILABLE
+
+
+def test_release_failure_is_not_published_as_released() -> None:
+    recorder = SignalTruthRecorder()
+    service, callbacks = _service(recorder=recorder)
+    path = Path("/tmp/source.dsf")
+    token = service.prepare_for_media(path)
+    service.commit_media(token, path)
+
+    def _fail(_prepared, _reason):
+        raise RuntimeError("host refused stop")
+
+    callbacks.stop = _fail
+    # Reconnect the bound callback used by the service.
+    service._native_dsd_stop = _fail
+    with pytest.raises(Exception) as info:
+        service.release_active("stop")
+    assert "NATIVE_DSD_RELEASE_FAILED" in str(info.value)
+    assert service.state is not OutputSessionState.IDLE
+    assert all(
+        event.state is not OutputFamilyState.RELEASED
+        for event in recorder.output_family_events
+    )

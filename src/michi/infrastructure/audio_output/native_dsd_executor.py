@@ -263,6 +263,8 @@ class NativeDsdOutputExecutor:
         return result
 
     def stop(self, prepared: NativeDsdPrepared) -> dict[str, Any]:
+        if not bool(getattr(self._port, "native_dsd_active", True)):
+            return {"released": True, "already": True}
         result = self._port.stop_native_dsd(self._expected(prepared.plan))
         if result.get("stopped") is not True or result.get("stale") is not False:
             raise NativeDsdExecutionError(

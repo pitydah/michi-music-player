@@ -376,24 +376,7 @@ class ProductiveOutputRequestResolver:
                 "SELECTED_PROFILE_MISSING",
                 f"selected profile {selection.selected_profile_id!r} does not exist",
             )
-        if not _uses_specific_device(profile.path):
-            # Explicit Shared/desktop families only.
-            return OutputRequest(
-                None,
-                selection.selected_device_id,
-                selection.selected_profile_id,
-            )
         active = self._engines.state.active_engine_id
-        if (
-            profile.path is OutputPathPreference.MANAGED
-            and active is not AudioEngineId.GSTREAMER
-        ):
-            # Managed PCM runs on the GStreamer Output Host. Never switch
-            # engines implicitly and never route to another family.
-            raise OutputSessionError(
-                "ENGINE_UNSUPPORTED_FOR_MANAGED",
-                "Managed output requires the GStreamer engine.",
-            )
         selected_device_id = selection.selected_device_id or profile.stable_device_id
         if self._dsd_source_characterizer is not None and self._dsd_planner is not None:
             dsd = self._dsd_source_characterizer.characterize(path)
@@ -450,6 +433,23 @@ class ProductiveOutputRequestResolver:
                 return OutputRequest.native_dsd(
                     plan, selected_device_id, selection.selected_profile_id
                 )
+        if not _uses_specific_device(profile.path):
+            # Explicit Shared/desktop families only.
+            return OutputRequest(
+                None,
+                selection.selected_device_id,
+                selection.selected_profile_id,
+            )
+        if (
+            profile.path is OutputPathPreference.MANAGED
+            and active is not AudioEngineId.GSTREAMER
+        ):
+            # Managed PCM runs on the GStreamer Output Host. Never switch
+            # engines implicitly and never route to another family.
+            raise OutputSessionError(
+                "ENGINE_UNSUPPORTED_FOR_MANAGED",
+                "Managed output requires the GStreamer engine.",
+            )
         metadata = self._source_metadata.extract(path)
         source_file_facts = SourceFileFacts(
             container=metadata.container or None,
@@ -630,7 +630,7 @@ class OutputSessionService:
             Callable[[NativeDsdSessionPrepared, str], None] | None
         ) = None,
         native_dsd_stop: (
-            Callable[[NativeDsdSessionPrepared, str], None] | None
+            Callable[[NativeDsdSessionPrepared, str], dict] | None
         ) = None,
         native_dsd_plan_still_current: (
             Callable[[NativeDsdOutputPlan], bool] | None
@@ -753,6 +753,35 @@ class OutputSessionService:
         ):
             return None
         return prepared.execution_id
+
+    def abort_native_dsd_after_play_failure(self, reason: str) -> bool:
+        """Compensate a committed Native execution whose START failed."""
+        if self._mode != "native_dsd" or self._native_dsd_prepared is None:
+            return False
+        self._error_code = reason
+        prepared = self._native_dsd_prepared
+        self._native_dsd_prepared = None
+        self._native_dsd_plan = None
+        if self._state is not OutputSessionState.LOST:
+            self._transition(OutputSessionState.RELEASING)
+        self._native_dsd_abort_quietly(prepared, reason)
+        self._record_native_dsd_family(
+            OutputFamilyState.UNAVAILABLE, prepared, detail=str(reason)
+        )
+        self._clear_execution(keep_error=True)
+        if self._state is not OutputSessionState.IDLE:
+            self._transition(OutputSessionState.IDLE)
+        self._notify()
+        return True
+
+    def notify_native_dsd_playing(self) -> None:
+        """Host-confirmed PLAYING for the CURRENT native execution."""
+        if (
+            self._mode == "native_dsd"
+            and self._state is OutputSessionState.RUNNING
+            and self._native_dsd_prepared is not None
+        ):
+            self._record_native_dsd_family(OutputFamilyState.RUNNING)
 
     @property
     def native_dsd_active(self) -> bool:
@@ -1346,6 +1375,11 @@ class OutputSessionService:
             self._managed_abort_quietly(current_managed, "superseded_by_native_dsd")
         current_native = self._native_dsd_prepared
         if current_native is not None and current_native is not prepared:
+            self._record_native_dsd_family(
+                OutputFamilyState.UNAVAILABLE,
+                current_native,
+                detail="superseded",
+            )
             self._native_dsd_prepared = None
             self._native_dsd_plan = None
             self._native_dsd_abort_quietly(current_native, "superseded")
@@ -1733,7 +1767,6 @@ class OutputSessionService:
                 raise OutputSessionError(code, str(exc)) from exc
             self._previous_direct = None
             self._transition(OutputSessionState.RUNNING)
-            self._record_native_dsd_family(OutputFamilyState.RUNNING)
             return
         if self._mode == "managed":
             if self._state is not OutputSessionState.READY:
@@ -1878,9 +1911,45 @@ class OutputSessionService:
                 OutputSessionState.RELEASING,
             ):
                 self._transition(OutputSessionState.RELEASING)
+            release_result = {"released": True, "already": True}
             if prepared is not None and self._native_dsd_stop is not None:
-                with suppress(Exception):
-                    self._native_dsd_stop(prepared, reason)
+                try:
+                    release_result = self._native_dsd_stop(prepared, reason)
+                except Exception as exc:  # noqa: BLE001 - truthful release boundary
+                    code = getattr(exc, "code", "NATIVE_DSD_RELEASE_FAILED")
+                    self._error_code = code
+                    self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                        reason="native_dsd_release",
+                        code=code,
+                        detail=str(exc),
+                    )
+                    self._record_native_dsd_family(
+                        OutputFamilyState.UNAVAILABLE,
+                        prepared,
+                        detail=str(code),
+                    )
+                    self._notify()
+                    raise OutputSessionError(code, str(exc)) from exc
+            if not isinstance(release_result, dict) or not (
+                release_result.get("released") is True
+                or release_result.get("stopped") is True
+                or release_result.get("already") is True
+            ):
+                self._error_code = "NATIVE_DSD_RELEASE_NOT_CONFIRMED"
+                self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                    reason="native_dsd_release",
+                    code=self._error_code,
+                    detail="host did not confirm release",
+                )
+                self._record_native_dsd_family(
+                    OutputFamilyState.UNAVAILABLE,
+                    prepared,
+                    detail=self._error_code,
+                )
+                self._notify()
+                raise OutputSessionError(
+                    self._error_code, "host did not confirm release"
+                )
             self._record_native_dsd_family(
                 OutputFamilyState.RELEASED, prepared, detail=str(reason)
             )

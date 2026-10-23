@@ -93,6 +93,9 @@ class HostEngineSession:
         self._processing_pipeline_generation: int | None = None
         self._native_dsd = NativeDsdHostRuntime()
         self._native_dsd_active = False
+        self._native_eos_emitted = False
+        self._native_timer_source = None
+        self._native_timer_bindings = None
         self._processing_generation: int | None = None
         self._processing_host_generation: int = 0
         self._coordinator = HostDirectCoordinator(request_callback)
@@ -102,6 +105,45 @@ class HostEngineSession:
         return self._opened
 
     # ── dispatch ──────────────────────────────────────────────────────
+    def _install_native_eos_timer(self) -> None:
+        """Observe the native bus on the SAME GLib pump as the engine."""
+        port = self._port
+        bindings = getattr(port, "_bindings", None)
+        context = getattr(port, "_context", None)
+        if bindings is None or context is None:
+            return
+        self._clear_native_eos_timer()
+
+        def _tick():
+            if not self._native_dsd_active:
+                return False
+            identity = self._native_dsd.query_identity()
+            if identity.get("eos") and not self._native_eos_emitted:
+                self._native_eos_emitted = True
+                self._emit(
+                    HostEvent.EOS,
+                    {
+                        "execution_id": identity.get("execution_id"),
+                        "plan_id": identity.get("plan_id"),
+                    },
+                )
+                self._native_timer_source = None
+                return False
+            return True
+
+        source = bindings.create_timeout_source(50, _tick)
+        bindings.attach_source(source, context)
+        self._native_timer_source = source
+        self._native_timer_bindings = bindings
+
+    def _clear_native_eos_timer(self) -> None:
+        source = self._native_timer_source
+        bindings = self._native_timer_bindings
+        self._native_timer_source = None
+        self._native_timer_bindings = None
+        if source is not None and bindings is not None:
+            bindings.destroy_source(source)
+
     def handle(
         self, operation: str, payload: dict[str, Any], command_generation: int
     ) -> tuple[bool, dict[str, Any]]:
@@ -518,6 +560,8 @@ class HostEngineSession:
         except NativeDsdHostError as exc:
             return False, {"code": exc.code, "detail": exc.detail}
         self._native_dsd_active = True
+        self._native_eos_emitted = False
+        self._install_native_eos_timer()
         return True, identity
 
     def _op_commit_native_dsd(
@@ -549,6 +593,7 @@ class HostEngineSession:
             return False, {"code": exc.code, "detail": exc.detail}
         if result.get("aborted") is True and result.get("stale") is False:
             self._native_dsd_active = False
+            self._clear_native_eos_timer()
         return True, result
 
     def _op_start_native_dsd(
@@ -590,6 +635,7 @@ class HostEngineSession:
             return False, {"code": exc.code, "detail": exc.detail}
         if result.get("stopped") is True and result.get("stale") is False:
             self._native_dsd_active = False
+            self._clear_native_eos_timer()
         return True, result
 
     def _op_query_native_dsd_identity(
@@ -735,6 +781,7 @@ class HostEngineSession:
 
     def close(self) -> None:
         """Best-effort port teardown before host exit."""
+        self._clear_native_eos_timer()
         self._native_dsd.close()
         self._native_dsd_active = False
         port = self._port

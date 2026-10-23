@@ -536,7 +536,15 @@ class PlaybackService:
             if my_epoch != self._request_epoch:
                 raise
             self._clear_pending()
-            self._abort_output_token("play_failed")
+            native_abort = getattr(
+                self._output_tx, "abort_native_dsd_after_play_failure", None
+            )
+            if bool(getattr(self._output_tx, "native_dsd_active", False)) and callable(
+                native_abort
+            ):
+                native_abort("play_failed")
+            else:
+                self._abort_output_token("play_failed")
             self._intent = False
             self._accepted = False
             self._state.status = PlaybackStatus.STOPPED
@@ -546,6 +554,11 @@ class PlaybackService:
         # completa; una aceptación latched se finaliza aquí (nunca dentro
         # de la ejecución parcial de play()).
         self._user_play_play_phase_complete = True
+        notify_playing = getattr(self._output_tx, "notify_native_dsd_playing", None)
+        if callable(notify_playing) and bool(
+            getattr(self._output_tx, "native_dsd_active", False)
+        ):
+            notify_playing()
         latched = self._user_play_acceptance_latched
         if latched is not None:
             self._finalize_media_acceptance(latched)

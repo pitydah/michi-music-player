@@ -986,18 +986,37 @@ def _build_services(
         with contextlib.suppress(Exception):
             _native_executor().abort(prepared.plan)
 
-    def _native_stop(prepared: NativeDsdSessionPrepared, reason: str) -> None:
+    def _native_stop(prepared: NativeDsdSessionPrepared, reason: str) -> dict:
         port = gstreamer_provider.current_port
         if port is None:
-            return
+            raise OutputSessionError(
+                "NATIVE_DSD_HOST_UNAVAILABLE", "no hosted GStreamer port is open"
+            )
+        if not bool(getattr(port, "native_dsd_active", False)):
+            return {"released": True, "already": True}
         try:
             identity = port.query_native_dsd_identity()
-        except Exception:  # noqa: BLE001 - cleanup boundary
-            return
+        except Exception as exc:  # noqa: BLE001 - host/device already gone
+            text = str(exc)
+            if "OUTPUT_HOST_LOST" in text or "NATIVE_DSD_HOST_UNAVAILABLE" in text:
+                return {"released": True, "already": True}
+            raise
         if not identity.get("native_dsd"):
-            return
-        with contextlib.suppress(Exception):
-            _native_executor().stop(prepared.handle)
+            return {"released": True, "already": True}
+        try:
+            return _native_executor().stop(prepared.handle)
+        except Exception as exc:  # noqa: BLE001 - idempotent retry boundary
+            text = str(exc)
+            if any(
+                marker in text
+                for marker in (
+                    "NATIVE_DSD_IDENTITY_STALE",
+                    "NATIVE_DSD_NOT_PREPARED",
+                    "NATIVE_DSD_HOST_NOT_PREPARED",
+                )
+            ):
+                return {"released": True, "already": True}
+            raise
 
     def _native_plan_still_current(plan) -> bool:
         return any(
