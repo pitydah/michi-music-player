@@ -32,6 +32,9 @@
     "alsa_carrier_qualification": "COMPLETE — adapter + hardware observation S32_LE_LSB24",
     "golden_corpus": "COMPLETE — 9 independent vectors + manifest",
     "m13_packaging": "NO-GO — native runtime not authorized",
-    "runtime": "BLOCKED"
+    "runtime": "BLOCKED",
+    "m13_packaging_gate": "NO-GO",
+    "qualification_adapter": "COMPLETE",
+    "supervised_probe": "BLOCKED"
   }
 }

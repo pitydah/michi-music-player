@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "gate": "M13_NATIVE_DOP_PLUGIN_PACKAGING",
+  "phase": "AP2-F09",
+  "evaluated_at": "2026-10-23",
+  "status": "NO-GO",
+  "authority": "M13 release/packaging ownership; ADR 0012 requires this gate before productive native code",
+  "observed": {
+    "rust": "1.96.0",
+    "cargo": "1.96.0",
+    "gstreamer_dev": "1.28.8",
+    "python_build": "setuptools wheel pipeline exists for Python/QML only",
+    "native_pipeline": "absent",
+    "appimage_flatpak_deb": "not configured for a native GStreamer plugin"
+  },
+  "criteria": {
+    "pinned_toolchain": "NOT_APPROVED",
+    "cargo_lock": "NOT_PRESENT",
+    "reproducible_native_build": "NOT_DEMONSTRATED",
+    "shared_plugin_abi": "NOT_BUILT",
+    "factory_discovery_installed": "NOT_DEMONSTRATED",
+    "wheel_plugin_package": "NOT_IMPLEMENTED",
+    "appimage_flatpak_deb_plugin": "NOT_IMPLEMENTED",
+    "release_manifest_sbom": "NOT_IMPLEMENTED",
+    "ci_native_build_conformance": "NOT_IMPLEMENTED"
+  },
+  "decision": "No Rust/C plugin was added. Productive DoP runtime, host integration, PlaybackService, Signal Truth and F09-G4 remain BLOCKED. This is not a documentation pass.",
+  "unblock_procedure": [
+    "M13 owner approves a scoped native-artifact gate",
+    "pin Rust/gstreamer-rs and commit Cargo.lock",
+    "build reproducible michidop and record ABI/SHA-256/SBOM",
+    "place plugin in an app-owned path and prove installed discovery/fail-closed",
+    "add CI native build/conformance jobs",
+    "only then integrate the productive host and playback path"
+  ]
+}
