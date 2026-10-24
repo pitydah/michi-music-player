@@ -300,6 +300,8 @@ jobs:
           pip install PyGObject
 
       - uses: dtolnay/rust-toolchain@1.96.0
+        with:
+          components: rustfmt, clippy
 
       - name: Rust format, clippy, tests (locked)
         run: |
