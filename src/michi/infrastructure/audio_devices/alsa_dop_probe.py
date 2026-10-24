@@ -67,6 +67,8 @@ class DopCarrierProbeEvidence:
     errno_code: int | None
     environment_fingerprint: str
     evidence_ref: str
+    carrier_bytes_verified: bool = False
+    dac_mode_verified: bool = False
 
     def as_dict(self) -> dict:
         return {
@@ -84,6 +86,8 @@ class DopCarrierProbeEvidence:
             "errno": self.errno_code,
             "environment_fingerprint": self.environment_fingerprint,
             "evidence_ref": self.evidence_ref,
+            "carrier_bytes_verified": self.carrier_bytes_verified,
+            "dac_mode_verified": self.dac_mode_verified,
         }
 
 

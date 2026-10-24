@@ -87,6 +87,7 @@ def _plan(**overrides):
         "binding_locator": LOCATOR,
         "binding_generation": 3,
         "environment_fingerprint": "env:1",
+        "current_device_revision": "rev:1",
         "source": _source(),
         "carrier_qualifications": (_carrier(),),
         "interpretation": (_interp(DopInterpretationState.USER_CONFIRMED),),
@@ -323,3 +324,22 @@ def test_explicit_supported_multipliers_allow_multirate() -> None:
         interpretation=(evidence,),
     )
     assert plan.carrier_rate.frames_per_second == 352_800
+
+
+def test_specific_revision_requires_current_revision() -> None:
+    with pytest.raises(DopPlannerError) as info:
+        _plan(current_device_revision=None)
+    assert info.value.code == "DOP_DEVICE_INTERPRETATION_UNKNOWN"
+
+
+def test_generic_evidence_without_revision_is_allowed() -> None:
+    evidence = DopDeviceInterpretationEvidence(
+        stable_device_id=DEVICE,
+        source_dsd_multiplier=64,
+        state=DopInterpretationState.USER_CONFIRMED,
+        source="generic-declaration",
+        device_revision=None,
+        evidence_refs=INTERP_EVIDENCE,
+    )
+    plan = _plan(interpretation=(evidence,), current_device_revision=None)
+    assert plan.interpretation_state is DopInterpretationState.USER_CONFIRMED

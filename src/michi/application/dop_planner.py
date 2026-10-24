@@ -330,8 +330,10 @@ class DopPlannerV3:
             if item.stable_device_id == stable_device_id
             and (
                 item.device_revision is None
-                or current_device_revision is None
-                or item.device_revision == current_device_revision
+                or (
+                    current_device_revision is not None
+                    and item.device_revision == current_device_revision
+                )
             )
             and multiplier
             in (

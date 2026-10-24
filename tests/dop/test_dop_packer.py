@@ -238,6 +238,13 @@ def test_streaming_backlog_is_bounded() -> None:
     assert info.value.code == "DOP_BUFFER_BACKLOG_EXCEEDED"
     assert packer.state.pending_left == bytearray()
     assert packer.state.pending_right == bytearray()
+    assert packer.state.invalidated is True
+    with pytest.raises(DopPackingError) as info:
+        packer.pack_stereo(b"\x11\x22", b"\x55\x66")
+    assert info.value.code == "DOP_STREAM_INVALIDATED"
+    packer.reset_for_discontinuity("overflow_recovery")
+    assert packer.state.invalidated is False
+    assert packer.pack_stereo(b"\x11\x22", b"\x55\x66") == bytes.fromhex("112205556605")
 
 
 def test_result_counters_are_unambiguous() -> None:

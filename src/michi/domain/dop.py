@@ -83,6 +83,8 @@ class DopStreamingState:
     pending_right: bytearray = field(default_factory=bytearray)
     discontinuity_generation: int = 0
     last_reset_reason: str | None = None
+    invalidated: bool = False
+    invalidation_reason: str | None = None
 
     def __post_init__(self) -> None:
         if self.marker_phase not in (0, 1):
@@ -94,6 +96,8 @@ class DopStreamingState:
         self.pending_right.clear()
         self.discontinuity_generation += 1
         self.last_reset_reason = str(reason)
+        self.invalidated = False
+        self.invalidation_reason = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -314,6 +318,11 @@ class DopStreamPacker:
     def pack_stereo(self, left: bytes, right: bytes) -> bytes:
         if not isinstance(left, bytes) or not isinstance(right, bytes):
             raise DopPackingError("DOP_PAYLOAD_INVALID", "payloads must be bytes")
+        if self.state.invalidated:
+            raise DopPackingError(
+                "DOP_STREAM_INVALIDATED",
+                "stream overflow requires an authorized reset",
+            )
         self.state.pending_left.extend(left)
         self.state.pending_right.extend(right)
         if (
@@ -322,6 +331,8 @@ class DopStreamPacker:
         ):
             self.state.pending_left.clear()
             self.state.pending_right.clear()
+            self.state.invalidated = True
+            self.state.invalidation_reason = "backlog_overflow"
             raise DopPackingError(
                 "DOP_BUFFER_BACKLOG_EXCEEDED",
                 "one channel produced more than the bounded backlog",
