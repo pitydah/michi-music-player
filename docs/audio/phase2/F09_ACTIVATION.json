@@ -37,8 +37,10 @@
     "qualification_adapter": "COMPLETE",
     "supervised_probe": "COMPLETE",
     "plan_identity": "COMPLETE",
-    "native_runtime": "GATE_A_COMPLETE — michidop 0.1.0 built/installed/conformant",
-    "host_vertical": "GATE_A_COMPLETE — supervised fakesink DoP vertical, PLAYING/EOS confirmed",
-    "production_selection": "BLOCKED — Gate B NO-GO"
+    "native_runtime": "GATE_A_COMPLETE — michidop built/installed/conformant",
+    "host_vertical": "GATE_A_COMPLETE — supervised fakesink DoP vertical",
+    "production_selection": "BLOCKED — Gate B NO-GO",
+    "f09_exit_gates": "G1/G2/G3 PASS; G4 PARTIAL/BLOCKED",
+    "f09_percent": 97
   }
 }

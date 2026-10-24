@@ -65,7 +65,7 @@ add native code and M13 remains NO-GO.
 - Registered factory `michidop`; inspected plugin revision/ABI.
 - Python/Rust/installed-plugin shared-corpus conformance: PASS.
 - Private-prefix discovery and supervised host fakesink vertical: PASS.
-- Native CI job added (`dop-native-gate-a`); first run pending.
+- Native CI job `dop-native-gate-a`: PASS (run 40120607660).
 - Not yet present: wheel/AppImage/Flatpak/deb packaging, release SBOM/manifest,
   default discovery and productive selection.
 

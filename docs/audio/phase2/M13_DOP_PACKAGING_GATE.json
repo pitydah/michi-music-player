@@ -27,7 +27,7 @@
     "wheel_plugin_package": "NOT_IMPLEMENTED — Gate B",
     "appimage_flatpak_deb_plugin": "NOT_IMPLEMENTED — Gate B",
     "release_manifest_sbom": "NOT_IMPLEMENTED — Gate B",
-    "ci_native_build_conformance": "IMPLEMENTED — dop-native-gate-a job; run pending"
+    "ci_native_build_conformance": "PASS — dop-native-gate-a run 40120607660"
   },
   "decision": "Gate A is authorized and technically verified. Gate B remains NO-GO: no wheel/AppImage/Flatpak/deb packaging, no release SBOM, no default discovery and no productive DoP selection. F09 is not CLOSED.",
   "unblock_procedure": [
@@ -48,6 +48,7 @@
       "production selection",
       "PlaybackService DoP selection",
       "physical DoP playback"
-    ]
+    ],
+    "ci": "PASS — run 40120607660"
   }
 }

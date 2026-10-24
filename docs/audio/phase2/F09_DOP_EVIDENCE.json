@@ -4,7 +4,7 @@
   "title": "DOP PACKER, CARRIER, PLANNER Y RUNTIME",
   "state": "ACTIVE",
   "activation_head": "3800af2",
-  "repo_head": "29ea85de10c4747db326abf781d3fa7384d6e0f1",
+  "repo_head": "694b2c313a8025f907fcf34a65088788a8e20589",
   "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
   "entry_gate": {
     "F07": "CLOSED",
@@ -22,26 +22,32 @@
     "planner": "exact binding locator/generation/environment/format, source-scoped interpretation, double gate",
     "qualification": "exact ALSA carrier probe",
     "productive_runtime": "NOT IMPLEMENTED — M13 gate",
-    "host_vertical": "BLOCKED",
+    "host_vertical": "supervised host PREPARE_DOP/COMMIT_DOP/START_DOP/EOS path; fakesink lab; PLAYING/EOS/identity confirmed; plugin prefix enforced",
     "qualification_adapter": "src/michi/infrastructure/audio_devices/dop_qualification.py — only exact QUALIFIED probe evidence becomes executable; UNKNOWN/INCONCLUSIVE/UNSUPPORTED rejected",
     "interpretation_scope": "device revision required when evidence names one; source multiplier/supported_multipliers scoped; no wildcard",
     "overflow": "backlog overflow invalidates the stream until authorized reset; no stale bytes/marker reuse",
     "evidence_separation": "carrier_bytes_verified/dac_mode_verified remain false; carrier capability is not DAC interpretation",
     "supervised_probe": "src/michi/infrastructure/audio_devices/dop_probe_supervisor.py — spawn process, deadline, terminate/kill; TIMEOUT/ERROR/OK outcomes; lab direct provenance remains distinguishable",
     "provenance": "ALSA_LAB_DIRECT vs ALSA_SUPERVISED validated by the qualification adapter; no false supervised provenance",
-    "plan_identity": "reverse_payload_bits, environment fingerprint and DOP_ONLY policy recorded in DopExecutionPlanV2"
+    "plan_identity": "reverse_payload_bits, environment fingerprint and DOP_ONLY policy recorded in DopExecutionPlanV2",
+    "native_runtime": "native/michi-dop Rust/GStreamer michidop 0.1.0; factory registered; S24_3LE and S32LE DoP framing; installed private prefix; artifact SHA-256 c4dffb6dfede48feff040e3e4af36032d2c57975afd182ae3ecdad3ccd00abcc",
+    "cross_language": "Python reference, Rust element and installed plugin consume the same 9-vector corpus; bytes identical",
+    "m13_gate_a": "APPROVED 2026-10-24 by product owner; Gate B remains NO-GO"
   },
   "tests": {
-    "dop": "76 passed + 1 hardware-opt-in skip; 1 DoP hardware carrier probe passed with MICHI_RUN_DOP_HARDWARE=1",
-    "full_suite": "6169 passed, 9 skipped, 0 failed (30:38)",
+    "dop": "87 Python tests passed + 1 hardware skip; real DoP host vertical passed",
+    "full_suite": "6181 passed, 9 skipped, 0 failed (30:50)",
     "ci": {
-      "code_head": "29ea85de10c4747db326abf781d3fa7384d6e0f1",
-      "run_id": 40091278011,
+      "code_head": "8107cc4b72ed88ca7e8e72b4d9dcd8398565998c",
+      "run_id": 40120607660,
       "dac": "success",
       "min_qt": "success",
+      "dop_native": "success",
       "check": "failure — external QML gate"
     },
-    "corpus": "tests/dop/conformance: 9 vectors + schema + SHA-256 manifest; canonical 0x05/0xFA vector"
+    "corpus": "tests/dop/conformance: 9 vectors + schema + SHA-256 manifest; canonical 0x05/0xFA vector",
+    "rust": "6 element/conformance tests + 1 shared-corpus test passed",
+    "installed_corpus": "1 passed with GST_PLUGIN_PATH private prefix and MICHI_DOP_INSTALLED=1"
   },
   "work_units": {
     "WU-F09-01_domain": "COMPLETE",
@@ -70,13 +76,27 @@
     "WU-F09-C06_m13": "NO-GO",
     "WU-F09-C07_rust_runtime": "BLOCKED",
     "WU-F09-C08_host_playback_truth": "BLOCKED",
-    "WU-F09-C04_plan_identity": "COMPLETE"
+    "WU-F09-C04_plan_identity": "COMPLETE",
+    "WU-F09-RB05_native_runtime": "COMPLETE — Gate A",
+    "WU-F09-RB06_cross_language": "COMPLETE — Python/Rust/installed",
+    "WU-F09-RB07_installed_discovery": "COMPLETE — private prefix",
+    "WU-F09-RB08_host_vertical": "COMPLETE — fakesink evaluation"
   },
   "score": {
-    "method": "weighted WU: domain/reference 20, streaming/layouts 15, planner/interpretation 20, ALSA qualification+adapter 15, corpus 10, supervised probe 5, native runtime 10, host/playback/truth 5",
-    "f09_percent": 85,
-    "completed": "domain, streaming, layouts, planner, ALSA qualification+adapter, supervised probe, corpus",
-    "blocked": "native runtime, host, playback, Signal Truth (15 points)"
+    "method": "same frozen weights; no reweighting",
+    "f09_percent": 97,
+    "breakdown": {
+      "domain_reference": 20,
+      "streaming_layouts": 15,
+      "planner": 20,
+      "alsa_qualification": 15,
+      "corpus": 10,
+      "supervised_probe": 5,
+      "native_runtime": 10,
+      "host_integration": 2,
+      "playback_truth": 0
+    },
+    "production_ready": false
   },
   "limitations": [
     "M13 native packaging gate NO-GO; no Rust plugin, host DoP, PlaybackService DoP or Signal Truth DoP.",
@@ -85,13 +105,11 @@
     "F14 physical remains NOT_RUN; F10/F11 out of scope."
   ],
   "next_work": [
-    "M13 scoped native artifact approval",
-    "Rust michidop build + Cargo.lock/ABI",
-    "wheel/AppImage discovery + SBOM/CI",
-    "cross-language corpus digests",
-    "host DoP vertical",
-    "OutputSession/Playback/Truth integration",
-    "F09-G4 and closure"
+    "Gate B owner decision",
+    "wheel/AppImage/Flatpak/deb + SBOM",
+    "ALSA selected-endpoint host test",
+    "OutputSession/Playback/Truth integration behind Gate B",
+    "revalidate G4 and close F09"
   ],
   "qualification": {
     "adapter": "src/michi/infrastructure/audio_devices/alsa_dop_probe.py",
@@ -102,5 +120,30 @@
     "status": "NO-GO",
     "artifact": "docs/audio/phase2/M13_DOP_PACKAGING_GATE.json",
     "missing": "native build/lock/ABI/discovery/wheel/AppImage/manifest/SBOM/CI"
-  }
+  },
+  "exit_gates": {
+    "F09-G1_byte_for_byte": {
+      "status": "PASS",
+      "evidence": "Python + Rust + installed plugin golden/corpus"
+    },
+    "F09-G2_chunk_phase": {
+      "status": "PASS",
+      "evidence": "marker_phase, odd_chunk_split, Rust buffer continuity"
+    },
+    "F09-G3_channel_integrity": {
+      "status": "PASS",
+      "evidence": "9-vector corpus with distinct L/R payload"
+    },
+    "F09-G4_exact_carrier_generation": {
+      "status": "PARTIAL_BLOCKED",
+      "evidence": "host negotiated S32LE 176400 with binding/host generations; no selected-ALSA runtime and Gate B packaging absent"
+    }
+  },
+  "blocked": [
+    "Gate B distribution/default discovery",
+    "selected-ALSA DoP runtime",
+    "OutputSessionService/PlaybackService/Signal Truth production selection",
+    "F09-G4 closure",
+    "F14 physical/performance"
+  ]
 }
