@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "s32-lsb24",
+  "source": {
+    "left_hex": "11223344",
+    "right_hex": "55667788"
+  },
+  "layout": "s32_le_lsb24",
+  "reverse_bits": false,
+  "expected_hex": "11220500556605003344fa007788fa00"
+}

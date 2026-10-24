@@ -58,6 +58,7 @@ class DopPlannerV3:
         stable_device_id: str,
         binding_locator: str,
         binding_generation: int,
+        environment_fingerprint: str,
         source: DsdSignalFormat,
         carrier_qualifications: tuple[DopCarrierQualification, ...],
         interpretation: tuple[DopDeviceInterpretationEvidence, ...],
@@ -67,11 +68,19 @@ class DopPlannerV3:
         volume_authority: str = "hardware",
         active_engine_id: str = "gstreamer",
         binding_current: bool = True,
+        current_device_revision: str | None = None,
     ) -> DopExecutionPlanV2:
         if not isinstance(stable_device_id, str) or not stable_device_id.strip():
             raise DopPlannerError("DOP_DEVICE_MISSING", "stable device id required")
         if not isinstance(binding_locator, str) or not binding_locator.strip():
             raise DopPlannerError("DOP_BINDING_MISSING", "binding locator required")
+        if (
+            not isinstance(environment_fingerprint, str)
+            or not environment_fingerprint.strip()
+        ):
+            raise DopPlannerError(
+                "DOP_ENVIRONMENT_STALE", "current environment fingerprint is required"
+            )
         if (
             not isinstance(binding_generation, int)
             or isinstance(binding_generation, bool)
@@ -115,7 +124,11 @@ class DopPlannerV3:
             )
 
         interpretation_evidence = self._resolve_interpretation(
-            stable_device_id, interpretation, policy
+            stable_device_id,
+            source,
+            interpretation,
+            policy,
+            current_device_revision,
         )
         try:
             rate = source_to_dop_rate(source.source_rate)
@@ -126,13 +139,73 @@ class DopPlannerV3:
             item
             for item in carrier_qualifications
             if item.stable_device_id == stable_device_id
+            and item.binding_locator == binding_locator
+            and item.binding_generation == binding_generation
             and item.carrier_rate_hz == rate.frames_per_second
             and item.channels == DOP_CORE_CHANNELS
+            and item.environment_fingerprint == environment_fingerprint
+        )
+        incomplete = tuple(
+            item
+            for item in carrier_qualifications
+            if item.stable_device_id == stable_device_id
             and (
                 item.binding_generation is None
-                or item.binding_generation == binding_generation
+                or not item.binding_locator.strip()
+                or not item.provenance.strip()
             )
         )
+        if not matches and incomplete:
+            raise DopPlannerError(
+                "DOP_CARRIER_QUALIFICATION_INCOMPLETE",
+                "carrier evidence lacks binding locator/generation or provenance",
+            )
+        endpoint_mismatch = tuple(
+            item
+            for item in carrier_qualifications
+            if item.stable_device_id == stable_device_id
+            and item.binding_generation == binding_generation
+            and item.carrier_rate_hz == rate.frames_per_second
+            and item.channels == DOP_CORE_CHANNELS
+            and item.environment_fingerprint == environment_fingerprint
+            and item.binding_locator != binding_locator
+        )
+        binding_stale = tuple(
+            item
+            for item in carrier_qualifications
+            if item.stable_device_id == stable_device_id
+            and item.binding_locator == binding_locator
+            and item.binding_generation is not None
+            and item.binding_generation != binding_generation
+            and item.carrier_rate_hz == rate.frames_per_second
+            and item.channels == DOP_CORE_CHANNELS
+            and item.environment_fingerprint == environment_fingerprint
+        )
+        if not matches and endpoint_mismatch:
+            raise DopPlannerError(
+                "DOP_ENDPOINT_MISMATCH",
+                "carrier evidence belongs to another endpoint of the same DAC",
+            )
+        if not matches and binding_stale:
+            raise DopPlannerError(
+                "DOP_BINDING_STALE",
+                "carrier evidence belongs to another binding generation",
+            )
+        environment_stale = tuple(
+            item
+            for item in carrier_qualifications
+            if item.stable_device_id == stable_device_id
+            and item.binding_locator == binding_locator
+            and item.binding_generation == binding_generation
+            and item.carrier_rate_hz == rate.frames_per_second
+            and item.channels == DOP_CORE_CHANNELS
+            and item.environment_fingerprint != environment_fingerprint
+        )
+        if not matches and environment_stale:
+            raise DopPlannerError(
+                "DOP_ENVIRONMENT_STALE",
+                "carrier evidence belongs to another environment",
+            )
         qualified = tuple(
             item for item in matches if item.support is DopCarrierSupport.QUALIFIED
         )
@@ -159,9 +232,25 @@ class DopPlannerV3:
             )
 
         by_layout: dict[str, DopCarrierQualification] = {}
+        format_mismatch = False
         for item in qualified:
-            if item.carrier_layout_id not in by_layout:
-                by_layout[item.carrier_layout_id] = item
+            try:
+                layout = DopCarrierLayout(item.carrier_layout_id)
+            except ValueError:
+                continue
+            try:
+                contract = memory_contract_for(layout)
+            except DopPackingError:
+                continue
+            if item.alsa_format != contract.alsa_format:
+                format_mismatch = True
+                continue
+            if item.significant_transport_bits != contract.significant_transport_bits:
+                format_mismatch = True
+                continue
+            if not item.provenance.strip():
+                continue
+            by_layout.setdefault(item.carrier_layout_id, item)
         selected_layout = None
         selected_qualification = None
         for layout in layout_preference:
@@ -171,6 +260,11 @@ class DopPlannerV3:
                 selected_qualification = item
                 break
         if selected_layout is None or selected_qualification is None:
+            if format_mismatch:
+                raise DopPlannerError(
+                    "DOP_CARRIER_FORMAT_MISMATCH",
+                    "carrier ALSA format/significant bits contradict the layout",
+                )
             raise DopPlannerError(
                 "DOP_CARRIER_LAYOUT_UNKNOWN",
                 "no preferred qualified carrier layout",
@@ -224,11 +318,29 @@ class DopPlannerV3:
     @staticmethod
     def _resolve_interpretation(
         stable_device_id: str,
+        source: DsdSignalFormat,
         evidence: tuple[DopDeviceInterpretationEvidence, ...],
         policy: DopPolicyDecision,
+        current_device_revision: str | None,
     ) -> DopDeviceInterpretationEvidence:
+        multiplier = source.bit_rate_hz // 44_100
         matches = tuple(
-            item for item in evidence if item.stable_device_id == stable_device_id
+            item
+            for item in evidence
+            if item.stable_device_id == stable_device_id
+            and (
+                item.device_revision is None
+                or current_device_revision is None
+                or item.device_revision == current_device_revision
+            )
+            and multiplier
+            in (
+                item.supported_multipliers
+                if item.supported_multipliers is not None
+                else (
+                    (item.source_dsd_multiplier,) if item.source_dsd_multiplier else ()
+                )
+            )
         )
         if any(item.state is DopInterpretationState.CONTRADICTED for item in matches):
             raise DopPlannerError(

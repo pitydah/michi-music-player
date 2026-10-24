@@ -133,8 +133,10 @@ def test_streaming_is_chunk_boundary_independent() -> None:
 
 
 def test_random_splits_preserve_bytes() -> None:
-    left = bytes(random.Random(7).randrange(256) for _ in range(64))
-    right = bytes(random.Random(11).randrange(256) for _ in range(64))
+    rng_left = random.Random(7)
+    rng_right = random.Random(11)
+    left = bytes(rng_left.randrange(256) for _ in range(64))
+    right = bytes(rng_right.randrange(256) for _ in range(64))
     expected = pack_dop_interleaved_stereo(left, right).payload
     packer = DopStreamPacker()
     rng = random.Random(99)
@@ -206,3 +208,58 @@ def test_streaming_state_rejects_invalid_phase() -> None:
         DopState(2)
     with pytest.raises(DopPackingError):
         DopStreamingState(marker_phase=2)
+
+
+def test_memory_contract_rejects_malformed_offsets() -> None:
+    from dataclasses import replace
+
+    base = memory_contract_for(DopCarrierLayout.PACKED_24_LE)
+    cases = (
+        {"payload_byte_offsets": (0, 0)},
+        {"payload_byte_offsets": (-1, 1)},
+        {"payload_byte_offsets": (0, 3)},
+        {"marker_byte_offset": 1},
+        {"padding_byte_offsets": (0,)},
+        {"container_bits": 16},
+        {"significant_transport_bits": 16},
+        {"endianness": "big"},
+    )
+    for overrides in cases:
+        with pytest.raises(DopPackingError):
+            replace(base, **overrides)
+
+
+def test_streaming_backlog_is_bounded() -> None:
+    from michi.domain.dop import MAX_PENDING_BYTES
+
+    packer = DopStreamPacker()
+    with pytest.raises(DopPackingError) as info:
+        packer.pack_stereo(b"\x00" * (MAX_PENDING_BYTES + 1), b"")
+    assert info.value.code == "DOP_BUFFER_BACKLOG_EXCEEDED"
+    assert packer.state.pending_left == bytearray()
+    assert packer.state.pending_right == bytearray()
+
+
+def test_result_counters_are_unambiguous() -> None:
+    result = pack_dop_interleaved_stereo(LEFT, RIGHT)
+    assert result.source_bytes_consumed == 4
+    assert result.source_bytes_per_channel_total == 4
+    assert result.carrier_frames_written == 2
+    assert result.carrier_bytes_written == 12
+
+
+@pytest.mark.parametrize("seed", [0, 1, 7, 42])
+def test_randomized_chunk_property(seed) -> None:
+    rng = random.Random(seed)
+    left = bytes(rng.randrange(256) for _ in range(32))
+    right = bytes(rng.randrange(256) for _ in range(32))
+    expected = pack_dop_interleaved_stereo(left, right).payload
+    packer = DopStreamPacker()
+    out = bytearray()
+    lo = ro = 0
+    while lo < len(left):
+        take = rng.randint(1, 5)
+        out.extend(packer.pack_stereo(left[lo : lo + take], right[ro : ro + take]))
+        lo += take
+        ro += take
+    assert bytes(out) == expected

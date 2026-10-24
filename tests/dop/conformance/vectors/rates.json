@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "id": "rates",
+  "source": {
+    "left_hex": "1122",
+    "right_hex": "5566"
+  },
+  "layout": "packed_24_le",
+  "reverse_bits": false,
+  "expected_hex": "112205556605",
+  "rates": {
+    "64": 176400,
+    "128": 352800,
+    "256": 705600,
+    "512": 1411200
+  }
+}

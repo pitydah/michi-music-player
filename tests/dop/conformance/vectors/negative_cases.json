@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "id": "negative-cases",
+  "source": {
+    "left_hex": "1122",
+    "right_hex": "55"
+  },
+  "layout": "packed_24_le",
+  "reverse_bits": false,
+  "expected_error": "DOP_CHANNEL_LENGTH_MISMATCH",
+  "cases": [
+    {
+      "left_hex": "1122",
+      "right_hex": "55",
+      "error": "DOP_CHANNEL_LENGTH_MISMATCH"
+    },
+    {
+      "left_hex": "11",
+      "right_hex": "55",
+      "error": "DOP_ODD_PAYLOAD"
+    },
+    {
+      "rate_hz": 2822401,
+      "error": "DOP_SOURCE_RATE_INVALID"
+    }
+  ]
+}

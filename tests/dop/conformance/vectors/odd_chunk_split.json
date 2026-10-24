@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "id": "odd-chunk-split",
+  "source": {
+    "left_hex": "11223344",
+    "right_hex": "55667788"
+  },
+  "layout": "packed_24_le",
+  "reverse_bits": false,
+  "chunks": [
+    "1",
+    "3"
+  ],
+  "expected_hex": "1122055566053344fa7788fa"
+}

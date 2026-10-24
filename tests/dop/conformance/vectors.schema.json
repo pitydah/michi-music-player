@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Michi DoP conformance vectors",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "source",
+    "layout",
+    "reverse_bits",
+    "expected_hex"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "id": {
+      "type": "string"
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "left_hex",
+        "right_hex"
+      ],
+      "properties": {
+        "left_hex": {
+          "type": "string"
+        },
+        "right_hex": {
+          "type": "string"
+        }
+      }
+    },
+    "layout": {
+      "enum": [
+        "packed_24_le",
+        "s32_le_lsb24",
+        "s32_le_msb24"
+      ]
+    },
+    "reverse_bits": {
+      "type": "boolean"
+    },
+    "expected_hex": {
+      "type": "string"
+    },
+    "carrier_rate_hz": {
+      "type": "integer"
+    },
+    "chunks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "note": {
+      "type": "string"
+    }
+  }
+}

@@ -24,6 +24,7 @@ from michi.domain.dsd_signal import (
 DOP_MARKERS: tuple[int, int] = (0x05, 0xFA)
 DOP_PACKER_REVISION = "dop-python-reference-v1"
 DOP_CORE_CHANNELS = 2
+MAX_PENDING_BYTES = 1_048_576
 
 
 class DopCarrierLayout(StrEnum):
@@ -105,18 +106,39 @@ class DopCarrierMemoryContract:
     marker_byte_offset: int
     padding_byte_offsets: tuple[int, ...]
     padding_value: int
+    endianness: str = "little"
 
     def __post_init__(self) -> None:
         if not isinstance(self.layout, DopCarrierLayout):
             raise DopPackingError("DOP_LAYOUT_INVALID", "layout must be explicit")
-        offsets = (self.payload_byte_offsets[0], self.marker_byte_offset)
-        if len(self.payload_byte_offsets) != 2:
-            raise DopPackingError("DOP_LAYOUT_INVALID", "two payload offsets required")
-        if any(offset < 0 or offset >= self.container_bits // 8 for offset in offsets):
-            raise DopPackingError("DOP_LAYOUT_INVALID", "offset outside container")
+        if not isinstance(self.alsa_format, str) or not self.alsa_format.strip():
+            raise DopPackingError("DOP_LAYOUT_INVALID", "ALSA format is required")
+        if self.container_bits not in (24, 32):
+            raise DopPackingError("DOP_LAYOUT_INVALID", "container must be 24/32 bits")
         if self.significant_transport_bits != 24:
             raise DopPackingError(
                 "DOP_LAYOUT_INVALID", "DoP transport is 24 significant bits"
+            )
+        if self.endianness != "little":
+            raise DopPackingError("DOP_LAYOUT_INVALID", "DoP carrier is little-endian")
+        if len(self.payload_byte_offsets) != 2:
+            raise DopPackingError("DOP_LAYOUT_INVALID", "two payload offsets required")
+        bytes_per_channel = self.container_bits // 8
+        all_offsets = (
+            *self.payload_byte_offsets,
+            self.marker_byte_offset,
+            *self.padding_byte_offsets,
+        )
+        for offset in all_offsets:
+            if not isinstance(offset, int) or isinstance(offset, bool):
+                raise DopPackingError("DOP_LAYOUT_INVALID", "offsets must be integers")
+            if offset < 0 or offset >= bytes_per_channel:
+                raise DopPackingError("DOP_LAYOUT_INVALID", "offset outside container")
+        if len(set(all_offsets)) != len(all_offsets):
+            raise DopPackingError("DOP_LAYOUT_INVALID", "offset collision")
+        if set(all_offsets) != set(range(bytes_per_channel)):
+            raise DopPackingError(
+                "DOP_LAYOUT_INVALID", "contract must cover every byte"
             )
         if self.padding_value != 0:
             raise DopPackingError("DOP_LAYOUT_INVALID", "padding must be zero")
@@ -132,6 +154,7 @@ _MEMORY_CONTRACTS = {
         marker_byte_offset=2,
         padding_byte_offsets=(),
         padding_value=0,
+        endianness="little",
     ),
     DopCarrierLayout.S32_LE_LSB24: DopCarrierMemoryContract(
         layout=DopCarrierLayout.S32_LE_LSB24,
@@ -142,6 +165,7 @@ _MEMORY_CONTRACTS = {
         marker_byte_offset=2,
         padding_byte_offsets=(3,),
         padding_value=0,
+        endianness="little",
     ),
     DopCarrierLayout.S32_LE_MSB24: DopCarrierMemoryContract(
         layout=DopCarrierLayout.S32_LE_MSB24,
@@ -152,6 +176,7 @@ _MEMORY_CONTRACTS = {
         marker_byte_offset=3,
         padding_byte_offsets=(0,),
         padding_value=0,
+        endianness="little",
     ),
 }
 #: Production candidate layouts; MSB24 stays disabled until a real target proves it.
@@ -194,6 +219,8 @@ class DopPacketResult:
     next_state: DopState
     source_bytes_consumed: int
     carrier_frames_written: int
+    source_bytes_per_channel_total: int = 0
+    carrier_bytes_written: int = 0
 
 
 def expected_carrier_rate(dsd_bit_rate_hz: int) -> DopCarrierRate:
@@ -252,6 +279,8 @@ def pack_dop_interleaved_stereo(
         next_state=DopState(phase),
         source_bytes_consumed=len(left),
         carrier_frames_written=len(left) // 2,
+        source_bytes_per_channel_total=len(left),
+        carrier_bytes_written=len(out),
     )
 
 
@@ -287,6 +316,16 @@ class DopStreamPacker:
             raise DopPackingError("DOP_PAYLOAD_INVALID", "payloads must be bytes")
         self.state.pending_left.extend(left)
         self.state.pending_right.extend(right)
+        if (
+            max(len(self.state.pending_left), len(self.state.pending_right))
+            > MAX_PENDING_BYTES
+        ):
+            self.state.pending_left.clear()
+            self.state.pending_right.clear()
+            raise DopPackingError(
+                "DOP_BUFFER_BACKLOG_EXCEEDED",
+                "one channel produced more than the bounded backlog",
+            )
         out = bytearray()
         while True:
             pair_left = self._take_pair(self.state.pending_left)
@@ -327,6 +366,9 @@ class DopCarrierQualification:
     environment_fingerprint: str
     evidence_refs: tuple[str, ...]
     binding_generation: int | None = None
+    binding_locator: str = ""
+    significant_transport_bits: int = 24
+    provenance: str = ""
 
     def __post_init__(self) -> None:
         if (
@@ -342,6 +384,16 @@ class DopCarrierQualification:
             raise DopPackingError("DOP_CARRIER_QUALIFICATION_INVALID", "support")
         if not self.evidence_refs or not all(ref.strip() for ref in self.evidence_refs):
             raise DopPackingError("DOP_CARRIER_QUALIFICATION_INVALID", "evidence")
+        if self.significant_transport_bits != 24:
+            raise DopPackingError(
+                "DOP_CARRIER_QUALIFICATION_INVALID", "significant bits"
+            )
+        if self.binding_generation is not None and (
+            not isinstance(self.binding_generation, int)
+            or isinstance(self.binding_generation, bool)
+            or self.binding_generation < 0
+        ):
+            raise DopPackingError("DOP_CARRIER_QUALIFICATION_INVALID", "generation")
 
 
 @dataclass(frozen=True, slots=True)
@@ -352,6 +404,7 @@ class DopDeviceInterpretationEvidence:
     source: str
     device_revision: str | None
     evidence_refs: tuple[str, ...]
+    supported_multipliers: tuple[int, ...] | None = None
 
     def __post_init__(self) -> None:
         if not self.stable_device_id.strip() or not self.source.strip():

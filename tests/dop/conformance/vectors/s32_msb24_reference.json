@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "id": "s32-msb24-reference",
+  "source": {
+    "left_hex": "11223344",
+    "right_hex": "55667788"
+  },
+  "layout": "s32_le_msb24",
+  "reverse_bits": false,
+  "expected_hex": "0011220500556605003344fa007788fa",
+  "note": "reference only; production disabled"
+}

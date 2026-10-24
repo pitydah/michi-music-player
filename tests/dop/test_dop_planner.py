@@ -59,6 +59,9 @@ def _carrier(
         environment_fingerprint="env:1",
         evidence_refs=EVIDENCE,
         binding_generation=binding,
+        binding_locator=LOCATOR,
+        significant_transport_bits=24,
+        provenance="alsa-dop-probe",
     )
 
 
@@ -66,10 +69,11 @@ def _interp(
     state: DopInterpretationState,
     *,
     evidence: tuple[str, ...] = INTERP_EVIDENCE,
+    multiplier: int = 64,
 ) -> DopDeviceInterpretationEvidence:
     return DopDeviceInterpretationEvidence(
         stable_device_id=DEVICE,
-        source_dsd_multiplier=64,
+        source_dsd_multiplier=multiplier,
         state=state,
         source="test",
         device_revision="rev:1",
@@ -82,6 +86,7 @@ def _plan(**overrides):
         "stable_device_id": DEVICE,
         "binding_locator": LOCATOR,
         "binding_generation": 3,
+        "environment_fingerprint": "env:1",
         "source": _source(),
         "carrier_qualifications": (_carrier(),),
         "interpretation": (_interp(DopInterpretationState.USER_CONFIRMED),),
@@ -179,7 +184,7 @@ def test_msb24_is_not_in_default_production_preference() -> None:
 def test_binding_generation_mismatch() -> None:
     with pytest.raises(DopPlannerError) as info:
         _plan(binding_generation=4)
-    assert info.value.code == "DOP_CARRIER_LAYOUT_UNQUALIFIED"
+    assert info.value.code == "DOP_BINDING_STALE"
 
 
 def test_dsp_volume_engine_and_binding_refusals() -> None:
@@ -218,7 +223,7 @@ def test_plan_identity_is_deterministic_and_binding_bound() -> None:
     same = _plan()
     other = _plan(
         binding_generation=3,
-        carrier_qualifications=(_carrier(binding=3),),
+        carrier_qualifications=(_special_carrier(binding_locator="hw:3,1"),),
         binding_locator="hw:3,1",
     )
     assert first.plan_id == same.plan_id
@@ -230,6 +235,91 @@ def test_higher_rate_mapping(rate, carrier) -> None:
     plan = _plan(
         source=_source(rate=rate),
         carrier_qualifications=(_carrier(rate=carrier),),
-        interpretation=(_interp(DopInterpretationState.USER_CONFIRMED),),
+        interpretation=(
+            _interp(DopInterpretationState.USER_CONFIRMED, multiplier=rate // 44_100),
+        ),
     )
     assert plan.carrier_rate.frames_per_second == carrier
+
+
+def _special_carrier(**overrides):
+    values = dict(
+        stable_device_id=DEVICE,
+        carrier_layout_id=DopCarrierLayout.PACKED_24_LE.value,
+        carrier_rate_hz=176_400,
+        alsa_format="S24_3LE",
+        channels=2,
+        support=DopCarrierSupport.QUALIFIED,
+        environment_fingerprint="env:1",
+        evidence_refs=EVIDENCE,
+        binding_generation=3,
+        binding_locator=LOCATOR,
+        significant_transport_bits=24,
+        provenance="alsa-dop-probe",
+    )
+    values.update(overrides)
+    return DopCarrierQualification(**values)
+
+
+def test_carrier_without_binding_is_incomplete() -> None:
+    with pytest.raises(DopPlannerError) as info:
+        _plan(carrier_qualifications=(_special_carrier(binding_generation=None),))
+    assert info.value.code == "DOP_CARRIER_QUALIFICATION_INCOMPLETE"
+
+
+def test_other_endpoint_of_same_dac_is_rejected() -> None:
+    with pytest.raises(DopPlannerError) as info:
+        _plan(carrier_qualifications=(_special_carrier(binding_locator="hw:3,1"),))
+    assert info.value.code == "DOP_ENDPOINT_MISMATCH"
+
+
+def test_old_binding_is_stale() -> None:
+    with pytest.raises(DopPlannerError) as info:
+        _plan(carrier_qualifications=(_special_carrier(binding_generation=2),))
+    assert info.value.code == "DOP_BINDING_STALE"
+
+
+def test_environment_mismatch_is_stale() -> None:
+    with pytest.raises(DopPlannerError) as info:
+        _plan(
+            carrier_qualifications=(
+                _special_carrier(environment_fingerprint="env:old"),
+            )
+        )
+    assert info.value.code == "DOP_ENVIRONMENT_STALE"
+
+
+def test_format_mismatch_is_rejected() -> None:
+    with pytest.raises(DopPlannerError) as info:
+        _plan(carrier_qualifications=(_special_carrier(alsa_format="S32_LE"),))
+    assert info.value.code == "DOP_CARRIER_FORMAT_MISMATCH"
+
+
+def test_interpretation_multiplier_scope_is_enforced() -> None:
+    with pytest.raises(DopPlannerError) as info:
+        _plan(
+            source=_source(rate=5_644_800),
+            carrier_qualifications=(_carrier(rate=352_800),),
+            interpretation=(
+                _interp(DopInterpretationState.USER_CONFIRMED, multiplier=64),
+            ),
+        )
+    assert info.value.code == "DOP_DEVICE_INTERPRETATION_UNKNOWN"
+
+
+def test_explicit_supported_multipliers_allow_multirate() -> None:
+    evidence = DopDeviceInterpretationEvidence(
+        stable_device_id=DEVICE,
+        source_dsd_multiplier=None,
+        state=DopInterpretationState.USER_CONFIRMED,
+        source="declared-multirate",
+        device_revision="rev:1",
+        evidence_refs=INTERP_EVIDENCE,
+        supported_multipliers=(64, 128),
+    )
+    plan = _plan(
+        source=_source(rate=5_644_800),
+        carrier_qualifications=(_carrier(rate=352_800),),
+        interpretation=(evidence,),
+    )
+    assert plan.carrier_rate.frames_per_second == 352_800
