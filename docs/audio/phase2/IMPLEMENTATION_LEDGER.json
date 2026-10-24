@@ -14,12 +14,11 @@
     },
     {
       "file": "src/michi/domain/dop.py",
-      "owner": "domain framing",
+      "owner": "domain",
       "phase": "F09",
-      "contract": "DoP state/vector/layout contracts",
+      "contract": "DoP framing, streaming, layouts, capability/interpretation vocabulary",
       "tests": [
-        "test_dop_carrier_layouts.py",
-        "test_dop_streaming_chunks.py"
+        "tests/dop/test_dop_packer.py"
       ]
     },
     {
@@ -62,9 +61,9 @@
       "file": "src/michi/application/dop_planner.py",
       "owner": "planner component under output authority",
       "phase": "F09",
-      "contract": "DoP double-gate plan",
+      "contract": "DoP planner V3 double gate",
       "tests": [
-        "test_dop_planner_v2.py"
+        "tests/dop/test_dop_planner.py"
       ]
     },
     {

@@ -4,7 +4,10 @@
   "title": "DOP PACKER, CARRIER, PLANNER Y RUNTIME",
   "recorded_at": "2026-10-23",
   "activation_head": "3800af2",
-  "dependencies": {"AP2-F07": "CLOSED", "AP2-F08": "CLOSED_RECERTIFIED"},
+  "dependencies": {
+    "AP2-F07": "CLOSED",
+    "AP2-F08": "CLOSED_RECERTIFIED"
+  },
   "spec": {
     "path": "/home/cristian/michi-music-player/docs/audio/MICHI_AUDIO_PHASE_2_DSP_DSD_DOP_SIGNAL_PATH_MEGA_PLAN.md",
     "sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12"
@@ -23,5 +26,11 @@
     "DAC DSD-mode interpretation",
     "physical qualification (F14)",
     "F10 DSD->PCM/DSP interoperability"
-  ]
+  ],
+  "post_activation_update": {
+    "domain_reference_packer": "COMPLETE — 0x05/0xFA vector, layouts, streaming",
+    "planner_v3": "COMPLETE — double gate",
+    "native_runtime": "BLOCKED — ADR 0012 packaging gate not approved",
+    "host_vertical": "NOT_RUN — no native runtime"
+  }
 }

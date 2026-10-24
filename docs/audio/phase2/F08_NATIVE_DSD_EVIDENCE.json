@@ -5,7 +5,7 @@
   "state": "CLOSED",
   "recorded_at": "2026-10-21",
   "activation_commit": "cbe724e",
-  "repo_head": "5dd5f164e057fd1d5353a37d0b0d0fdced9168c8",
+  "repo_head": "3800af2",
   "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
   "environment": {
     "gstreamer": "1.28.8",
@@ -84,19 +84,21 @@
     "WU-F08-H10": "COMPLETE — 4/4 gates PASS on head 419908a",
     "WU-F08-H11_eos_fence": "COMPLETE",
     "WU-F08-H12_cleanup_convergence": "COMPLETE",
-    "WU-F08-H13_terminal_playing": "COMPLETE"
+    "WU-F08-H13_terminal_playing": "COMPLETE",
+    "WU-F08-H14_eos_ambiguity": "COMPLETE",
+    "WU-F08-H15_playing_identity": "COMPLETE"
   },
   "tests": {
-    "new_f08": "151 collected: 147 passed + 4 hardware opt-in skips by default; 32 passed with MICHI_RUN_DSD_HARDWARE=1",
+    "new_f08": "155 collected: 151 passed + 4 hardware opt-in skips by default",
     "audio_firewall": "853 passed, 5 skipped (tests/audio_phase2 + bridge + frozen adapter)",
-    "full_suite": "6089 passed, 8 skipped, 0 failed (30:52)",
+    "full_suite": "6093 passed, 8 skipped, 0 failed (30:48)",
     "ci": {
-      "code_head": "5dd5f164e057fd1d5353a37d0b0d0fdced9168c8",
-      "run_id": 40026958236,
+      "code_head": "3800af2",
+      "run_id": 40036728469,
       "dac_v35_software_closure": "success",
       "min_qt": "success",
-      "check": "failure — external Premium Library QML warning gate; not an F08 contract",
-      "overall": "not fully green; the F08 audio gate is green"
+      "check": "failure — external QML gate",
+      "overall": "F08 audio gate green; general CI red only on external QML"
     },
     "skips": [
       "live network opt-in",
@@ -168,13 +170,13 @@
     "pcm_load": "absent; native acceptance bypasses PCM load and PCM volume synchronization"
   },
   "exit_gates": {
-    "F08-01_dsd_to_sink": "PASS (post-hotfix) — explicit DSD branch, negotiated audio/x-dsd to alsasink, no PCM",
-    "F08-02_binding_generation": "PASS (post-hotfix) — stable/locator/binding/host/plan/execution identity; stale rejected",
-    "F08-03_unexpected_conversion": "PASS (post-hotfix) — raw/avdec/decodebin and DSD without Direct profile refused; stale Native EOS fenced",
-    "F08-04_stop_hotplug_no_stale_truth": "PASS (post-hotfix) — immutable EOS identity, single EOS, retryable release/abort, cleanup-failure convergence, no late RUNNING"
+    "F08-01_dsd_to_sink": "PASS (P2 recertified)",
+    "F08-02_binding_generation": "PASS (P2 recertified)",
+    "F08-03_unexpected_conversion": "PASS (P2 recertified) — ambiguous EOS fenced",
+    "F08-04_stop_hotplug_no_stale_truth": "PASS (P2 recertified) — no identity-less EOS, no late RUNNING"
   },
   "closure": {
-    "certified_code_head": "5dd5f164e057fd1d5353a37d0b0d0fdced9168c8",
+    "certified_code_head": "3800af2",
     "certification_date": "2026-10-23",
     "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
     "state": "CLOSED",
@@ -182,16 +184,17 @@
     "previous_certifications": [
       {
         "code_head": "3dbe687ce409c5e2adb83930953970d88f10f0c9",
-        "docs_head": "9a37b8e138a7f2b81addc14e7990bf55d7355fcc",
         "date": "2026-10-23"
       },
       {
         "code_head": "419908a8d0de57ecc33d46b4702f794ea8c9ecb1",
-        "docs_head": "769778a8e0057697f0846c8e56b08f6a1f8c1aa3",
+        "date": "2026-10-23"
+      },
+      {
+        "code_head": "5dd5f164e057fd1d5353a37d0b0d0fdced9168c8",
         "date": "2026-10-23"
       }
     ],
-    "historical_recorded_date": "2026-10-21 (superseded by the formal 2026-10-23 certification)",
     "physical": "NOT_RUN — AP2-F14 / operator gate; not a software exit gate"
   },
   "corrective_hardening": {
@@ -205,6 +208,8 @@
   "post_closure_hotfix": {
     "native_eos_fence": "An EOS carrying Native execution/plan identity is routed only to the identity-bound Native handler; stale/malformed Native EOS is counted stale and never reaches PCM EndOfMedia.",
     "cleanup_convergence": "PlaybackService clears intent/acceptance and converges to STOPPED even when native abort/cleanup throws; the original START error is preserved and the OutputSession retains the unconfirmed receipt.",
-    "terminal_playing": "Native RUNNING requires the active execution, no EOS/terminal mark, and a matching execution identity; late PLAYING after EOS/host loss is rejected. A new execution can still reach RUNNING."
+    "terminal_playing": "Native RUNNING requires the active execution, no EOS/terminal mark, and a matching execution identity; late PLAYING after EOS/host loss is rejected. A new execution can still reach RUNNING.",
+    "ambiguous_eos": "While Native owns the transport, an identity-less or empty-identity EOS is rejected as stale and never reaches PCM EndOfMedia; explicit old host generations are rejected.",
+    "playing_identity": "notify_native_dsd_playing requires a non-empty matching execution_id and a non-terminal execution; no identity is no confirmation."
   }
 }

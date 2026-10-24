@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "phase": "AP2-F09",
+  "title": "DOP PACKER, CARRIER, PLANNER Y RUNTIME",
+  "state": "ACTIVE",
+  "activation_head": "3800af2",
+  "repo_head": "19fe013f8bd7813bc8935171f8c76021eda3b7c9",
+  "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
+  "entry_gate": {
+    "F07": "CLOSED",
+    "F08": "CLOSED (P2 recertified)",
+    "dsd_source_truth": "current",
+    "technology_adr": "ADR 0012 Accepted — Rust/GStreamer michidop production target, Python reference oracle",
+    "toolchain": "Rust 1.96.0; GStreamer 1.28.8 development files present",
+    "packaging_gate": "NOT APPROVED — no native artifact merged or claimed productive",
+    "alignment": "GO",
+    "verdict": "GO for domain/reference/planner; native runtime BLOCKED"
+  },
+  "implementation": {
+    "domain": "src/michi/domain/dop.py — marker conventions, carrier layouts, explicit memory contracts, streaming state, reference packer, interpretation vocabulary",
+    "reference_packer": "PACKED_24_LE canonical 0x05/0xFA vector; S32 LSB24/MSB24 encoders; bit reversal; chunk-boundary independent",
+    "planner": "src/michi/application/dop_planner.py — V3 double gate, exact carrier rate/layout, binding generation, DSP/volume/engine refusals",
+    "productive_runtime": "NOT IMPLEMENTED — blocked by ADR 0012 packaging gate",
+    "host_vertical": "NOT IMPLEMENTED — no native runtime to integrate"
+  },
+  "tests": {
+    "dop": "35 passed (19 packer/streaming + 16 planner)",
+    "full_suite": "6128 passed, 8 skipped, 0 failed (31:23)",
+    "ci": {
+      "code_head": "19fe013f8bd7813bc8935171f8c76021eda3b7c9",
+      "run_id": 40040278784,
+      "dac": "success",
+      "min_qt": "success",
+      "check": "failure — external QML gate"
+    },
+    "vectors": "canonical LEFT 11 22 33 44 / RIGHT 55 66 77 88 -> 11 22 05 55 66 05 33 44 FA 77 88 FA"
+  },
+  "work_units": {
+    "WU-F09-01_domain": "COMPLETE",
+    "WU-F09-02_reference_packer": "COMPLETE",
+    "WU-F09-03_streaming_memory": "COMPLETE",
+    "WU-F09-04_planner_v3": "COMPLETE",
+    "WU-F09-05_native_runtime": "BLOCKED — packaging gate",
+    "WU-F09-06_host_vertical": "BLOCKED — no native runtime",
+    "WU-F09-07_cross_language": "BLOCKED — no native runtime; Python vectors ready",
+    "WU-F09-08_evidence": "COMPLETE"
+  },
+  "score": {
+    "method": "weighted WU: domain/packer 25, streaming/layouts 15, planner 20, native runtime 20, host vertical 15, evidence/tests 5",
+    "f09_percent": 65,
+    "completed": "domain, reference packer, streaming, memory contracts, planner, tests",
+    "blocked": "productive runtime and host vertical (35 points)"
+  },
+  "limitations": [
+    "No productive DoP playback: packaging/native plugin gate not approved.",
+    "No DAC DoP-mode interpretation claim; carrier verification is separate.",
+    "F10 DSD->PCM/DSP, F11 UI, F14 physical remain out of scope/NOT_RUN.",
+    "Python reference is conformance-only, never the productive per-sample hot path."
+  ],
+  "next_work": [
+    "Approve M13 native build/package gate for Rust GStreamer 1.28 michidop",
+    "Implement shared vector corpus and cross-language digest parity",
+    "Add exact carrier layout qualification and host DoP operations",
+    "Integrate DoP with OutputSessionService/PlaybackService after runtime evidence"
+  ]
+}
