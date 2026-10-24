@@ -195,6 +195,15 @@
         "test_native_dsd_executor.py",
         "test_native_dsd_host_runtime.py"
       ]
+    },
+    {
+      "file": "src/michi/infrastructure/audio_devices/alsa_dop_probe.py",
+      "owner": "infrastructure",
+      "phase": "F09",
+      "contract": "exact ALSA DoP carrier qualification",
+      "tests": [
+        "tests/dop/test_alsa_dop_probe.py"
+      ]
     }
   ]
 }

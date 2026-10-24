@@ -28,9 +28,10 @@
     "F10 DSD->PCM/DSP interoperability"
   ],
   "post_activation_update": {
-    "domain_reference_packer": "COMPLETE — 0x05/0xFA vector, layouts, streaming",
-    "planner_v3": "COMPLETE — double gate",
-    "native_runtime": "BLOCKED — ADR 0012 packaging gate not approved",
-    "host_vertical": "NOT_RUN — no native runtime"
+    "planner_hardening": "COMPLETE — exact binding/env/format and source-scoped interpretation",
+    "alsa_carrier_qualification": "COMPLETE — adapter + hardware observation S32_LE_LSB24",
+    "golden_corpus": "COMPLETE — 9 independent vectors + manifest",
+    "m13_packaging": "NO-GO — native runtime not authorized",
+    "runtime": "BLOCKED"
   }
 }

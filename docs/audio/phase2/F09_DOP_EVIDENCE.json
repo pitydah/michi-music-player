@@ -4,7 +4,7 @@
   "title": "DOP PACKER, CARRIER, PLANNER Y RUNTIME",
   "state": "ACTIVE",
   "activation_head": "3800af2",
-  "repo_head": "19fe013f8bd7813bc8935171f8c76021eda3b7c9",
+  "repo_head": "4cad2d31e6349c357099a6ed9b6b9e66390fda79",
   "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
   "entry_gate": {
     "F07": "CLOSED",
@@ -17,23 +17,24 @@
     "verdict": "GO for domain/reference/planner; native runtime BLOCKED"
   },
   "implementation": {
-    "domain": "src/michi/domain/dop.py — marker conventions, carrier layouts, explicit memory contracts, streaming state, reference packer, interpretation vocabulary",
-    "reference_packer": "PACKED_24_LE canonical 0x05/0xFA vector; S32 LSB24/MSB24 encoders; bit reversal; chunk-boundary independent",
-    "planner": "src/michi/application/dop_planner.py — V3 double gate, exact carrier rate/layout, binding generation, DSP/volume/engine refusals",
-    "productive_runtime": "NOT IMPLEMENTED — blocked by ADR 0012 packaging gate",
-    "host_vertical": "NOT IMPLEMENTED — no native runtime to integrate"
+    "domain": "src/michi/domain/dop.py — exact offsets/coverage/endianness, bounded backlog, streaming reset, counters",
+    "reference_packer": "0x05/0xFA canonical + layouts + bit reversal + chunk-independent",
+    "planner": "exact binding locator/generation/environment/format, source-scoped interpretation, double gate",
+    "qualification": "exact ALSA carrier probe",
+    "productive_runtime": "NOT IMPLEMENTED — M13 gate",
+    "host_vertical": "BLOCKED"
   },
   "tests": {
-    "dop": "35 passed (19 packer/streaming + 16 planner)",
-    "full_suite": "6128 passed, 8 skipped, 0 failed (31:23)",
+    "dop": "64 passed + 1 hardware-opt-in skip; 1 hardware DoP carrier probe passed with MICHI_RUN_DOP_HARDWARE=1",
+    "full_suite": "6157 passed, 9 skipped, 0 failed (31:17)",
     "ci": {
-      "code_head": "19fe013f8bd7813bc8935171f8c76021eda3b7c9",
-      "run_id": 40040278784,
+      "code_head": "4cad2d31e6349c357099a6ed9b6b9e66390fda79",
+      "run_id": 40049239061,
       "dac": "success",
       "min_qt": "success",
       "check": "failure — external QML gate"
     },
-    "vectors": "canonical LEFT 11 22 33 44 / RIGHT 55 66 77 88 -> 11 22 05 55 66 05 33 44 FA 77 88 FA"
+    "corpus": "tests/dop/conformance: 9 vectors + schema + SHA-256 manifest; canonical 0x05/0xFA vector"
   },
   "work_units": {
     "WU-F09-01_domain": "COMPLETE",
@@ -42,25 +43,53 @@
     "WU-F09-04_planner_v3": "COMPLETE",
     "WU-F09-05_native_runtime": "BLOCKED — packaging gate",
     "WU-F09-06_host_vertical": "BLOCKED — no native runtime",
-    "WU-F09-07_cross_language": "BLOCKED — no native runtime; Python vectors ready",
-    "WU-F09-08_evidence": "COMPLETE"
+    "WU-F09-07_cross_language": "BLOCKED — native runtime absent",
+    "WU-F09-08_evidence": "COMPLETE",
+    "WU-F09-01b_qualification_hardening": "COMPLETE",
+    "WU-F09-02b_interpretation_scope": "COMPLETE",
+    "WU-F09-03b_memory_backlog": "COMPLETE",
+    "WU-F09-04b_golden_corpus": "COMPLETE",
+    "WU-F09-05_m13_packaging": "NO-GO — exact blockers recorded",
+    "WU-F09-06_native_runtime": "BLOCKED — M13",
+    "WU-F09-08_exact_alsa": "COMPLETE — Python adapter + hardware carrier observation",
+    "WU-F09-09_host": "BLOCKED — runtime",
+    "WU-F09-10_playback": "BLOCKED — runtime",
+    "WU-F09-11_truth": "BLOCKED — runtime"
   },
   "score": {
-    "method": "weighted WU: domain/packer 25, streaming/layouts 15, planner 20, native runtime 20, host vertical 15, evidence/tests 5",
-    "f09_percent": 65,
-    "completed": "domain, reference packer, streaming, memory contracts, planner, tests",
-    "blocked": "productive runtime and host vertical (35 points)"
+    "method": "weighted WU: domain/reference 20, streaming/layouts 15, planner/interpretation 20, ALSA qualification 15, corpus 10, native runtime 10, host/playback/truth 10",
+    "f09_percent": 80,
+    "completed": "domain, streaming, layouts, planner/hardening, exact ALSA carrier qualification, corpus",
+    "blocked": "native runtime, host, playback, Signal Truth (20 points)"
   },
   "limitations": [
-    "No productive DoP playback: packaging/native plugin gate not approved.",
-    "No DAC DoP-mode interpretation claim; carrier verification is separate.",
-    "F10 DSD->PCM/DSP, F11 UI, F14 physical remain out of scope/NOT_RUN.",
-    "Python reference is conformance-only, never the productive per-sample hot path."
+    "No productive DoP playback; M13 native packaging gate is not approved.",
+    "No DAC DoP-mode interpretation claim; only carrier capability was observed.",
+    "No Rust plugin/host/PlaybackService/SignalTruth DoP integration.",
+    "F10 DSD->PCM/DSP, F11 UI and F14 physical remain out of scope/NOT_RUN."
   ],
   "next_work": [
-    "Approve M13 native build/package gate for Rust GStreamer 1.28 michidop",
-    "Implement shared vector corpus and cross-language digest parity",
-    "Add exact carrier layout qualification and host DoP operations",
-    "Integrate DoP with OutputSessionService/PlaybackService after runtime evidence"
-  ]
+    "Approve M13 native build/package gate and add reproducible michidop artifact",
+    "Shared Python/Rust corpus digests and installed-artifact conformance",
+    "Host DoP operations + exact carrier readback",
+    "OutputSessionService/PlaybackService/Signal Truth integration",
+    "Revalidate F09-G1..G4"
+  ],
+  "qualification": {
+    "adapter": "src/michi/infrastructure/audio_devices/alsa_dop_probe.py",
+    "hardware_observation": "SMSL hw:3,0 exposes S32_LE (not S24_3LE); S32_LE_LSB24 at 176400 Hz qualified with exact readback; PACKED_24_LE correctly UNSUPPORTED",
+    "separation": "DOP_CARRIER_QUALIFIED only; DAC DoP interpretation remains separate evidence"
+  },
+  "m13_packaging_gate": {
+    "status": "NOT APPROVED / NO-GO",
+    "toolchain": "Rust 1.96.0 and GStreamer 1.28.8 dev present",
+    "missing": [
+      "authorized native build job and reproducible cargo-c/plugin build",
+      "wheel/AppImage plugin placement and runtime lookup",
+      "clean-install plugin discovery + ABI check",
+      "release manifest/SBOM/cargo.lock artifact verification",
+      "M13 owner approval for native artifacts"
+    ],
+    "consequence": "No Rust/C plugin was added; no productive DoP runtime or host vertical is claimed."
+  }
 }
