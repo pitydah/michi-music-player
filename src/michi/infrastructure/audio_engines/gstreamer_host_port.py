@@ -1464,18 +1464,26 @@ class GStreamerHostedAudioPort(AudioPort):
             with self._lock:
                 dop_expected = dict(self._dop_expected or {})
                 dop_active = bool(self._dop_active and self._dop_expected)
+            execution_id = payload.get("execution_id")
+            plan_id = payload.get("plan_id")
+            host_generation = payload.get("host_generation")
             if (
                 not closed
                 and dop_active
-                and payload.get("execution_id") == dop_expected.get("execution_id")
-                and int(
-                    self._supervisor.host_generation
-                    if payload.get("host_generation") is None
-                    else payload["host_generation"]
-                )
-                == int(dop_expected.get("host_generation", 0))
+                and isinstance(execution_id, str)
+                and execution_id
+                and isinstance(plan_id, str)
+                and plan_id
+                and isinstance(host_generation, int)
+                and not isinstance(host_generation, bool)
+                and execution_id == dop_expected.get("execution_id")
+                and plan_id == dop_expected.get("plan_id")
+                and host_generation == int(dop_expected.get("host_generation", -1))
+                and host_generation == int(self._supervisor.host_generation)
             ):
-                self._enqueue(self._commit_eos)
+                self._enqueue(
+                    lambda: self._commit_dop_eos(execution_id, plan_id, host_generation)
+                )
             else:
                 with self._lock:
                     self._stale_events += 1
@@ -1609,6 +1617,27 @@ class GStreamerHostedAudioPort(AudioPort):
         for listener in listeners:
             with contextlib.suppress(Exception):
                 listener(execution_id)
+        self._commit_eos()
+
+    def _commit_dop_eos(
+        self, execution_id: str, plan_id: str, host_generation: int
+    ) -> None:
+        """Owner-thread DoP EOS commit with the captured identity revalidated."""
+        with self._lock:
+            expected = dict(self._dop_expected or {})
+            if (
+                not self._dop_active
+                or not expected
+                or str(expected.get("execution_id")) != execution_id
+                or str(expected.get("plan_id")) != plan_id
+                or int(expected.get("host_generation", -1)) != host_generation
+                or int(self._supervisor.host_generation) != host_generation
+            ):
+                self._stale_events += 1
+                return
+            if self._dop_state == "EOS":
+                return
+            self._dop_state = "EOS"
         self._commit_eos()
 
     def _commit_eos(self) -> None:

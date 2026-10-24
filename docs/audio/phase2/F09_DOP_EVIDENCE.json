@@ -4,7 +4,7 @@
   "title": "DOP PACKER, CARRIER, PLANNER Y RUNTIME",
   "state": "ACTIVE",
   "activation_head": "3800af2",
-  "repo_head": "694b2c313a8025f907fcf34a65088788a8e20589",
+  "repo_head": "PENDING_FINAL_CODE_HEAD",
   "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
   "entry_gate": {
     "F07": "CLOSED",
@@ -30,13 +30,16 @@
     "supervised_probe": "src/michi/infrastructure/audio_devices/dop_probe_supervisor.py — spawn process, deadline, terminate/kill; TIMEOUT/ERROR/OK outcomes; lab direct provenance remains distinguishable",
     "provenance": "ALSA_LAB_DIRECT vs ALSA_SUPERVISED validated by the qualification adapter; no false supervised provenance",
     "plan_identity": "reverse_payload_bits, environment fingerprint and DOP_ONLY policy recorded in DopExecutionPlanV2",
-    "native_runtime": "native/michi-dop Rust/GStreamer michidop 0.1.0; factory registered; S24_3LE and S32LE DoP framing; installed private prefix; artifact SHA-256 c4dffb6dfede48feff040e3e4af36032d2c57975afd182ae3ecdad3ccd00abcc",
+    "native_runtime": "michidop Rust/GStreamer 0.1.0; artifact SHA-256 72fce5983a765f8fa27deb9a1ea530619bb1d69548d178df3853ea2174dc1af8; reproducible --locked; manifest-bound private prefix",
     "cross_language": "Python reference, Rust element and installed plugin consume the same 9-vector corpus; bytes identical",
-    "m13_gate_a": "APPROVED 2026-10-24 by product owner; Gate B remains NO-GO"
+    "m13_gate_a": "APPROVED 2026-10-24 by product owner; Gate B remains NO-GO",
+    "rust_p0": "pending-byte state is raw; normalize once on emit; bounds-safe state machine; checked transform_size",
+    "host_lifecycle": "DoP EOS revalidates captured execution/plan/host generation at owner dispatch; Native and DoP cleanup/timers are independent",
+    "plugin_trust": "canonical path containment + installed manifest SHA-256/revision/factory validation"
   },
   "tests": {
-    "dop": "87 Python tests passed + 1 hardware skip; real DoP host vertical passed",
-    "full_suite": "6181 passed, 9 skipped, 0 failed (30:50)",
+    "dop": "87 Python DoP tests + 1 hardware skip",
+    "full_suite": "6186 passed, 9 skipped, 0 failed (30:45)",
     "ci": {
       "code_head": "8107cc4b72ed88ca7e8e72b4d9dcd8398565998c",
       "run_id": 40120607660,
@@ -46,8 +49,10 @@
       "check": "failure — external QML gate"
     },
     "corpus": "tests/dop/conformance: 9 vectors + schema + SHA-256 manifest; canonical 0x05/0xFA vector",
-    "rust": "6 element/conformance tests + 1 shared-corpus test passed",
-    "installed_corpus": "1 passed with GST_PLUGIN_PATH private prefix and MICHI_DOP_INSTALLED=1"
+    "rust": "8 element/conformance tests + 1 shared-corpus test",
+    "installed_corpus": "1 passed with GST_PLUGIN_PATH private prefix and MICHI_DOP_INSTALLED=1",
+    "dop_host": "1 real supervised host vertical",
+    "dop_eos": "5 EOS/cleanup identity tests"
   },
   "work_units": {
     "WU-F09-01_domain": "COMPLETE",
@@ -85,17 +90,6 @@
   "score": {
     "method": "same frozen weights; no reweighting",
     "f09_percent": 97,
-    "breakdown": {
-      "domain_reference": 20,
-      "streaming_layouts": 15,
-      "planner": 20,
-      "alsa_qualification": 15,
-      "corpus": 10,
-      "supervised_probe": 5,
-      "native_runtime": 10,
-      "host_integration": 2,
-      "playback_truth": 0
-    },
     "production_ready": false
   },
   "limitations": [
@@ -136,11 +130,12 @@
     },
     "F09-G4_exact_carrier_generation": {
       "status": "PARTIAL_BLOCKED",
-      "evidence": "host negotiated S32LE 176400 with binding/host generations; no selected-ALSA runtime and Gate B packaging absent"
+      "evidence": "host fakesink negotiated S32LE 176400 with exact identity; selected-ALSA and Gate B remain blocked"
     }
   },
   "blocked": [
-    "Gate B distribution/default discovery",
+    "M13 Gate B external decision",
+    "wheel/AppImage/Flatpak/deb + SBOM",
     "selected-ALSA DoP runtime",
     "OutputSessionService/PlaybackService/Signal Truth production selection",
     "F09-G4 closure",

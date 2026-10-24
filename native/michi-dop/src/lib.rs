@@ -35,10 +35,11 @@ impl Layout {
 #[derive(Debug, Default)]
 struct State {
     phase_high: bool,
-    pending_left: Option<u8>,
-    pending_right: Option<u8>,
+    pending: [u8; 4],
+    pending_len: usize,
     layout: Option<Layout>,
     reverse_payload_bits: bool,
+    locked: bool,
     input_rate: Option<i32>,
     output_rate: Option<i32>,
 }
@@ -87,9 +88,11 @@ impl ObjectImpl for MichiDopImp {
         if pspec.name() == "reverse-payload-bits" {
             let enabled = value.get::<bool>().unwrap_or(false);
             if let Ok(mut state) = self.state.lock() {
+                if state.locked {
+                    return;
+                }
                 state.reverse_payload_bits = enabled;
-                state.pending_left = None;
-                state.pending_right = None;
+                state.pending_len = 0;
                 state.phase_high = false;
             }
         }
@@ -210,6 +213,25 @@ impl BaseTransformImpl for MichiDopImp {
         }
     }
 
+    fn start(&self) -> Result<(), gst::ErrorMessage> {
+        let result = self.parent_start();
+        if result.is_ok() {
+            if let Ok(mut state) = self.state.lock() {
+                state.locked = true;
+            }
+        }
+        result
+    }
+
+    fn stop(&self) -> Result<(), gst::ErrorMessage> {
+        if let Ok(mut state) = self.state.lock() {
+            state.locked = false;
+            state.pending_len = 0;
+            state.phase_high = false;
+        }
+        self.parent_stop()
+    }
+
     fn set_caps(&self, incaps: &gst::Caps, outcaps: &gst::Caps) -> Result<(), gst::LoggableError> {
         let input = incaps
             .structure(0)
@@ -249,8 +271,7 @@ impl BaseTransformImpl for MichiDopImp {
         state.layout = Some(layout);
         state.input_rate = Some(in_rate);
         state.output_rate = Some(out_rate);
-        state.pending_left = None;
-        state.pending_right = None;
+        state.pending_len = 0;
         state.phase_high = false;
         Ok(())
     }
@@ -267,10 +288,9 @@ impl BaseTransformImpl for MichiDopImp {
         }
         let state = self.state.lock().ok()?;
         let layout = state.layout?;
-        let frames = size / 2;
-        let pending = usize::from(state.pending_left.is_some());
-        let total = frames + pending;
-        Some((total / 2) * 2 * layout.bytes_per_dop_frame())
+        let total = size.checked_add(state.pending_len)?;
+        let frames = total / 4;
+        frames.checked_mul(2 * layout.bytes_per_dop_frame())
     }
 
     fn transform(
@@ -283,40 +303,41 @@ impl BaseTransformImpl for MichiDopImp {
         let mut state = self.state.lock().map_err(|_| gst::FlowError::Error)?;
         let layout = state.layout.ok_or(gst::FlowError::NotNegotiated)?;
         let reverse = state.reverse_payload_bits;
-        let bytes = input.as_slice();
-        if bytes.len() % 2 != 0 && state.pending_left.is_none() {
-            // The last byte has no right-channel peer yet.
-            // It is retained below; output only complete frame pairs.
+        if inbuf.flags().contains(gst::BufferFlags::DISCONT) {
+            state.pending_len = 0;
+            state.phase_high = false;
         }
-        let mut left = state.pending_left.take();
-        let mut right = state.pending_right.take();
-        let mut written = 0usize;
+        let bytes = input.as_slice();
+        let mut pending = state.pending;
+        let mut pending_len = state.pending_len;
         let mut index = 0usize;
-        while index + 1 < bytes.len() || (left.is_some() && right.is_some()) {
-            if left.is_none() {
-                if index + 1 >= bytes.len() {
-                    break;
-                }
-                left = Some(bytes[index]);
-                right = Some(bytes[index + 1]);
-                index += 2;
+        let mut written = 0usize;
+        let frame_bytes = 2 * layout.bytes_per_dop_frame();
+        while pending_len == 4 || index < bytes.len() {
+            while pending_len < 4 && index < bytes.len() {
+                pending[pending_len] = bytes[index];
+                pending_len += 1;
+                index += 1;
             }
-            let l0 = reverse_bits(left.take().unwrap(), reverse);
-            let r0 = reverse_bits(right.take().unwrap(), reverse);
-            if index >= bytes.len() {
-                state.pending_left = Some(l0);
-                state.pending_right = Some(r0);
+            if pending_len < 4 {
                 break;
             }
-            let l1 = reverse_bits(bytes[index], reverse);
-            let r1 = reverse_bits(bytes[index + 1], reverse);
-            index += 2;
+            if written
+                .checked_add(frame_bytes)
+                .is_none_or(|end| end > output.len())
+            {
+                return Err(gst::FlowError::Error);
+            }
             let marker = if state.phase_high {
                 MARKER_HIGH
             } else {
                 MARKER_LOW
             };
             state.phase_high = !state.phase_high;
+            let l0 = reverse_bits(pending[0], reverse);
+            let r0 = reverse_bits(pending[1], reverse);
+            let l1 = reverse_bits(pending[2], reverse);
+            let r1 = reverse_bits(pending[3], reverse);
             output[written] = l0;
             output[written + 1] = l1;
             output[written + 2] = marker;
@@ -333,15 +354,10 @@ impl BaseTransformImpl for MichiDopImp {
                 output[written] = 0;
                 written += 1;
             }
+            pending_len = 0;
         }
-        if index < bytes.len() {
-            state.pending_left = Some(reverse_bits(bytes[index], reverse));
-            state.pending_right = if index + 1 < bytes.len() {
-                Some(reverse_bits(bytes[index + 1], reverse))
-            } else {
-                None
-            };
-        }
+        state.pending = pending;
+        state.pending_len = pending_len;
         drop(output);
         outbuf.set_size(written);
         Ok(gst::FlowSuccess::Ok)
@@ -351,9 +367,20 @@ impl BaseTransformImpl for MichiDopImp {
         if event.type_() == gst::EventType::FlushStart || event.type_() == gst::EventType::FlushStop
         {
             if let Ok(mut state) = self.state.lock() {
-                state.pending_left = None;
-                state.pending_right = None;
+                state.pending_len = 0;
                 state.phase_high = false;
+            }
+        }
+        if event.type_() == gst::EventType::Eos {
+            if let Ok(state) = self.state.lock() {
+                if state.pending_len != 0 {
+                    gst::element_error!(
+                        self.obj(),
+                        gst::StreamError::Decode,
+                        ("incomplete DoP input frame at EOS")
+                    );
+                    return false;
+                }
             }
         }
         self.parent_sink_event(event)

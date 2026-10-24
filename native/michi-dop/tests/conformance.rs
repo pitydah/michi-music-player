@@ -119,3 +119,50 @@ fn odd_chunk_retains_one_frame_until_peer_arrives() {
         vec![0x11, 0x22, 0x05, 0x55, 0x66, 0x05, 0x33, 0x44, 0xFA, 0x77, 0x88, 0xFA]
     );
 }
+
+#[test]
+fn bit_reversal_is_chunk_invariant() {
+    let bytes = [0x11, 0x55, 0x22, 0x66, 0x33, 0x77, 0x44, 0x88];
+    let expected = run_with("S24_3LE", &[&bytes], 352_800, true);
+    for chunks in [
+        vec![&bytes[0..1], &bytes[1..4], &bytes[4..8]],
+        vec![&bytes[0..2], &bytes[2..4], &bytes[4..8]],
+        vec![
+            &bytes[0..1],
+            &bytes[1..2],
+            &bytes[2..3],
+            &bytes[3..4],
+            &bytes[4..5],
+            &bytes[5..6],
+            &bytes[6..7],
+            &bytes[7..8],
+        ],
+    ] {
+        assert_eq!(
+            run_with("S24_3LE", &chunks, 352_800, true),
+            expected,
+            "chunking changed reversed payload"
+        );
+    }
+}
+
+#[test]
+fn fragmentation_matches_single_buffer_for_both_layouts() {
+    let bytes = [0x11, 0x55, 0x22, 0x66, 0x33, 0x77, 0x44, 0x88];
+    for format in ["S24_3LE", "S32LE"] {
+        let expected = run_with(format, &[&bytes], 352_800, false);
+        for chunks in [
+            vec![&bytes[0..1], &bytes[1..2], &bytes[2..5], &bytes[5..8]],
+            vec![&bytes[0..2], &bytes[2..4], &bytes[4..6], &bytes[6..8]],
+            vec![&bytes[0..3], &bytes[3..8]],
+            vec![&bytes[0..3], &bytes[3..4], &bytes[4..8]],
+            vec![&bytes[0..5], &bytes[5..8]],
+        ] {
+            assert_eq!(
+                run_with(format, &chunks, 352_800, false),
+                expected,
+                "{format} fragmentation changed carrier"
+            );
+        }
+    }
+}

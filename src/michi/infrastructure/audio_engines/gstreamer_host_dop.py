@@ -16,8 +16,11 @@ executes one immutable request and reports primitive pad observations.
 from __future__ import annotations
 
 import contextlib
+import hashlib
+import json
 import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 
@@ -152,14 +155,39 @@ class DopHostRuntime:
                 "DOP_PLUGIN_PREFIX_REQUIRED",
                 "Gate A requires an explicit private plugin prefix",
             )
+        root = Path(expected).resolve()
         plugin = factory.get_plugin()
         filename = plugin.get_filename() if plugin is not None else None
-        if not filename or not os.path.abspath(filename).startswith(
-            os.path.abspath(expected)
-        ):
+        if not filename:
+            raise DopHostError("DOP_PLUGIN_PATH_MISSING", "plugin has no filename")
+        path = Path(filename).resolve()
+        if not path.is_relative_to(root):
             raise DopHostError(
                 "DOP_PLUGIN_NOT_PRIVATE",
-                f"michidop loaded outside the Gate A prefix: {filename}",
+                f"michidop loaded outside the Gate A prefix: {path}",
+            )
+        manifest = (root / "lib/gstreamer-1.0/michidop.manifest.json").resolve()
+        if not manifest.is_relative_to(root) or not manifest.is_file():
+            raise DopHostError(
+                "DOP_PLUGIN_MANIFEST_REQUIRED",
+                f"missing Gate A manifest: {manifest}",
+            )
+        try:
+            declared = json.loads(manifest.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise DopHostError(
+                "DOP_PLUGIN_MANIFEST_INVALID", f"manifest unreadable: {exc}"
+            ) from exc
+        actual = hashlib.sha256(path.read_bytes()).hexdigest()
+        if (
+            not isinstance(declared, dict)
+            or declared.get("name") != "michidop"
+            or declared.get("revision") != "michidop-rust-0.1.0"
+            or declared.get("sha256") != actual
+        ):
+            raise DopHostError(
+                "DOP_PLUGIN_IDENTITY_MISMATCH",
+                f"plugin manifest/artifact mismatch: {declared}",
             )
         return factory
 

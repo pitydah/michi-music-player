@@ -165,6 +165,7 @@ class HostEngineSession:
                         "dop": True,
                         "execution_id": identity.get("execution_id"),
                         "plan_id": identity.get("plan_id"),
+                        "host_generation": identity.get("host_generation"),
                     },
                 )
                 self._dop_timer_source = None
@@ -189,11 +190,6 @@ class HostEngineSession:
         bindings = self._native_timer_bindings
         self._native_timer_source = None
         self._native_timer_bindings = None
-        self._dop = DopHostRuntime()
-        self._dop_active = False
-        self._dop_eos_emitted = False
-        self._dop_timer_source = None
-        self._dop_timer_bindings = None
         if source is not None and bindings is not None:
             bindings.destroy_source(source)
 

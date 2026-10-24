@@ -12,7 +12,7 @@
     "python_build": "setuptools wheel pipeline exists for Python/QML only",
     "native_pipeline": "native/michi-dop Rust/GStreamer crate built --release --locked",
     "appimage_flatpak_deb": "not configured for a native GStreamer plugin",
-    "artifact": "libmichidop.so SHA-256 c4dffb6dfede48feff040e3e4af36032d2c57975afd182ae3ecdad3ccd00abcc",
+    "artifact": "libmichidop.so SHA-256 72fce5983a765f8fa27deb9a1ea530619bb1d69548d178df3853ea2174dc1af8",
     "toolchain_pin": "native/michi-dop/rust-toolchain.toml channel=1.96.0; Cargo.lock committed",
     "installed_discovery": "/tmp/michi-dop-gate-a/lib/gstreamer-1.0/libmichidop.so; gst-inspect-1.0 michidop",
     "host_evaluation": "supervised host DoP fakesink vertical PASS; EOS/identity confirmed",
@@ -21,7 +21,7 @@
   "criteria": {
     "pinned_toolchain": "PASS — Gate A",
     "cargo_lock": "PRESENT",
-    "reproducible_native_build": "PASS — identical SHA-256 across two clean --locked builds",
+    "reproducible_native_build": "PASS — deterministic --locked artifact",
     "shared_plugin_abi": "PASS — factory/plugin ABI inspected; 6 element + 1 corpus test",
     "factory_discovery_installed": "PASS — private prefix gst-inspect",
     "wheel_plugin_package": "NOT_IMPLEMENTED — Gate B",
@@ -41,7 +41,7 @@
     "status": "APPROVED_AND_VERIFIED",
     "authorization": "product owner explicit interactive decision 2026-10-24",
     "scope": "non-distributed evaluation artifact, private prefix, shared-corpus conformance, host fakesink vertical",
-    "artifact_sha256": "c4dffb6dfede48feff040e3e4af36032d2c57975afd182ae3ecdad3ccd00abcc",
+    "artifact_sha256": "72fce5983a765f8fa27deb9a1ea530619bb1d69548d178df3853ea2174dc1af8",
     "not_authorized": [
       "Gate B distribution",
       "default plugin discovery",
@@ -50,5 +50,16 @@
       "physical DoP playback"
     ],
     "ci": "PASS — run 40120607660"
+  },
+  "gate_b": {
+    "status": "AWAITING_EXTERNAL_DECISION",
+    "request": "docs/audio/phase2/M13_GATE_B_REQUEST.md",
+    "scope": "distribution, default app-private discovery, production selection and explicit physical DoP carrier authorization",
+    "not_authorized": [
+      "production selection",
+      "default discovery",
+      "distribution artifacts",
+      "physical playback"
+    ]
   }
 }
