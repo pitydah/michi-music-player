@@ -69,6 +69,7 @@ class DopCarrierProbeEvidence:
     evidence_ref: str
     carrier_bytes_verified: bool = False
     dac_mode_verified: bool = False
+    provenance: str = "ALSA_LAB_DIRECT"
 
     def as_dict(self) -> dict:
         return {
@@ -330,4 +331,5 @@ def probe_dop_carrier(
         errno_code=errno_code,
         environment_fingerprint=env,
         evidence_ref=ref,
+        provenance="ALSA_LAB_DIRECT",
     )

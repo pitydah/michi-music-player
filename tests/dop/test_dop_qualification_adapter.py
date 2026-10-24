@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import dataclasses
+
 import pytest
 
 from michi.domain.dop import (
@@ -47,10 +49,21 @@ def _evidence(
     )
 
 
+def test_supervised_provenance_is_read_from_authority_evidence() -> None:
+    evidence = dataclasses.replace(_evidence(), provenance="ALSA_SUPERVISED")
+    q = qualification_from_probe(evidence, environment_fingerprint="env:1")
+    assert q.provenance == "ALSA_SUPERVISED"
+
+
+def test_unrecognized_provenance_is_rejected() -> None:
+    evidence = dataclasses.replace(_evidence(), provenance="CALLER_CLAIM")
+    with pytest.raises(DopQualificationError) as info:
+        qualification_from_probe(evidence, environment_fingerprint="env:1")
+    assert info.value.code == "DOP_CARRIER_PROVENANCE_INVALID"
+
+
 def test_qualified_evidence_becomes_exact_qualification() -> None:
-    q = qualification_from_probe(
-        _evidence(), environment_fingerprint="env:1", provenance="ALSA_SUPERVISED"
-    )
+    q = qualification_from_probe(_evidence(), environment_fingerprint="env:1")
     assert q.support is DopCarrierSupport.QUALIFIED
     assert q.binding_locator == "hw:3,0"
     assert q.binding_generation == 3
@@ -72,7 +85,6 @@ def test_non_qualified_evidence_is_rejected(support, code) -> None:
         qualification_from_probe(
             _evidence(support=support),
             environment_fingerprint="env:1",
-            provenance="ALSA_SUPERVISED",
         )
     assert info.value.code == code
 
@@ -82,7 +94,6 @@ def test_stale_environment_is_rejected() -> None:
         qualification_from_probe(
             _evidence(env="env:old"),
             environment_fingerprint="env:1",
-            provenance="ALSA_SUPERVISED",
         )
     assert info.value.code == "DOP_ENVIRONMENT_STALE"
 
@@ -104,7 +115,5 @@ def test_readback_mismatch_is_rejected() -> None:
         evidence_ref="ref",
     )
     with pytest.raises(DopQualificationError) as info:
-        qualification_from_probe(
-            mismatched, environment_fingerprint="env:1", provenance="ALSA_SUPERVISED"
-        )
+        qualification_from_probe(mismatched, environment_fingerprint="env:1")
     assert info.value.code == "DOP_CARRIER_READBACK_MISMATCH"

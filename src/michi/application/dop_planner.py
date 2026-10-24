@@ -46,6 +46,8 @@ class DopExecutionPlanV2:
     stable_device_id: str
     binding_locator: str
     binding_generation: int
+    execution_id: str
+    host_generation: int
     source: DsdSignalFormat
     carrier_rate: DopCarrierRate
     memory_contract: DopCarrierMemoryContract
@@ -66,6 +68,8 @@ class DopPlannerV3:
         stable_device_id: str,
         binding_locator: str,
         binding_generation: int,
+        execution_id: str,
+        host_generation: int,
         environment_fingerprint: str,
         source: DsdSignalFormat,
         carrier_qualifications: tuple[DopCarrierQualification, ...],
@@ -96,6 +100,16 @@ class DopPlannerV3:
         ):
             raise DopPlannerError(
                 "DOP_BINDING_GENERATION_INVALID", "generation must be non-negative"
+            )
+        if not isinstance(execution_id, str) or not execution_id.strip():
+            raise DopPlannerError("DOP_EXECUTION_ID_MISSING", "execution id required")
+        if (
+            not isinstance(host_generation, int)
+            or isinstance(host_generation, bool)
+            or host_generation < 0
+        ):
+            raise DopPlannerError(
+                "DOP_HOST_GENERATION_INVALID", "host generation must be non-negative"
             )
         if not isinstance(source, DsdSignalFormat):
             raise DopPlannerError(
@@ -286,6 +300,8 @@ class DopPlannerV3:
             "stable_device_id": stable_device_id,
             "binding_locator": binding_locator,
             "binding_generation": binding_generation,
+            "execution_id": execution_id,
+            "host_generation": host_generation,
             "source": {
                 "bit_rate_hz": source.bit_rate_hz,
                 "channels": source.channels,
@@ -316,6 +332,8 @@ class DopPlannerV3:
             stable_device_id=stable_device_id,
             binding_locator=binding_locator,
             binding_generation=binding_generation,
+            execution_id=execution_id,
+            host_generation=host_generation,
             source=source,
             carrier_rate=rate,
             memory_contract=memory,

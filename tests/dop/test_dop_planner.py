@@ -86,6 +86,8 @@ def _plan(**overrides):
         "stable_device_id": DEVICE,
         "binding_locator": LOCATOR,
         "binding_generation": 3,
+        "execution_id": "exec:1",
+        "host_generation": 1,
         "environment_fingerprint": "env:1",
         "current_device_revision": "rev:1",
         "source": _source(),
@@ -99,6 +101,25 @@ def _plan(**overrides):
     }
     values.update(overrides)
     return DopPlannerV3().plan(**values)
+
+
+def test_plan_binds_execution_and_host_generation() -> None:
+    plan = _plan()
+    assert plan.execution_id == "exec:1"
+    assert plan.host_generation == 1
+    assert plan.processing_policy == "DOP_ONLY"
+
+
+def test_plan_requires_execution_identity() -> None:
+    with pytest.raises(DopPlannerError) as info:
+        _plan(execution_id="")
+    assert info.value.code == "DOP_EXECUTION_ID_MISSING"
+
+
+def test_plan_rejects_invalid_host_generation() -> None:
+    with pytest.raises(DopPlannerError) as info:
+        _plan(host_generation=-1)
+    assert info.value.code == "DOP_HOST_GENERATION_INVALID"
 
 
 def test_explicit_user_confirmed_plan_is_exact() -> None:
