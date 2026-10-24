@@ -31,10 +31,11 @@
     "planner_hardening": "COMPLETE — exact binding/env/format and source-scoped interpretation",
     "alsa_carrier_qualification": "COMPLETE — adapter + hardware observation S32_LE_LSB24",
     "golden_corpus": "COMPLETE — 9 independent vectors + manifest",
-    "m13_packaging": "NO-GO — native runtime not authorized",
+    "m13_packaging": "NO-GO",
     "runtime": "BLOCKED",
     "m13_packaging_gate": "NO-GO",
     "qualification_adapter": "COMPLETE",
-    "supervised_probe": "BLOCKED"
+    "supervised_probe": "COMPLETE",
+    "plan_identity": "COMPLETE"
   }
 }

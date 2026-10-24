@@ -4,7 +4,7 @@
   "title": "DOP PACKER, CARRIER, PLANNER Y RUNTIME",
   "state": "ACTIVE",
   "activation_head": "3800af2",
-  "repo_head": "85fe8c95444e232a17c2be3c71899a139b59b7b8",
+  "repo_head": "29ea85de10c4747db326abf781d3fa7384d6e0f1",
   "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
   "entry_gate": {
     "F07": "CLOSED",
@@ -26,14 +26,17 @@
     "qualification_adapter": "src/michi/infrastructure/audio_devices/dop_qualification.py — only exact QUALIFIED probe evidence becomes executable; UNKNOWN/INCONCLUSIVE/UNSUPPORTED rejected",
     "interpretation_scope": "device revision required when evidence names one; source multiplier/supported_multipliers scoped; no wildcard",
     "overflow": "backlog overflow invalidates the stream until authorized reset; no stale bytes/marker reuse",
-    "evidence_separation": "carrier_bytes_verified/dac_mode_verified remain false; carrier capability is not DAC interpretation"
+    "evidence_separation": "carrier_bytes_verified/dac_mode_verified remain false; carrier capability is not DAC interpretation",
+    "supervised_probe": "src/michi/infrastructure/audio_devices/dop_probe_supervisor.py — spawn process, deadline, terminate/kill; TIMEOUT/ERROR/OK outcomes; lab direct provenance remains distinguishable",
+    "provenance": "ALSA_LAB_DIRECT vs ALSA_SUPERVISED validated by the qualification adapter; no false supervised provenance",
+    "plan_identity": "reverse_payload_bits, environment fingerprint and DOP_ONLY policy recorded in DopExecutionPlanV2"
   },
   "tests": {
-    "dop": "72 passed + 1 hardware-opt-in skip; 1 DoP hardware carrier probe passed with MICHI_RUN_DOP_HARDWARE=1",
-    "full_suite": "6165 passed, 9 skipped, 0 failed (30:51)",
+    "dop": "76 passed + 1 hardware-opt-in skip; 1 DoP hardware carrier probe passed with MICHI_RUN_DOP_HARDWARE=1",
+    "full_suite": "6169 passed, 9 skipped, 0 failed (30:38)",
     "ci": {
-      "code_head": "85fe8c95444e232a17c2be3c71899a139b59b7b8",
-      "run_id": 40056951192,
+      "code_head": "29ea85de10c4747db326abf781d3fa7384d6e0f1",
+      "run_id": 40091278011,
       "dac": "success",
       "min_qt": "success",
       "check": "failure — external QML gate"
@@ -60,19 +63,20 @@
     "WU-F09-10_playback": "BLOCKED — runtime",
     "WU-F09-11_truth": "BLOCKED — runtime",
     "WU-F09-C01_qualification_route": "COMPLETE — adapter exact evidence→planner",
-    "WU-F09-C02_supervised_probe": "NOT_IMPLEMENTED — M13/runtime blocked; current probe is lab-only direct",
+    "WU-F09-C02_supervised_probe": "COMPLETE",
     "WU-F09-C03_revision_scope": "COMPLETE",
     "WU-F09-C04_overflow_invalidation": "COMPLETE",
     "WU-F09-C05_evidence_separation": "COMPLETE",
     "WU-F09-C06_m13": "NO-GO",
     "WU-F09-C07_rust_runtime": "BLOCKED",
-    "WU-F09-C08_host_playback_truth": "BLOCKED"
+    "WU-F09-C08_host_playback_truth": "BLOCKED",
+    "WU-F09-C04_plan_identity": "COMPLETE"
   },
   "score": {
-    "method": "weighted WU: domain/reference 20, streaming/layouts 15, planner/interpretation 20, ALSA qualification+adapter 15, corpus 10, native runtime 10, host/playback/truth 10",
-    "f09_percent": 82,
-    "completed": "domain, streaming, layouts, planner hardening, corpus, ALSA carrier qualification+adapter",
-    "blocked": "supervised probe, native runtime, host, playback, Signal Truth (18 points)"
+    "method": "weighted WU: domain/reference 20, streaming/layouts 15, planner/interpretation 20, ALSA qualification+adapter 15, corpus 10, supervised probe 5, native runtime 10, host/playback/truth 5",
+    "f09_percent": 85,
+    "completed": "domain, streaming, layouts, planner, ALSA qualification+adapter, supervised probe, corpus",
+    "blocked": "native runtime, host, playback, Signal Truth (15 points)"
   },
   "limitations": [
     "M13 native packaging gate NO-GO; no Rust plugin, host DoP, PlaybackService DoP or Signal Truth DoP.",
@@ -81,11 +85,13 @@
     "F14 physical remains NOT_RUN; F10/F11 out of scope."
   ],
   "next_work": [
-    "Approve M13 native build/package gate and add reproducible michidop artifact",
-    "Shared Python/Rust corpus digests and installed-artifact conformance",
-    "Host DoP operations + exact carrier readback",
-    "OutputSessionService/PlaybackService/Signal Truth integration",
-    "Revalidate F09-G1..G4"
+    "M13 scoped native artifact approval",
+    "Rust michidop build + Cargo.lock/ABI",
+    "wheel/AppImage discovery + SBOM/CI",
+    "cross-language corpus digests",
+    "host DoP vertical",
+    "OutputSession/Playback/Truth integration",
+    "F09-G4 and closure"
   ],
   "qualification": {
     "adapter": "src/michi/infrastructure/audio_devices/alsa_dop_probe.py",
