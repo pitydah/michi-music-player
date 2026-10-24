@@ -277,3 +277,56 @@ jobs:
           if report["physical_verdict"] == "PASS_MULTI_HARDWARE":
               assert report["multi_hardware_verdict"] == "PASS_MULTI_HARDWARE"
           PY
+
+  dop-native-gate-a:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install GStreamer native + Python deps
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq pkg-config libgstreamer1.0-dev             libgstreamer-plugins-base1.0-dev libgirepository-2.0-dev             gir1.2-gstreamer-1.0 gstreamer1.0-plugins-base             gstreamer1.0-plugins-good gstreamer1.0-plugins-bad             gstreamer1.0-libav gstreamer1.0-alsa
+          pip install -e ".[test]"
+          pip install PyGObject
+
+      - uses: dtolnay/rust-toolchain@1.96.0
+
+      - name: Rust format, clippy, tests (locked)
+        run: |
+          cargo fmt --manifest-path native/michi-dop/Cargo.toml -- --check
+          cargo clippy --manifest-path native/michi-dop/Cargo.toml             --release --all-targets --locked -- -D warnings
+          cargo test --manifest-path native/michi-dop/Cargo.toml --release --locked
+
+      - name: Install private Gate A prefix and prove discovery
+        run: |
+          prefix="$RUNNER_TEMP/michi-dop-gate-a"
+          native/michi-dop/install-private.sh "$prefix"
+          GST_PLUGIN_PATH="$prefix/lib/gstreamer-1.0" gst-inspect-1.0 michidop
+          GST_PLUGIN_PATH="$prefix/lib/gstreamer-1.0" MICHI_DOP_INSTALLED=1             cargo test --manifest-path native/michi-dop/Cargo.toml               --release --locked --test corpus
+
+      - name: Supervised host DoP vertical (fakesink lab)
+        env:
+          MICHI_DOP_PREFIX: ${{ runner.temp }}/michi-dop-gate-a
+          GST_PLUGIN_PATH: ${{ runner.temp }}/michi-dop-gate-a/lib/gstreamer-1.0
+          MICHI_GST_LAB_SINK: fakesink
+        run: |
+          python -m pytest tests/audio_phase2/test_dop_host_runtime.py -q
+
+      - name: Record artifact digest
+        run: |
+          mkdir -p artifacts
+          sha256sum native/michi-dop/target/release/libmichidop.so             > artifacts/michidop-gate-a.sha256
+          cat artifacts/michidop-gate-a.sha256
+
+      - name: Upload native evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: michidop-gate-a-${{ github.sha }}
+          path: artifacts/michidop-gate-a.sha256
+          if-no-files-found: error
+

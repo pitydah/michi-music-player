@@ -2,7 +2,7 @@
   "schema_version": 1,
   "gate": "M13_NATIVE_DOP_PLUGIN_PACKAGING",
   "phase": "AP2-F09",
-  "evaluated_at": "2026-10-23",
+  "evaluated_at": "2026-10-24",
   "status": "NO-GO",
   "authority": "M13 release/packaging ownership; ADR 0012 requires this gate before productive native code",
   "observed": {
@@ -10,27 +10,44 @@
     "cargo": "1.96.0",
     "gstreamer_dev": "1.28.8",
     "python_build": "setuptools wheel pipeline exists for Python/QML only",
-    "native_pipeline": "absent",
-    "appimage_flatpak_deb": "not configured for a native GStreamer plugin"
+    "native_pipeline": "native/michi-dop Rust/GStreamer crate built --release --locked",
+    "appimage_flatpak_deb": "not configured for a native GStreamer plugin",
+    "artifact": "libmichidop.so SHA-256 c4dffb6dfede48feff040e3e4af36032d2c57975afd182ae3ecdad3ccd00abcc",
+    "toolchain_pin": "native/michi-dop/rust-toolchain.toml channel=1.96.0; Cargo.lock committed",
+    "installed_discovery": "/tmp/michi-dop-gate-a/lib/gstreamer-1.0/libmichidop.so; gst-inspect-1.0 michidop",
+    "host_evaluation": "supervised host DoP fakesink vertical PASS; EOS/identity confirmed",
+    "production_selection": "not enabled; Gate B NO-GO"
   },
   "criteria": {
-    "pinned_toolchain": "NOT_APPROVED",
-    "cargo_lock": "NOT_PRESENT",
-    "reproducible_native_build": "NOT_DEMONSTRATED",
-    "shared_plugin_abi": "NOT_BUILT",
-    "factory_discovery_installed": "NOT_DEMONSTRATED",
-    "wheel_plugin_package": "NOT_IMPLEMENTED",
-    "appimage_flatpak_deb_plugin": "NOT_IMPLEMENTED",
-    "release_manifest_sbom": "NOT_IMPLEMENTED",
-    "ci_native_build_conformance": "NOT_IMPLEMENTED"
+    "pinned_toolchain": "PASS — Gate A",
+    "cargo_lock": "PRESENT",
+    "reproducible_native_build": "PASS — identical SHA-256 across two clean --locked builds",
+    "shared_plugin_abi": "PASS — factory/plugin ABI inspected; 6 element + 1 corpus test",
+    "factory_discovery_installed": "PASS — private prefix gst-inspect",
+    "wheel_plugin_package": "NOT_IMPLEMENTED — Gate B",
+    "appimage_flatpak_deb_plugin": "NOT_IMPLEMENTED — Gate B",
+    "release_manifest_sbom": "NOT_IMPLEMENTED — Gate B",
+    "ci_native_build_conformance": "IMPLEMENTED — dop-native-gate-a job; run pending"
   },
-  "decision": "No Rust/C plugin was added. Productive DoP runtime, host integration, PlaybackService, Signal Truth and F09-G4 remain BLOCKED. This is not a documentation pass.",
+  "decision": "Gate A is authorized and technically verified. Gate B remains NO-GO: no wheel/AppImage/Flatpak/deb packaging, no release SBOM, no default discovery and no productive DoP selection. F09 is not CLOSED.",
   "unblock_procedure": [
-    "M13 owner approves a scoped native-artifact gate",
-    "pin Rust/gstreamer-rs and commit Cargo.lock",
-    "build reproducible michidop and record ABI/SHA-256/SBOM",
-    "place plugin in an app-owned path and prove installed discovery/fail-closed",
-    "add CI native build/conformance jobs",
-    "only then integrate the productive host and playback path"
-  ]
+    "Gate B owner approval for distribution and default discovery",
+    "package the plugin in the app-owned artifact and prove clean-install discovery",
+    "publish release manifest/SBOM and run native CI",
+    "wire OutputSession/Playback/Signal Truth only behind the approved production gate",
+    "revalidate F09-G1..G4 including selected ALSA endpoint"
+  ],
+  "gate_a": {
+    "status": "APPROVED_AND_VERIFIED",
+    "authorization": "product owner explicit interactive decision 2026-10-24",
+    "scope": "non-distributed evaluation artifact, private prefix, shared-corpus conformance, host fakesink vertical",
+    "artifact_sha256": "c4dffb6dfede48feff040e3e4af36032d2c57975afd182ae3ecdad3ccd00abcc",
+    "not_authorized": [
+      "Gate B distribution",
+      "default plugin discovery",
+      "production selection",
+      "PlaybackService DoP selection",
+      "physical DoP playback"
+    ]
+  }
 }

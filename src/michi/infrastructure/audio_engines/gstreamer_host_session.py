@@ -21,6 +21,10 @@ from michi.infrastructure.audio_engines.gstreamer_host_direct import (
     handle_from_wire,
     preparation_from_wire,
 )
+from michi.infrastructure.audio_engines.gstreamer_host_dop import (
+    DopHostError,
+    DopHostRuntime,
+)
 from michi.infrastructure.audio_engines.gstreamer_host_native_dsd import (
     NativeDsdHostError,
     NativeDsdHostRuntime,
@@ -96,6 +100,11 @@ class HostEngineSession:
         self._native_eos_emitted = False
         self._native_timer_source = None
         self._native_timer_bindings = None
+        self._dop = DopHostRuntime()
+        self._dop_active = False
+        self._dop_eos_emitted = False
+        self._dop_timer_source = None
+        self._dop_timer_bindings = None
         self._processing_generation: int | None = None
         self._processing_host_generation: int = 0
         self._coordinator = HostDirectCoordinator(request_callback)
@@ -136,11 +145,55 @@ class HostEngineSession:
         self._native_timer_source = source
         self._native_timer_bindings = bindings
 
+    def _install_dop_eos_timer(self) -> None:
+        port = self._port
+        bindings = getattr(port, "_bindings", None)
+        context = getattr(port, "_context", None)
+        if bindings is None or context is None:
+            return
+        self._clear_dop_eos_timer()
+
+        def _tick():
+            if not self._dop_active:
+                return False
+            identity = self._dop.query_identity()
+            if identity.get("eos") and not self._dop_eos_emitted:
+                self._dop_eos_emitted = True
+                self._emit(
+                    HostEvent.EOS,
+                    {
+                        "dop": True,
+                        "execution_id": identity.get("execution_id"),
+                        "plan_id": identity.get("plan_id"),
+                    },
+                )
+                self._dop_timer_source = None
+                return False
+            return True
+
+        source = bindings.create_timeout_source(50, _tick)
+        bindings.attach_source(source, context)
+        self._dop_timer_source = source
+        self._dop_timer_bindings = bindings
+
+    def _clear_dop_eos_timer(self) -> None:
+        source = self._dop_timer_source
+        bindings = self._dop_timer_bindings
+        self._dop_timer_source = None
+        self._dop_timer_bindings = None
+        if source is not None and bindings is not None:
+            bindings.destroy_source(source)
+
     def _clear_native_eos_timer(self) -> None:
         source = self._native_timer_source
         bindings = self._native_timer_bindings
         self._native_timer_source = None
         self._native_timer_bindings = None
+        self._dop = DopHostRuntime()
+        self._dop_active = False
+        self._dop_eos_emitted = False
+        self._dop_timer_source = None
+        self._dop_timer_bindings = None
         if source is not None and bindings is not None:
             bindings.destroy_source(source)
 
@@ -180,10 +233,10 @@ class HostEngineSession:
     def _op_close_pipeline(
         self, payload: dict[str, Any]
     ) -> tuple[bool, dict[str, Any]]:
-        if self._native_dsd_active:
+        if self._native_dsd_active or self._dop_active:
             return False, {
                 "code": "NATIVE_DSD_PIPELINE_ACTIVE",
-                "detail": "release the Native DSD execution before closing PCM",
+                "detail": "release the active DSD/DoP execution before closing PCM",
             }
         port = self._require_port()
         port.close()
@@ -192,10 +245,10 @@ class HostEngineSession:
         return True, {"closed": True}
 
     def _op_load(self, payload: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
-        if self._native_dsd_active:
+        if self._native_dsd_active or self._dop_active:
             return False, {
                 "code": "NATIVE_DSD_LOAD_CONFLICT",
-                "detail": "a Native DSD execution owns the output",
+                "detail": "a DSD/DoP execution owns the output",
             }
         port = self._require_port()
         path = self._require_path(payload)
@@ -550,10 +603,10 @@ class HostEngineSession:
                 or getattr(port, "_pending_path", None) is not None
             )
         )
-        if owns_pcm:
+        if owns_pcm or self._dop_active:
             return False, {
                 "code": "NATIVE_DSD_PCM_CONFLICT",
-                "detail": "a PCM pipeline still owns the output; release it first",
+                "detail": "a PCM/DoP pipeline still owns the output; release it first",
             }
         try:
             identity = self._native_dsd.prepare(payload)
@@ -648,6 +701,108 @@ class HostEngineSession:
         self, payload: dict[str, Any]
     ) -> tuple[bool, dict[str, Any]]:
         return True, {"evidence": self._native_dsd.query_evidence()}
+
+    def _op_prepare_dop(self, payload: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+        if self._native_dsd_active:
+            return False, {
+                "code": "DOP_NATIVE_DSD_CONFLICT",
+                "detail": "release Native DSD before preparing DoP",
+            }
+        port = self._port
+        has_source = getattr(port, "has_active_source", None)
+        owns_pcm = (
+            bool(has_source())
+            if callable(has_source)
+            else bool(
+                getattr(port, "_current_path", None) is not None
+                or getattr(port, "_pending_path", None) is not None
+            )
+        )
+        if owns_pcm:
+            return False, {
+                "code": "DOP_PCM_CONFLICT",
+                "detail": "release the PCM pipeline before preparing DoP",
+            }
+        try:
+            identity = self._dop.prepare(payload)
+        except DopHostError as exc:
+            return False, {"code": exc.code, "detail": exc.detail}
+        self._dop_active = True
+        self._dop_eos_emitted = False
+        self._install_dop_eos_timer()
+        return True, identity
+
+    def _op_commit_dop(self, payload: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+        expected = payload.get("expected")
+        if not isinstance(expected, dict):
+            return False, {
+                "code": "HOST_PROTOCOL_INVALID_FIELD",
+                "detail": "expected must be an object",
+            }
+        try:
+            return True, self._dop.commit(expected)
+        except DopHostError as exc:
+            return False, {"code": exc.code, "detail": exc.detail}
+
+    def _op_abort_dop(self, payload: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+        expected = payload.get("expected")
+        if not isinstance(expected, dict) or not expected:
+            return False, {
+                "code": "DOP_HOST_IDENTITY_REQUIRED",
+                "detail": "abort requires the full execution identity",
+            }
+        try:
+            result = self._dop.abort(expected)
+        except DopHostError as exc:
+            return False, {"code": exc.code, "detail": exc.detail}
+        if result.get("aborted") is True and result.get("stale") is False:
+            self._dop_active = False
+            self._clear_dop_eos_timer()
+        return True, result
+
+    def _op_start_dop(self, payload: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+        try:
+            return True, self._dop.start()
+        except DopHostError as exc:
+            return False, {"code": exc.code, "detail": exc.detail}
+
+    def _op_pause_dop(self, payload: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+        try:
+            return True, self._dop.pause()
+        except DopHostError as exc:
+            return False, {"code": exc.code, "detail": exc.detail}
+
+    def _op_resume_dop(self, payload: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+        try:
+            return True, self._dop.resume()
+        except DopHostError as exc:
+            return False, {"code": exc.code, "detail": exc.detail}
+
+    def _op_stop_dop(self, payload: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+        expected = payload.get("expected")
+        if not isinstance(expected, dict) or not expected:
+            return False, {
+                "code": "DOP_HOST_IDENTITY_REQUIRED",
+                "detail": "stop requires the full execution identity",
+            }
+        try:
+            result = self._dop.stop(expected)
+        except DopHostError as exc:
+            return False, {"code": exc.code, "detail": exc.detail}
+        if result.get("stopped") is True and result.get("stale") is False:
+            self._dop_active = False
+            self._clear_dop_eos_timer()
+        return True, result
+
+    def _op_query_dop_identity(
+        self, payload: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
+        return True, {"identity": self._dop.query_identity()}
+
+    def _op_query_dop_evidence(
+        self, payload: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
+        return True, {"evidence": self._dop.query_evidence()}
 
     def _op_stage_direct(self, payload: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
         preparation = preparation_from_wire(payload.get("preparation"))
@@ -782,8 +937,11 @@ class HostEngineSession:
     def close(self) -> None:
         """Best-effort port teardown before host exit."""
         self._clear_native_eos_timer()
+        self._clear_dop_eos_timer()
         self._native_dsd.close()
+        self._dop.close()
         self._native_dsd_active = False
+        self._dop_active = False
         port = self._port
         self._port = None
         self._opened = False
@@ -841,6 +999,15 @@ _HANDLERS: dict[str, Callable[[HostEngineSession, dict], tuple[bool, dict]]] = {
     HostOperation.QUERY_NATIVE_DSD_EVIDENCE.value: (
         HostEngineSession._op_query_native_dsd_evidence
     ),
+    HostOperation.PREPARE_DOP.value: HostEngineSession._op_prepare_dop,
+    HostOperation.COMMIT_DOP.value: HostEngineSession._op_commit_dop,
+    HostOperation.ABORT_DOP.value: HostEngineSession._op_abort_dop,
+    HostOperation.START_DOP.value: HostEngineSession._op_start_dop,
+    HostOperation.PAUSE_DOP.value: HostEngineSession._op_pause_dop,
+    HostOperation.RESUME_DOP.value: HostEngineSession._op_resume_dop,
+    HostOperation.STOP_DOP.value: HostEngineSession._op_stop_dop,
+    HostOperation.QUERY_DOP_IDENTITY.value: HostEngineSession._op_query_dop_identity,
+    HostOperation.QUERY_DOP_EVIDENCE.value: HostEngineSession._op_query_dop_evidence,
     HostOperation.STAGE_DIRECT.value: HostEngineSession._op_stage_direct,
     HostOperation.DISCARD_DIRECT.value: HostEngineSession._op_discard_direct,
     HostOperation.STAGE_MANAGED.value: HostEngineSession._op_stage_managed,

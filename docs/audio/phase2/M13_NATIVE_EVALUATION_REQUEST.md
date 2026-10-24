@@ -1,7 +1,7 @@
 # M13 native DoP evaluation — decision request
 
-Status: **AWAITING_EXTERNAL_DECISION**  
-M13 packaging gate: **NO-GO** (unchanged)  
+Status: **APPROVED — GATE A ONLY**  
+M13 packaging gate (Gate B): **NO-GO**  
 Date: 2026-10-24  
 Related: ADR 0012, AP2-F09, `M13_DOP_PACKAGING_GATE.json`
 
@@ -28,7 +28,15 @@ This does **not** authorize AppImage/Flatpak/deb distribution, release
 publication, default plugin discovery, or a stable/productivity claim. Those
 remain **Gate B**, requiring separate approval after Gate A evidence.
 
-## 3. Exact approval text
+## 3. Recorded authorization
+
+On 2026-10-24 the product owner explicitly selected **“Sí, autorizo Gate A”**
+for the scope in this document: `native/michi-dop`, `--locked` build, private
+prefix, shared-corpus conformance, with Gate B distribution/production
+selection still prohibited. This is a recorded owner decision, not a signature
+attributed to an absent authority.
+
+## 4. Exact approval text
 
 If the owner accepts, the recorded decision must be:
 
@@ -40,7 +48,7 @@ If the owner accepts, the recorded decision must be:
 Without that (or an equivalent explicit written decision), the agent must not
 add native code and M13 remains NO-GO.
 
-## 4. Evidence available before approval
+## 5. Evidence available before approval
 
 - ADR 0012 architecture and rejected alternatives.
 - Python reference packer and 9-vector conformance corpus with SHA-256.
@@ -50,24 +58,27 @@ add native code and M13 remains NO-GO.
 - Toolchain inventory: Rust 1.96 and GStreamer 1.28 present.
 - No native artifact, Cargo.lock, ABI claim or installed plugin exists.
 
-## 5. Evidence only possible after approval
+## 6. Evidence after Gate A (recorded)
 
-- Reproducible `cargo build --release --locked` and artifact SHA-256.
-- Registered factory and inspected plugin revision/ABI.
-- Three-level byte-for-byte conformance and first-divergence diagnostics.
-- Installed wheel/private-prefix discovery and missing-plugin/wrong-ABI tests.
-- Native CI and SBOM/manifest.
+- Reproducible `cargo build --release --locked`: two clean builds produced
+  SHA-256 `c4dffb6dfede48feff040e3e4af36032d2c57975afd182ae3ecdad3ccd00abcc`.
+- Registered factory `michidop`; inspected plugin revision/ABI.
+- Python/Rust/installed-plugin shared-corpus conformance: PASS.
+- Private-prefix discovery and supervised host fakesink vertical: PASS.
+- Native CI job added (`dop-native-gate-a`); first run pending.
+- Not yet present: wheel/AppImage/Flatpak/deb packaging, release SBOM/manifest,
+  default discovery and productive selection.
 
-## 6. Operations this approval would enable
+## 7. Operations enabled by Gate A
 
-Create `native/michi-dop/` and its tests; add a private-prefix build/install
-script; add native CI; add conformance runner; add host integration behind an
-explicit disabled-by-default switch. No production packaging or default
-selection is enabled by Gate A.
+Created `native/michi-dop/` and its tests; added a private-prefix
+build/install script; added native CI; added the shared-corpus conformance
+runner; added the supervised host evaluation path (not selected in production).
+No production packaging or default selection is enabled by Gate A.
 
-## 7. If not approved
+## 8. Gate B (not approved)
 
-Record the explicit refusal or absence of decision. Do not implement Rust/C.
-F09 remains ACTIVE/BLOCKED; the productive-runtime, host, playback and Signal
-Truth work units remain unstarted. The Python reference and supervised probe
-stay valid but cannot certify F09-G1/G4 at runtime.
+Gate B remains **NO-GO**: no distribution artifact, no default discovery, no
+production selection and no productive DoP playback. The Gate A host path is
+an isolated evaluation vertical, not a user-facing feature. F09 cannot be
+CLOSED until Gate B and the selected-ALSA F09-G4 evidence exist.

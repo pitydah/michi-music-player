@@ -17,7 +17,7 @@
     "native_dsd_semantics": "AP2-F08 CLOSED and recertified; device capability/ownership generation model available",
     "technology_adr": "ADR 0012 Accepted: Rust/GStreamer michidop production target, Python reference oracle",
     "toolchain_observed": "Rust 1.96.0, GStreamer 1.28.8 dev files present in this environment",
-    "packaging_gate": "NOT APPROVED — no native artifact is added or claimed productive in this sprint",
+    "packaging_gate": "Gate A APPROVED 2026-10-24; Gate B NO-GO",
     "alignment": "GO"
   },
   "decision": "ACTIVE for domain, reference packer, streaming, memory contracts and planner; productive native runtime BLOCKED pending packaging gate",
@@ -36,6 +36,9 @@
     "m13_packaging_gate": "NO-GO",
     "qualification_adapter": "COMPLETE",
     "supervised_probe": "COMPLETE",
-    "plan_identity": "COMPLETE"
+    "plan_identity": "COMPLETE",
+    "native_runtime": "GATE_A_COMPLETE — michidop 0.1.0 built/installed/conformant",
+    "host_vertical": "GATE_A_COMPLETE — supervised fakesink DoP vertical, PLAYING/EOS confirmed",
+    "production_selection": "BLOCKED — Gate B NO-GO"
   }
 }

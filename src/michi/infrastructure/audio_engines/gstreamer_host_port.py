@@ -92,6 +92,10 @@ class GStreamerHostedAudioPort(AudioPort):
         self._native_dsd_expected: dict[str, Any] | None = None
         self._native_dsd_path: str | None = None
         self._native_eos_listeners: list[Callable[[str], None]] = []
+        self._dop_active = False
+        self._dop_state = "NONE"
+        self._dop_expected: dict[str, Any] | None = None
+        self._dop_path: str | None = None
         self._pcm_active = False
         self._last_state: PlaybackStatus | None = None
         self._termination_kind: str | None = None
@@ -185,6 +189,10 @@ class GStreamerHostedAudioPort(AudioPort):
             self._native_dsd_state = "RELEASED"
             self._native_dsd_expected = None
             self._native_dsd_path = None
+            self._dop_active = False
+            self._dop_state = "RELEASED"
+            self._dop_expected = None
+            self._dop_path = None
             self._pcm_active = False
         if cleanup_error is not None:
             # Truth was invalidated; keep the port retryable for the provider.
@@ -747,6 +755,10 @@ class GStreamerHostedAudioPort(AudioPort):
             self._native_dsd_state = "RELEASED"
             self._native_dsd_expected = None
             self._native_dsd_path = None
+            self._dop_active = False
+            self._dop_state = "RELEASED"
+            self._dop_expected = None
+            self._dop_path = None
         self._enqueue(lambda: self._commit_state(PlaybackStatus.STOPPED))
         return result
 
@@ -820,8 +832,189 @@ class GStreamerHostedAudioPort(AudioPort):
             self._native_dsd_state = "RELEASED"
             self._native_dsd_expected = None
             self._native_dsd_path = None
+            self._dop_active = False
+            self._dop_state = "RELEASED"
+            self._dop_expected = None
+            self._dop_path = None
         self._enqueue(lambda: self._commit_state(PlaybackStatus.STOPPED))
         return result
+
+    @property
+    def dop_active(self) -> bool:
+        with self._lock:
+            return self._dop_active
+
+    def prepare_dop(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Build/preroll the Gate A DoP pipeline in the supervised child."""
+        with self._lock:
+            if self._native_dsd_active:
+                raise AudioTransportCommandError(
+                    "DOP_NATIVE_DSD_CONFLICT: release Native DSD before DoP"
+                )
+            if self._pcm_active:
+                raise AudioTransportCommandError(
+                    "DOP_PCM_CONFLICT: release the PCM output before DoP"
+                )
+        actual = dict(payload)
+        actual["host_generation"] = int(self._supervisor.host_generation)
+        identity = self._submit(
+            HostOperation.PREPARE_DOP,
+            actual,
+            deadline_s=self._load_deadline_s,
+        )
+        with self._lock:
+            self._dop_active = True
+            self._dop_state = "PREPARED"
+            self._dop_expected = {
+                "plan_id": str(identity.get("plan_id") or ""),
+                "execution_id": str(identity.get("execution_id") or ""),
+                "stable_device_id": str(identity.get("stable_device_id") or ""),
+                "device": str(identity.get("device") or ""),
+                "binding_generation": int(identity.get("binding_generation") or 0),
+                "host_generation": int(self._supervisor.host_generation),
+            }
+            self._dop_path = str(Path(str(payload.get("path") or "")).resolve())
+        return identity
+
+    def commit_dop(self, expected: dict[str, Any]) -> dict[str, Any]:
+        self._require_dop_expected(expected)
+        result = self._submit(
+            HostOperation.COMMIT_DOP,
+            {"expected": dict(expected)},
+            deadline_s=self._command_deadline_s,
+        )
+        if result.get("committed") is not True:
+            raise OutputHostCommandError(
+                "OUTPUT_HOST_INVALID_RESULT", "DoP commit was not confirmed"
+            )
+        with self._lock:
+            self._dop_state = "COMMITTED"
+        return result
+
+    def abort_dop(self, expected: dict[str, Any] | None = None) -> dict[str, Any]:
+        self._require_dop_expected(expected)
+        result = self._submit(
+            HostOperation.ABORT_DOP,
+            {"expected": dict(expected or {})},
+            deadline_s=self._command_deadline_s,
+        )
+        if result.get("aborted") is not True or result.get("stale") is not False:
+            raise OutputHostCommandError(
+                "OUTPUT_HOST_INVALID_RESULT", "DoP abort was not confirmed"
+            )
+        with self._lock:
+            self._dop_active = False
+            self._dop_state = "RELEASED"
+            self._dop_expected = None
+            self._dop_path = None
+        self._enqueue(lambda: self._commit_state(PlaybackStatus.STOPPED))
+        return result
+
+    def start_dop(self) -> dict[str, Any]:
+        with self._lock:
+            if not self._dop_active:
+                raise AudioTransportCommandError(
+                    "DOP_NOT_PREPARED: no DoP execution is active"
+                )
+        result = self._submit(
+            HostOperation.START_DOP, {}, deadline_s=self._command_deadline_s
+        )
+        if result.get("confirmed") is not True:
+            raise OutputHostCommandError(
+                "OUTPUT_HOST_INVALID_RESULT", "DoP PLAYING was not confirmed"
+            )
+        with self._lock:
+            self._dop_state = "RUNNING"
+        self._enqueue(lambda: self._commit_state(PlaybackStatus.PLAYING))
+        return result
+
+    def pause_dop(self) -> dict[str, Any]:
+        result = self._submit(
+            HostOperation.PAUSE_DOP, {}, deadline_s=self._command_deadline_s
+        )
+        if result.get("confirmed") is not True:
+            raise OutputHostCommandError(
+                "OUTPUT_HOST_INVALID_RESULT", "DoP PAUSED was not confirmed"
+            )
+        with self._lock:
+            self._dop_state = "PAUSED"
+        self._enqueue(lambda: self._commit_state(PlaybackStatus.PAUSED))
+        return result
+
+    def resume_dop(self) -> dict[str, Any]:
+        result = self._submit(
+            HostOperation.RESUME_DOP, {}, deadline_s=self._command_deadline_s
+        )
+        if result.get("confirmed") is not True:
+            raise OutputHostCommandError(
+                "OUTPUT_HOST_INVALID_RESULT", "DoP PLAYING was not confirmed"
+            )
+        with self._lock:
+            self._dop_state = "RUNNING"
+        self._enqueue(lambda: self._commit_state(PlaybackStatus.PLAYING))
+        return result
+
+    def stop_dop(self, expected: dict[str, Any]) -> dict[str, Any]:
+        self._require_dop_expected(expected)
+        result = self._submit(
+            HostOperation.STOP_DOP,
+            {"expected": dict(expected)},
+            deadline_s=self._command_deadline_s,
+        )
+        if result.get("stopped") is not True or result.get("stale") is not False:
+            raise OutputHostCommandError(
+                "OUTPUT_HOST_INVALID_RESULT", "DoP stop was not confirmed"
+            )
+        with self._lock:
+            self._dop_active = False
+            self._dop_state = "RELEASED"
+            self._dop_expected = None
+            self._dop_path = None
+        self._enqueue(lambda: self._commit_state(PlaybackStatus.STOPPED))
+        return result
+
+    def query_dop_identity(self) -> dict[str, Any]:
+        payload = self._submit(
+            HostOperation.QUERY_DOP_IDENTITY, {}, deadline_s=self._command_deadline_s
+        )
+        identity = payload.get("identity")
+        if not isinstance(identity, dict):
+            raise OutputHostCommandError(
+                "OUTPUT_HOST_INVALID_RESULT", "DoP identity payload is not an object"
+            )
+        return identity
+
+    def query_dop_evidence(self) -> dict[str, Any]:
+        payload = self._submit(
+            HostOperation.QUERY_DOP_EVIDENCE, {}, deadline_s=self._command_deadline_s
+        )
+        evidence = payload.get("evidence")
+        if not isinstance(evidence, dict):
+            raise OutputHostCommandError(
+                "OUTPUT_HOST_INVALID_RESULT", "DoP evidence payload is not an object"
+            )
+        return evidence
+
+    def _require_dop_expected(self, expected: dict[str, Any] | None) -> None:
+        if not isinstance(expected, dict) or not expected:
+            raise AudioTransportCommandError(
+                "DOP_HOST_IDENTITY_REQUIRED: destructive DoP operation needs identity"
+            )
+        with self._lock:
+            current = dict(self._dop_expected or {})
+        for field in (
+            "plan_id",
+            "execution_id",
+            "stable_device_id",
+            "device",
+            "binding_generation",
+            "host_generation",
+        ):
+            value = expected.get(field)
+            if value is None or value == "" or str(value) != str(current.get(field)):
+                raise AudioTransportCommandError(
+                    f"DOP_HOST_IDENTITY_MISMATCH: {field} does not match"
+                )
 
     def query_native_dsd_identity(self) -> dict[str, Any]:
         payload = self._submit(
@@ -1266,6 +1459,27 @@ class GStreamerHostedAudioPort(AudioPort):
         with self._lock:
             closed = self._closed
             native_expected = dict(self._native_dsd_expected or {})
+        dop_eos = kind == HostEvent.EOS.value and payload.get("dop") is True
+        if dop_eos:
+            with self._lock:
+                dop_expected = dict(self._dop_expected or {})
+                dop_active = bool(self._dop_active and self._dop_expected)
+            if (
+                not closed
+                and dop_active
+                and payload.get("execution_id") == dop_expected.get("execution_id")
+                and int(
+                    self._supervisor.host_generation
+                    if payload.get("host_generation") is None
+                    else payload["host_generation"]
+                )
+                == int(dop_expected.get("host_generation", 0))
+            ):
+                self._enqueue(self._commit_eos)
+            else:
+                with self._lock:
+                    self._stale_events += 1
+            return
         native_eos = kind == HostEvent.EOS.value and bool(
             payload.get("execution_id") or payload.get("plan_id")
         )
