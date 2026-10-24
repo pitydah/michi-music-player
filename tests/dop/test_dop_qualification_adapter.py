@@ -48,7 +48,9 @@ def _evidence(
 
 
 def test_qualified_evidence_becomes_exact_qualification() -> None:
-    q = qualification_from_probe(_evidence(), environment_fingerprint="env:1")
+    q = qualification_from_probe(
+        _evidence(), environment_fingerprint="env:1", provenance="ALSA_SUPERVISED"
+    )
     assert q.support is DopCarrierSupport.QUALIFIED
     assert q.binding_locator == "hw:3,0"
     assert q.binding_generation == 3
@@ -68,7 +70,9 @@ def test_qualified_evidence_becomes_exact_qualification() -> None:
 def test_non_qualified_evidence_is_rejected(support, code) -> None:
     with pytest.raises(DopQualificationError) as info:
         qualification_from_probe(
-            _evidence(support=support), environment_fingerprint="env:1"
+            _evidence(support=support),
+            environment_fingerprint="env:1",
+            provenance="ALSA_SUPERVISED",
         )
     assert info.value.code == code
 
@@ -76,7 +80,9 @@ def test_non_qualified_evidence_is_rejected(support, code) -> None:
 def test_stale_environment_is_rejected() -> None:
     with pytest.raises(DopQualificationError) as info:
         qualification_from_probe(
-            _evidence(env="env:old"), environment_fingerprint="env:1"
+            _evidence(env="env:old"),
+            environment_fingerprint="env:1",
+            provenance="ALSA_SUPERVISED",
         )
     assert info.value.code == "DOP_ENVIRONMENT_STALE"
 
@@ -98,5 +104,7 @@ def test_readback_mismatch_is_rejected() -> None:
         evidence_ref="ref",
     )
     with pytest.raises(DopQualificationError) as info:
-        qualification_from_probe(mismatched, environment_fingerprint="env:1")
+        qualification_from_probe(
+            mismatched, environment_fingerprint="env:1", provenance="ALSA_SUPERVISED"
+        )
     assert info.value.code == "DOP_CARRIER_READBACK_MISMATCH"

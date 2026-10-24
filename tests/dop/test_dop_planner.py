@@ -343,3 +343,16 @@ def test_generic_evidence_without_revision_is_allowed() -> None:
     )
     plan = _plan(interpretation=(evidence,), current_device_revision=None)
     assert plan.interpretation_state is DopInterpretationState.USER_CONFIRMED
+
+
+def test_plan_records_bit_order_normalization_and_environment() -> None:
+    from dataclasses import replace
+
+    source = _source()
+    lsbf = replace(source, bit_order=DsdBitOrder.LSBF)
+    plan = _plan(source=lsbf)
+    assert plan.reverse_payload_bits is True
+    assert plan.environment_fingerprint == "env:1"
+    assert plan.processing_policy == "DOP_ONLY"
+    msbf = _plan()
+    assert msbf.reverse_payload_bits is False

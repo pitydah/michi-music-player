@@ -25,7 +25,12 @@ from michi.domain.dop import (
     stable_dop_plan_hash,
     validate_stereo_source,
 )
-from michi.domain.dsd_signal import DopCarrierRate, DsdSignalFormat, source_to_dop_rate
+from michi.domain.dsd_signal import (
+    DopCarrierRate,
+    DsdBitOrder,
+    DsdSignalFormat,
+    source_to_dop_rate,
+)
 
 
 class DopPlannerError(ValueError):
@@ -49,6 +54,9 @@ class DopExecutionPlanV2:
     interpretation_evidence_refs: tuple[str, ...]
     interpretation_state: DopInterpretationState
     decision_codes: tuple[str, ...]
+    reverse_payload_bits: bool
+    environment_fingerprint: str
+    processing_policy: str = "DOP_ONLY"
 
 
 class DopPlannerV3:
@@ -293,6 +301,9 @@ class DopPlannerV3:
             "interpretation_state": interpretation_evidence.state.value,
             "interpretation_evidence": list(interpretation_evidence.evidence_refs),
             "packer_revision": DOP_PACKER_REVISION,
+            "reverse_payload_bits": source.bit_order is DsdBitOrder.LSBF,
+            "environment_fingerprint": environment_fingerprint,
+            "processing_policy": "DOP_ONLY",
         }
         plan_id = stable_dop_plan_hash(canonical)
         decisions = [
@@ -313,6 +324,8 @@ class DopPlannerV3:
             interpretation_evidence_refs=interpretation_evidence.evidence_refs,
             interpretation_state=interpretation_evidence.state,
             decision_codes=tuple(decisions),
+            reverse_payload_bits=source.bit_order is DsdBitOrder.LSBF,
+            environment_fingerprint=environment_fingerprint,
         )
 
     @staticmethod

@@ -29,6 +29,7 @@ def qualification_from_probe(
     evidence: DopCarrierProbeEvidence,
     *,
     environment_fingerprint: str,
+    provenance: str,
 ) -> DopCarrierQualification:
     if not isinstance(evidence, DopCarrierProbeEvidence):
         raise DopQualificationError(
@@ -37,6 +38,11 @@ def qualification_from_probe(
     if not environment_fingerprint.strip():
         raise DopQualificationError(
             "DOP_ENVIRONMENT_STALE", "current environment fingerprint required"
+        )
+    if provenance not in ("ALSA_LAB_DIRECT", "ALSA_SUPERVISED"):
+        raise DopQualificationError(
+            "DOP_CARRIER_PROVENANCE_INVALID",
+            "provenance must be ALSA_LAB_DIRECT or ALSA_SUPERVISED",
         )
     if evidence.environment_fingerprint != environment_fingerprint:
         raise DopQualificationError(
@@ -78,5 +84,5 @@ def qualification_from_probe(
         binding_generation=evidence.binding_generation,
         binding_locator=evidence.binding_locator,
         significant_transport_bits=24,
-        provenance="alsa-dop-probe-supervised",
+        provenance=provenance,
     )
