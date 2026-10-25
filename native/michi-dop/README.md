@@ -21,6 +21,8 @@ Gate B (release packaging, default discovery, production selection) is **NO-GO**
 # Byte-reproducible release artifact: remap machine-specific paths.
 RUSTFLAGS="--remap-path-prefix=$HOME/.cargo=/cargo --remap-path-prefix=$PWD/native/michi-dop=/michi" \
   cargo build --manifest-path native/michi-dop/Cargo.toml --release --locked
+strip --remove-section=.comment --remove-section=.note.gnu.build-id \
+  native/michi-dop/target/release/libmichidop.so
 cargo test  --manifest-path native/michi-dop/Cargo.toml --release --locked
 ```
 

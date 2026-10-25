@@ -54,6 +54,17 @@ class BuildPyWithDop(build_py):
         source = NATIVE / "target/release/libmichidop.so"
         if not source.is_file():
             raise RuntimeError(f"missing native DoP artifact: {source}")
+        # Linker environments differ (GCC/build-id); normalize metadata that is
+        # not part of the element behaviour so the artifact is byte-stable.
+        subprocess.run(
+            [
+                "strip",
+                "--remove-section=.comment",
+                "--remove-section=.note.gnu.build-id",
+                str(source),
+            ],
+            check=True,
+        )
         destination = Path(self.build_lib) / "michi/native/gstreamer-1.0"
         destination.mkdir(parents=True, exist_ok=True)
         plugin = destination / "libmichidop.so"

@@ -354,6 +354,8 @@ jobs:
       - name: Install private Gate A prefix and prove discovery
         run: |
           cargo build --manifest-path native/michi-dop/Cargo.toml --release --locked
+          strip --remove-section=.comment --remove-section=.note.gnu.build-id \
+            native/michi-dop/target/release/libmichidop.so
           prefix="$RUNNER_TEMP/michi-dop-gate-a"
           native/michi-dop/install-private.sh "$prefix"
           GST_PLUGIN_PATH="$prefix/lib/gstreamer-1.0" gst-inspect-1.0 michidop
