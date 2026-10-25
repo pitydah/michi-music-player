@@ -4,7 +4,7 @@
   "title": "DOP PACKER, CARRIER, PLANNER Y RUNTIME",
   "state": "ACTIVE",
   "activation_head": "3800af2",
-  "repo_head": "bc6a729546e70202b87f137d2fc35128da879cd4",
+  "repo_head": "7a0b75dda6ecdc75e12f68996f46a1ef15b431e3",
   "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
   "entry_gate": {
     "F07": "CLOSED",
@@ -34,26 +34,26 @@
     "cross_language": "Python reference, Rust element and installed plugin consume the same 9-vector corpus; bytes identical",
     "m13_gate_a": "APPROVED 2026-10-24 by product owner; Gate B remains NO-GO",
     "rust_p0": "raw pending bytes, exactly-one normalization, bounds-safe 4-byte state machine, checked sizes, property lock during running",
-    "host_lifecycle": "captured DoP EOS identity revalidated at owner dispatch; duplicate/stale EOS fenced; Native/DoP timers and runtimes independent",
+    "host_lifecycle": "DoP EOS captured/revalidated at owner; ambiguous EOS fenced; unauthorized second prepare rejected; Native/DoP cleanup independent",
     "plugin_trust": "canonical path containment + installed manifest SHA-256/revision/factory validation",
     "alsa_selected": "SMSL hw:3,0; S32LE 176400; PLAYING/EOS; selected endpoint exact; DAC DSD mode NOT claimed"
   },
   "tests": {
     "dop": "87 Python DoP tests + 1 hardware skip",
-    "full_suite": "6186 passed, 10 skipped, 0 failed (30:48)",
+    "full_suite": "6188 passed, 10 skipped, 0 failed (30:33)",
     "ci": {
-      "code_head": "bc6a729546e70202b87f137d2fc35128da879cd4",
-      "run_id": 40143809460,
-      "dac": "success",
-      "min_qt": "success",
-      "dop_native": "success",
-      "check": "failure — external QML gate"
+      "code_head": "7a0b75dda6ecdc75e12f68996f46a1ef15b431e3",
+      "run_id": null,
+      "dac": "PENDING",
+      "min_qt": "PENDING",
+      "dop_native": "PENDING",
+      "check": "PENDING"
     },
     "corpus": "tests/dop/conformance: 9 vectors + schema + SHA-256 manifest; canonical 0x05/0xFA vector",
     "rust": "8 element/conformance tests + 1 shared-corpus test",
     "installed_corpus": "1 passed with GST_PLUGIN_PATH private prefix and MICHI_DOP_INSTALLED=1",
     "dop_host": "1 supervised host vertical",
-    "dop_eos": "5 EOS/cleanup identity tests",
+    "dop_eos": "7 EOS/cleanup/supersession tests",
     "dop_alsa_selected": "1 passed under MICHI_RUN_DOP_HARDWARE=1 on SMSL hw:3,0"
   },
   "work_units": {
