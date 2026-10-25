@@ -34,6 +34,11 @@ from michi.application.audio_output_ports import (
     VolumeAuthority,
 )
 from michi.application.carrier_resolution import CandidateCarrierResolver
+from michi.application.dop_planner import (
+    DopExecutionPlanV2,
+    DopPlannerError,
+    DopPlannerV3,
+)
 from michi.application.dsd_output_planner import (
     NativeDsdOutputPlan,
     NativeDsdPlanner,
@@ -53,6 +58,11 @@ from michi.domain.audio_output import (
     OutputSessionState,
     VolumePolicy,
     is_direct_path,
+)
+from michi.domain.dop import (
+    DopCarrierLayout,
+    DopDeviceInterpretationEvidence,
+    DopPolicyDecision,
 )
 from michi.domain.dsd_signal import DsdSignalFormat
 from michi.domain.managed_pcm_output import ManagedPcmOutputPlan
@@ -219,6 +229,34 @@ class OutputRequest:
     selected_device_id: str | None = None
     selected_profile_id: str | None = None
     native_dsd_plan: NativeDsdOutputPlan | None = None
+    dop_plan: DopExecutionPlanV2 | None = None
+
+    def __post_init__(self) -> None:
+        if self.native_dsd_plan is not None and self.dop_plan is not None:
+            raise OutputSessionError(
+                "OUTPUT_REQUEST_EXCLUSIVE",
+                "Native DSD and DoP cannot share one output request",
+            )
+        if self.dop_plan is not None:
+            if self.facts is not None:
+                raise OutputSessionError(
+                    "OUTPUT_REQUEST_DOP_PCM_CONFLICT",
+                    "DoP cannot carry a PCM planning request",
+                )
+            if not self.selected_device_id:
+                raise OutputSessionError(
+                    "OUTPUT_REQUEST_DOP_DEVICE_MISSING", "DoP requires a device"
+                )
+            if self.selected_device_id != self.dop_plan.stable_device_id:
+                raise OutputSessionError(
+                    "OUTPUT_REQUEST_DOP_DEVICE_MISMATCH",
+                    "selected device does not match the DoP plan",
+                )
+            if self.dop_plan.processing_policy != "DOP_ONLY":
+                raise OutputSessionError(
+                    "OUTPUT_REQUEST_DOP_POLICY_INVALID",
+                    "DoP request must be carrier-only",
+                )
 
     @classmethod
     def native_dsd(
@@ -228,6 +266,20 @@ class OutputRequest:
         selected_profile_id: str | None,
     ) -> OutputRequest:
         return cls(None, selected_device_id, selected_profile_id, plan)
+
+    @classmethod
+    def dop(
+        cls,
+        plan: DopExecutionPlanV2,
+        selected_profile_id: str | None,
+    ) -> OutputRequest:
+        return cls(
+            None,
+            plan.stable_device_id,
+            selected_profile_id,
+            None,
+            plan,
+        )
 
     @classmethod
     def shared(cls) -> OutputRequest:
