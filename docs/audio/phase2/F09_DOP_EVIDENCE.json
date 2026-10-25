@@ -1,20 +1,30 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "phase": "AP2-F09",
   "title": "DOP PACKER, CARRIER, PLANNER Y RUNTIME",
   "state": "CLOSED",
   "activation_head": "3800af2",
-  "repo_head": "a771773947cb11464ea00026177bfb31de4207db",
+  "repo_head": "6b1afd499aad16fb346d0442dc95da3b7c310bb5",
+  "docs_head": "git log -1 -- docs/audio/phase2/F09_DOP_EVIDENCE.json",
   "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
+  "certification": {
+    "status": "RECERTIFIED_PENDING_CI",
+    "sprint": "AP2-F09-RC1",
+    "baseline_head": "da1603c05361450310c7baaabc781c1a54215176",
+    "recertified_at": "2026-10-25",
+    "scope": "post-closure KILLCRITIC corrections; installed-wheel enforcement, ownership/cleanup, hotplug registry, playback lifecycle, QML gate",
+    "f14": "NOT_RUN — physical DAC DSD/analog certification remains separate",
+    "f10_f15": "LOCKED"
+  },
   "entry_gate": {
     "F07": "CLOSED",
     "F08": "CLOSED (P2 recertified)",
     "dsd_source_truth": "current",
     "technology_adr": "ADR 0012 Accepted — Rust/GStreamer michidop production target, Python reference oracle",
     "toolchain": "Rust 1.96.0; GStreamer 1.28.8 development files present",
-    "packaging_gate": "Gate A and Gate B APPROVED_AND_IMPLEMENTED",
+    "packaging_gate": "Gate A evaluation and Gate B production approved 2026-10-24; Gate B implemented",
     "alignment": "GO",
-    "verdict": "GO — productive DoP integrated and selected-ALSA verified"
+    "verdict": "GO — productive DoP integrated; post-closure recertification pending CI"
   },
   "implementation": {
     "domain": "src/michi/domain/dop.py — exact offsets/coverage/endianness, bounded backlog, streaming reset, counters",
@@ -32,27 +42,34 @@
     "plan_identity": "reverse_payload_bits, environment fingerprint and DOP_ONLY policy recorded in DopExecutionPlanV2",
     "native_runtime": "michidop 0.1.0; SHA-256 72fce5983a765f8fa27deb9a1ea530619bb1d69548d178df3853ea2174dc1af8; reproducible clean --locked builds; manifest-bound private prefix",
     "cross_language": "Python reference, Rust element and installed plugin consume the same 9-vector corpus; bytes identical",
-    "m13_gate_a": "APPROVED 2026-10-24 by product owner; Gate B remains NO-GO",
+    "m13_gate_a": "HISTORICAL — approved 2026-10-24 for scoped native evaluation; superseded by approved Gate B",
     "rust_p0": "raw pending bytes, exactly-one normalization, bounds-safe 4-byte state machine, checked sizes, property lock during running",
     "host_lifecycle": "DoP EOS captured/revalidated at owner; ambiguous EOS fenced; unauthorized second prepare rejected; Native/DoP cleanup independent",
     "plugin_trust": "canonical path containment + installed manifest SHA-256/revision/factory validation",
     "alsa_selected": "SMSL hw:3,0; S32LE 176400; PLAYING/EOS; selected endpoint exact; DAC DSD mode NOT claimed",
-    "output_session": "DoP family with DopSessionPrepared, READY, commit, playing/EOS, host/device loss, receipt-preserving abort/release",
+    "output_session": "DoP family with DopSessionPrepared, READY, commit, playing/EOS, host/device loss, receipt-preserving abort/release, pending-cleanup reconciliation",
     "playback": "load_and_play integrated; hosted port delegates DoP load/play/pause/resume/stop; no PCM load, no software volume",
     "bootstrap": "explicit MICHI_DOP_EXPLICIT=1 policy; supervised qualification; declared interpretation; executor/session/EOS listeners composed",
     "product_e2e": "PASS against selected ALSA endpoint with real host/plugin and Truth READY/RUNNING/UNAVAILABLE/RELEASED",
-    "m13_gate_b": "APPROVED_AND_IMPLEMENTED — native wheel + manifest + installed discovery"
+    "m13_gate_b": "APPROVED_AND_IMPLEMENTED — native wheel + manifest + installed discovery",
+    "plugin_path_contract": "src/michi/infrastructure/audio_output/dop_plugin.py resolves either the installed wheel plugin directory or the Gate A root; invalid explicit prefixes fail closed",
+    "installed_wheel_e2e": "scripts/verify_installed_dop_e2e.py runs from outside the checkout with package-only imports, installed plugin, real host, PlaybackService/OutputSession, EOS/release and machine-readable PASS",
+    "ownership_cleanup": "unconfirmed quiet/strict DoP/Native/Managed cleanup retains the exact receipt, blocks incompatible acquisition and can be retried; release is never published on uncertainty",
+    "cross_family": "DoP/Native/Managed/Direct/Shared transitions require confirmation of the previous owner before acquisition",
+    "hotplug_registry": "AudioDeviceRegistry/UdevObserver generation drives DoP topology loss; canonical registry binding and supervised qualification preserve stable id/locator/generation",
+    "executor_identity": "START/PAUSE/RESUME carry the prepared plan identity; the host child rejects stale generations",
+    "qml_gate": "check job pins PySide6 6.11.1, preflights --Quick.layout-positioning, keeps premium Library layout error gate and a negative control"
   },
   "tests": {
-    "dop": "87 Python DoP tests + 1 hardware skip",
-    "full_suite": "6210 passed, 11 skipped, 0 failed (31:42)",
+    "dop": "87 passed, 1 skipped (88 collected) — python -m pytest tests/dop -q",
+    "full_suite": "6227 passed, 13 skipped, 0 failed in 30:35 on code head 04c99cd — python -m pytest -q; log /tmp/michi-rc1-full4.log. Test-only 6b1afd4 adds one focused async-gate test (20 passed in tests/audio_phase2/test_dop_output_session.py); full-suite CI will include it",
     "ci": {
-      "code_head": "a771773947cb11464ea00026177bfb31de4207db",
-      "run_id": 40207013703,
-      "dac": "NO_GO — full regression QML runtime flake",
-      "min_qt": "success",
-      "dop_native": "success",
-      "check": "failure — external QML gate"
+      "code_head": "6b1afd499aad16fb346d0442dc95da3b7c310bb5",
+      "run_id": null,
+      "dac": "PENDING_PUSH",
+      "min_qt": "PENDING_PUSH",
+      "dop_native": "PENDING_PUSH",
+      "check": "PENDING_PUSH"
     },
     "corpus": "tests/dop/conformance: 9 vectors + schema + SHA-256 manifest; canonical 0x05/0xFA vector",
     "rust": "8 element/conformance + 1 corpus + 1 installed corpus",
@@ -60,8 +77,14 @@
     "dop_host": "1 supervised host vertical",
     "dop_eos": "7 EOS/cleanup/supersession tests",
     "dop_alsa_selected": "1 passed under MICHI_RUN_DOP_HARDWARE=1 on SMSL hw:3,0",
-    "dop_product_e2e": "1 passed — PlaybackService.load_and_play → resolver → planner → OutputSession → executor → real supervised host → installed michidop → EOS/release",
-    "dop_product_alsa_e2e": "1 passed — PlaybackService → resolver → planner → OutputSession → executor → host → installed michidop → selected ALSA hw:3,0 → PLAYING/EOS/RELEASED"
+    "dop_product_e2e": "1 passed — PlaybackService.load_and_play → resolver → planner → OutputSession → executor → real supervised host → installed michidop → EOS/release; includes Play→Stop→Play",
+    "dop_product_alsa_e2e": "1 passed — PlaybackService → resolver → planner → OutputSession → executor → host → installed michidop → selected ALSA hw:3,0 → PLAYING/EOS/RELEASED",
+    "installed_wheel_e2e": "LOCAL PASS 2026-10-25 — native wheel installed into /tmp/michi-dop-wheel-rc1b; package imported from site-packages; real host/installed plugin; RUNNING/EOS/RELEASED; skipped=false; plugin SHA-256 72fce5983a765f8fa27deb9a1ea530619bb1d69548d178df3853ea2174dc1af8",
+    "installed_wheel_contract": "fail-closed on missing plugin/manifest/factory/PASS/skip; GitHub artifact installed-dop-e2e.json",
+    "ownership_tests": "20 DoP output-session tests incl. abort/stop failure, retry, pending cleanup sync/async, cross-family cleanup, no false RELEASED",
+    "hotplug_tests": "4 canonical registry/topology tests",
+    "executor_tests": "6 runtime identity/lifecycle tests",
+    "qml": "LOCAL PASS under PySide6 6.11.1; negative control fails; Premium Library 15-file gate exit 0"
   },
   "work_units": {
     "WU-F09-01_domain": "COMPLETE",
@@ -79,14 +102,25 @@
     "WU-F09-13_e2e": "COMPLETE — PlaybackService selected ALSA",
     "WU-F09-14_formal_closure": "COMPLETE"
   },
+  "rc1_work_units": {
+    "WU-RC1-01_installed_wheel": "COMPLETE — local fail-closed installed e2e; CI pending",
+    "WU-RC1-02_ownership": "COMPLETE — pending cleanup gate, cross-family confirmation",
+    "WU-RC1-03_topology": "COMPLETE — canonical registry/hotplug",
+    "WU-RC1-04_playback": "COMPLETE — executor identity and replay lifecycle",
+    "WU-RC1-05_qml": "COMPLETE — pinned compatible gate + negative control",
+    "WU-RC1-06_evidence": "COMPLETE — this reconciliation"
+  },
   "score": {
     "method": "same frozen weights; no reweighting",
     "f09_percent": 100,
-    "production_ready": true
+    "production_ready": true,
+    "certification_status": "PENDING_CI"
   },
   "limitations": [
     "F14 physical DSD/analog certification NOT_RUN; DAC DSD mode not claimed",
-    "AppImage/Flatpak/deb remain outside the F09 Gate B scope"
+    "AppImage/Flatpak/deb remain outside the F09 Gate B scope",
+    "The selected-ALSA product e2e uses a controlled AudioDeviceBinding fixture (generation 7) for endpoint selection; canonical AudioDeviceRegistry generation handling is covered separately by test_dop_hotplug_registry",
+    "Full-suite and installed-wheel results are executable evidence; RC1 CI remains PENDING_PUSH in this record. No SKIP is treated as PASS"
   ],
   "next_work": [
     "F10 remains LOCKED; F14 physical certification remains separate"
@@ -96,26 +130,33 @@
     "hardware_observation": "SMSL hw:3,0 exposes S32_LE (not S24_3LE); S32_LE_LSB24 at 176400 Hz qualified with exact readback; PACKED_24_LE correctly UNSUPPORTED",
     "separation": "DOP_CARRIER_QUALIFIED only; DAC DoP interpretation remains separate evidence"
   },
-  "m13_packaging_gate": "GATE_B_IMPLEMENTED — native wheel/manifest/discovery",
+  "m13_packaging_gate": "GATE_B_IMPLEMENTED — native wheel/manifest/discovery; installed e2e local PASS",
   "exit_gates": {
     "F09-G1_byte_for_byte": {
       "status": "PASS",
-      "evidence": "Python/Rust/installed plugin corpus"
+      "evidence": "Python/Rust/installed plugin corpus on the same 9 vectors"
     },
     "F09-G2_chunk_phase": {
       "status": "PASS",
-      "evidence": "fragmentation/bit reversal/DISCONT"
+      "evidence": "fragmentation/bit reversal/DISCONT/reset corpus"
     },
     "F09-G3_channel_integrity": {
       "status": "PASS",
-      "evidence": "L/R corpus and layouts"
+      "evidence": "L/R corpus and layouts; no channel crossing"
     },
     "F09-G4_exact_carrier_generation": {
       "status": "PASS",
-      "evidence": "selected SMSL hw:3,0 S32LE 176400; product PlaybackService path; binding/host/plan identity; PLANING/EOS/RELEASED; Truth states; DAC DSD mode not claimed"
+      "evidence": "selected SMSL hw:3,0 S32LE 176400; product PlaybackService path; binding/host/plan identity; PLAYING/EOS/RELEASED; Truth states; DAC DSD mode not claimed",
+      "scope": "carrier bytes, negotiated endpoint, binding and host generation fences; physical DAC interpretation excluded (F14)"
     }
   },
   "blocked": [],
+  "historical_evidence_2026_10_24": {
+    "repo_head": "a771773947cb11464ea00026177bfb31de4207db",
+    "full_suite": "6210 passed, 11 skipped, 0 failed (31:42)",
+    "ci_run": 40207013703,
+    "note": "Pre-RC1 evidence. The check job was red at the Premium Library QML gate and the installed-wheel step did not execute the end-to-end test; it is preserved as history, not current certification."
+  },
   "history_work_units_2026_10_24": {
     "WU-F09-01_domain": "COMPLETE",
     "WU-F09-02_reference_packer": "COMPLETE",

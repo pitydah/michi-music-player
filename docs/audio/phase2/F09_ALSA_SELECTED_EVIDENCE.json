@@ -1,7 +1,7 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "phase": "AP2-F09",
-  "captured_at": "2026-10-24",
+  "captured_at": "2026-10-25",
   "authorization": "M13 Gate B + explicit hardware opt-in",
   "environment": {
     "device_locator": "hw:3,0",
@@ -24,10 +24,17 @@
     "layout": "interleaved"
   },
   "identity": {
-    "plan_id": "dop:alsa-selected",
-    "execution_id": "exec:dop-alsa-selected",
-    "binding_generation": 1,
+    "plan_id": "runtime-generated",
+    "execution_id": "runtime-generated",
+    "binding_generation": 7,
+    "binding_source": "controlled AudioDeviceBinding fixture in test_dop_product_alsa_e2e",
     "host_generation": 1
+  },
+  "selection_authority": {
+    "endpoint": "real selected ALSA endpoint",
+    "binding": "controlled test AudioDeviceBinding (generation 7); not the canonical AudioDeviceRegistry observer",
+    "canonical_registry_coverage": "test_dop_hotplug_registry uses a real AudioDeviceRegistry/UdevObserver and verifies qualification preserves registry stable id/locator/generation",
+    "claim": "carrier and product path verified; canonical registry and selected hardware are covered by complementary tests, not one combined hardware run"
   },
   "observations": [
     "alsasink audio/x-raw NEGOTIATED_CURRENT",
@@ -39,6 +46,7 @@
   "f14": "NOT_RUN",
   "product_e2e": {
     "status": "PASS",
+    "local_run": "2026-10-25 — 1 passed in 0.88s under MICHI_RUN_DOP_HARDWARE=1 with /tmp/michi-dop-gate-a-rc1",
     "path": "PlaybackService.load_and_play → resolver → planner → OutputSession → executor → host → michidop → alsasink",
     "device_locator": "hw:3,0",
     "carrier_format": "S32LE",
@@ -52,5 +60,9 @@
       "UNAVAILABLE",
       "RELEASED"
     ]
+  },
+  "ci": {
+    "status": "PENDING_PUSH",
+    "note": "Hardware e2e remains opt-in and is not run by GitHub hosted CI; CI covers the installed plugin with fakesink."
   }
 }

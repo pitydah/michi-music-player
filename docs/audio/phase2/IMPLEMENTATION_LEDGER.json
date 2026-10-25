@@ -209,10 +209,11 @@
       "file": "src/michi/application/output_session_service.py",
       "owner": "OutputSessionService",
       "phase": "F09",
-      "contract": "DoP output family + lifecycle",
+      "contract": "DoP output family + lifecycle + receipt-preserving ownership/cleanup",
       "tests": [
         "tests/audio_phase2/test_dop_output_session.py",
-        "tests/audio_phase2/test_dop_product_alsa_e2e.py"
+        "tests/audio_phase2/test_dop_product_alsa_e2e.py",
+        "tests/audio_phase2/test_dop_hotplug_registry.py"
       ]
     },
     {
@@ -232,6 +233,52 @@
       "tests": [
         "tests/audio_phase2/test_dop_host_runtime.py",
         "tests/audio_phase2/test_dop_product_alsa_e2e.py"
+      ]
+    },
+    {
+      "file": "src/michi/infrastructure/audio_output/dop_plugin.py",
+      "owner": "infrastructure/plugin trust",
+      "phase": "F09",
+      "contract": "canonical installed/Gate A plugin prefix resolution and manifest-bound paths",
+      "tests": [
+        "tests/audio_phase2/test_dop_plugin_paths.py"
+      ]
+    },
+    {
+      "file": "src/michi/infrastructure/audio_devices/dop_probe_supervisor.py",
+      "owner": "infrastructure/qualification",
+      "phase": "F09",
+      "contract": "bounded process-supervised ALSA carrier probe with deadline/cancellation",
+      "tests": [
+        "tests/dop/test_dop_probe_supervisor.py"
+      ]
+    },
+    {
+      "file": "src/michi/infrastructure/audio_devices/dop_qualification.py",
+      "owner": "infrastructure/qualification adapter",
+      "phase": "F09",
+      "contract": "exact probe evidence to planner qualification, provenance preserved",
+      "tests": [
+        "tests/dop/test_dop_qualification_adapter.py"
+      ]
+    },
+    {
+      "file": "scripts/verify_installed_dop_e2e.py",
+      "owner": "agent/verification tooling",
+      "phase": "F09",
+      "contract": "fail-closed installed-wheel DoP end-to-end certification",
+      "tests": [
+        "CI dop-native-gate-a installed wheel e2e"
+      ]
+    },
+    {
+      "file": "native/michi-dop/src/lib.rs",
+      "owner": "native plugin",
+      "phase": "F09",
+      "contract": "GStreamer michidop element, DoP framing, caps and checked transform",
+      "tests": [
+        "native/michi-dop/tests/conformance.rs",
+        "native/michi-dop/tests/corpus.rs"
       ]
     }
   ]

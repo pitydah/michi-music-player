@@ -1,61 +1,75 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "gate": "M13_NATIVE_DOP_PLUGIN_PACKAGING",
   "phase": "AP2-F09",
   "evaluated_at": "2026-10-24",
-  "status": "GATE_B_IMPLEMENTED",
+  "status": "GATE_B_IMPLEMENTED_RECERTIFICATION_PENDING_CI",
   "authority": "M13 release/packaging ownership; ADR 0012 requires this gate before productive native code",
   "observed": {
     "rust": "1.96.0",
     "cargo": "1.96.0",
     "gstreamer_dev": "1.28.8",
-    "python_build": "setuptools wheel pipeline exists for Python/QML only",
+    "python_build": "setuptools wheel pipeline includes a native plugin staging step",
     "native_pipeline": "native/michi-dop Rust/GStreamer crate built --release --locked",
     "appimage_flatpak_deb": "not configured for a native GStreamer plugin",
     "artifact": "libmichidop.so SHA-256 72fce5983a765f8fa27deb9a1ea530619bb1d69548d178df3853ea2174dc1af8",
     "toolchain_pin": "native/michi-dop/rust-toolchain.toml channel=1.96.0; Cargo.lock committed",
-    "installed_discovery": "/tmp/michi-dop-gate-a/lib/gstreamer-1.0/libmichidop.so; gst-inspect-1.0 michidop",
+    "installed_discovery": "<site-packages>/michi/native/gstreamer-1.0/{libmichidop.so,michidop.manifest.json}; GST_PLUGIN_PATH points at that directory; gst-inspect-1.0 michidop PASS",
+    "gate_a_discovery": "HISTORICAL — /tmp/michi-dop-gate-a/lib/gstreamer-1.0/libmichidop.so",
     "host_evaluation": "supervised host DoP fakesink vertical PASS; EOS/identity confirmed",
-    "production_selection": "DoP composed through canonical resolver/session/playback; selected ALSA e2e PASS"
+    "production_selection": "DoP composed through canonical resolver/session/playback; selected ALSA e2e PASS",
+    "installed_wheel_e2e": "LOCAL PASS 2026-10-25 — wheel in clean venv; script outside checkout; package imported from site-packages; installed plugin; RUNNING/EOS/RELEASED; skipped=false; plugin SHA-256 72fce5983a765f8fa27deb9a1ea530619bb1d69548d178df3853ea2174dc1af8",
+    "installed_wheel_contract": "FAIL CLOSED on missing plugin/manifest/factory/import/PASS/skip; CI artifact installed-dop-e2e.json",
+    "local_verification": "dop 87 passed + 1 skipped; full suite 6227 passed / 13 skipped / 0 failed on 04c99cd; test-only 6b1afd4 adds one async-gate test; selected ALSA hardware e2e 1 passed"
   },
   "criteria": {
     "pinned_toolchain": "PASS — Gate A",
     "cargo_lock": "PRESENT",
     "reproducible_native_build": "PASS — deterministic --locked artifact",
-    "shared_plugin_abi": "PASS — factory/plugin ABI inspected; 6 element + 1 corpus test",
-    "factory_discovery_installed": "PASS — clean venv discovery + gst-inspect",
-    "wheel_plugin_package": "PASS — cp311-linux_x86_64 wheel includes native plugin",
+    "shared_plugin_abi": "PASS — factory/plugin ABI inspected; element/conformance + corpus tests",
+    "factory_discovery_installed": "PASS — clean venv discovery + gst-inspect from the wheel-directory contract",
+    "wheel_plugin_package": "PASS — cp311-linux_x86_64 wheel includes native plugin and manifest",
+    "installed_wheel_end_to_end": "LOCAL PASS 2026-10-25 — no skip; CI PENDING_PUSH",
     "appimage_flatpak_deb_plugin": "NOT_IMPLEMENTED — outside F09 gate scope",
     "release_manifest_sbom": "PARTIAL — plugin manifest present; full distribution SBOM remains future packaging",
-    "ci_native_build_conformance": "PASS — dop-native-gate-a"
+    "ci_native_build_conformance": "PASS prior run; RC1 run PENDING_PUSH"
   },
-  "decision": "F09 DoP production path is implemented and verified on the selected ALSA endpoint. Full AppImage/Flatpak/deb and physical F14 remain future/separate.",
-  "unblock_procedure": [
+  "decision": "F09 DoP production path is implemented and verified on the selected ALSA endpoint. Installed-wheel recertification is locally PASS and awaits CI. Full AppImage/Flatpak/deb and physical F14 remain future/separate.",
+  "historical_unblock_procedure": [
     "Gate B owner approval for distribution and default discovery",
     "package the plugin in the app-owned artifact and prove clean-install discovery",
     "publish release manifest/SBOM and run native CI",
     "wire OutputSession/Playback/Signal Truth only behind the approved production gate",
     "revalidate F09-G1..G4 including selected ALSA endpoint"
   ],
+  "verification_procedure": [
+    "resolve the installed plugin directory, not a checkout path",
+    "run the installed-wheel e2e from outside the checkout and fail on SKIP",
+    "run the native corpus against Python, Rust and the installed plugin",
+    "run the selected-ALSA product e2e under explicit hardware opt-in",
+    "record CI run/SHA and keep F14 physical certification separate"
+  ],
   "gate_a": {
-    "status": "APPROVED_AND_VERIFIED",
+    "status": "APPROVED_AND_VERIFIED_HISTORICAL",
     "authorization": "product owner explicit interactive decision 2026-10-24",
     "scope": "non-distributed evaluation artifact, private prefix, shared-corpus conformance, host fakesink vertical",
     "artifact_sha256": "72fce5983a765f8fa27deb9a1ea530619bb1d69548d178df3853ea2174dc1af8",
-    "not_authorized": [
-      "Gate B distribution",
-      "default plugin discovery",
-      "production selection",
-      "PlaybackService DoP selection",
-      "physical DoP playback"
+    "activation_era_not_authorized": [
+      "Gate B distribution — superseded by the 2026-10-24 Gate B approval",
+      "default plugin discovery — superseded",
+      "production selection — superseded",
+      "PlaybackService DoP selection — superseded",
+      "physical DoP playback — superseded"
     ],
     "ci": "PASS — run 40120607660"
   },
   "gate_b": {
     "status": "APPROVED_AND_IMPLEMENTED",
-    "authorization": "product owner explicit interactive decision",
+    "authorization": "product owner explicit interactive decision 2026-10-24",
     "scope": "distribution, app-private default discovery, OutputSession/Playback/Signal Truth wiring, selected-ALSA opt-in",
     "packaging": "COMPLETE — wheel + manifest + private discovery",
-    "production_selection": "COMPLETE — canonical resolver/session/playback selected-ALSA e2e"
+    "production_selection": "COMPLETE — canonical resolver/session/playback selected-ALSA e2e",
+    "installed_wheel_e2e": "LOCAL PASS 2026-10-25; CI PENDING_PUSH",
+    "residual": "physical DAC DSD-mode/analog certification is F14, NOT_RUN"
   }
 }

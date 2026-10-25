@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "phase": "AP2-F09",
   "title": "DOP PACKER, CARRIER, PLANNER Y RUNTIME",
   "recorded_at": "2026-10-23",
@@ -13,19 +13,32 @@
     "sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12"
   },
   "entry_gate": {
+    "activation_scope": "Recorded 2026-10-23. M13 was NO-GO at activation; Gate A and Gate B were approved later, on 2026-10-24.",
     "dsd_source_truth": "AP2-F07 CLOSED; DsdSignalFormat and static DSF/DFF truth current",
     "native_dsd_semantics": "AP2-F08 CLOSED and recertified; device capability/ownership generation model available",
     "technology_adr": "ADR 0012 Accepted: Rust/GStreamer michidop production target, Python reference oracle",
     "toolchain_observed": "Rust 1.96.0, GStreamer 1.28.8 dev files present in this environment",
-    "packaging_gate": "Gate A + Gate B APPROVED_AND_IMPLEMENTED",
+    "packaging_gate": "HISTORICAL — M13 NO-GO at activation; Gate A/B approved 2026-10-24",
+    "alignment": "GO"
+  },
+  "current_entry_gate": {
+    "packaging_gate": "Gate A evaluation and Gate B production APPROVED_AND_IMPLEMENTED",
+    "runtime": "Rust michidop installed and discovered from the wheel/private prefix",
+    "productive_selection": "PlaybackService → OutputSession → host → selected ALSA endpoint PASS",
     "alignment": "GO"
   },
   "decision": "CLOSED",
-  "not_claimed": [
-    "productive DoP playback",
+  "historical_activation_not_claimed": [
+    "productive DoP playback — superseded by the 2026-10-24 closure",
     "DAC DSD-mode interpretation",
     "physical qualification (F14)",
     "F10 DSD->PCM/DSP interoperability"
+  ],
+  "current_not_claimed": [
+    "DAC DSD-mode interpretation (carrier qualification is not physical DSD-mode proof)",
+    "physical qualification (F14) — NOT_RUN",
+    "F10 DSD->PCM/DSP interoperability — LOCKED",
+    "AppImage/Flatpak/deb distribution formats outside the approved Gate B scope"
   ],
   "post_activation_update": {
     "planner_hardening": "COMPLETE — exact binding/env/format and source-scoped interpretation",
@@ -42,7 +55,19 @@
     "production_selection": "COMPLETE — selected ALSA e2e",
     "f09_exit_gates": "G1/G2/G3/G4 PASS",
     "f09_percent": 100,
-    "m13_gate_b": "APPROVED 2026-10-24; packaging/integration pending",
+    "m13_gate_b": "APPROVED_AND_IMPLEMENTED 2026-10-24; wheel/manifest/discovery complete",
     "product_e2e": "PASS selected ALSA"
+  },
+  "rc1_recertification": {
+    "status": "PENDING_CI",
+    "sprint": "AP2-F09-RC1",
+    "installed_wheel": "LOCAL PASS 2026-10-25 — wheel installed in clean venv, package-only imports from site-packages, real host/plugin, RUNNING/EOS/RELEASED, skipped=false; CI pending",
+    "local_results": "dop 87 passed + 1 skipped; full suite 6227 passed / 13 skipped / 0 failed (30:35) on 04c99cd; test-only 6b1afd4 adds one async-gate test (20 focused passed); selected ALSA hardware e2e 1 passed",
+    "ownership": "COMPLETE — unconfirmed cleanup blocks acquisition and is retryable",
+    "hotplug_registry": "COMPLETE — real AudioDeviceRegistry generation and topology loss",
+    "playback_lifecycle": "COMPLETE — START/PAUSE/RESUME identity and replay/EOS lifecycle",
+    "qml_gate": "COMPLETE — PySide6 6.11.1 pin, preflight and negative control",
+    "evidence": "RECONCILED — historical NO-GO records preserved separately",
+    "f14": "NOT_RUN"
   }
 }
