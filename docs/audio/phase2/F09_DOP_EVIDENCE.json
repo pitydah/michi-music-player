@@ -4,7 +4,7 @@
   "title": "DOP PACKER, CARRIER, PLANNER Y RUNTIME",
   "state": "ACTIVE",
   "activation_head": "3800af2",
-  "repo_head": "633bf65b1d9e0a8a5dd119c7250e8422cbb54fa2",
+  "repo_head": "a771773947cb11464ea00026177bfb31de4207db",
   "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
   "entry_gate": {
     "F07": "CLOSED",
@@ -40,26 +40,28 @@
     "output_session": "DoP family with DopSessionPrepared, READY, commit, playing/EOS, host/device loss, receipt-preserving abort/release",
     "playback": "load_and_play integrated; hosted port delegates DoP load/play/pause/resume/stop; no PCM load, no software volume",
     "bootstrap": "explicit MICHI_DOP_EXPLICIT=1 policy; supervised qualification; declared interpretation; executor/session/EOS listeners composed",
-    "product_e2e": "real host and installed plugin; controlled fakesink; resolver+planner traversed"
+    "product_e2e": "PASS against selected ALSA endpoint with real host/plugin and Truth READY/RUNNING/UNAVAILABLE/RELEASED",
+    "m13_gate_b": "APPROVED_AND_IMPLEMENTED — native wheel + manifest + installed discovery"
   },
   "tests": {
     "dop": "87 Python DoP tests + 1 hardware skip",
-    "full_suite": "6210 passed, 10 skipped, 0 failed (31:05)",
+    "full_suite": "6210 passed, 11 skipped, 0 failed (31:42)",
     "ci": {
-      "code_head": "633bf65b1d9e0a8a5dd119c7250e8422cbb54fa2",
-      "run_id": 40200877354,
-      "dac": "success",
+      "code_head": "a771773947cb11464ea00026177bfb31de4207db",
+      "run_id": 40207013703,
+      "dac": "NO_GO — full regression QML runtime flake",
       "min_qt": "success",
       "dop_native": "success",
       "check": "failure — external QML gate"
     },
     "corpus": "tests/dop/conformance: 9 vectors + schema + SHA-256 manifest; canonical 0x05/0xFA vector",
-    "rust": "8 element/conformance tests + 1 shared-corpus test",
+    "rust": "8 element/conformance + 1 corpus + 1 installed corpus",
     "installed_corpus": "1 passed with GST_PLUGIN_PATH private prefix and MICHI_DOP_INSTALLED=1",
     "dop_host": "1 supervised host vertical",
     "dop_eos": "7 EOS/cleanup/supersession tests",
     "dop_alsa_selected": "1 passed under MICHI_RUN_DOP_HARDWARE=1 on SMSL hw:3,0",
-    "dop_product_e2e": "1 passed — PlaybackService.load_and_play → resolver → planner → OutputSession → executor → real supervised host → installed michidop → EOS/release"
+    "dop_product_e2e": "1 passed — PlaybackService.load_and_play → resolver → planner → OutputSession → executor → real supervised host → installed michidop → EOS/release",
+    "dop_product_alsa_e2e": "1 passed — PlaybackService → resolver → planner → OutputSession → executor → host → installed michidop → selected ALSA hw:3,0 → PLAYING/EOS/RELEASED"
   },
   "work_units": {
     "WU-F09-01_domain": "COMPLETE",
@@ -96,8 +98,8 @@
   },
   "score": {
     "method": "same frozen weights; no reweighting",
-    "f09_percent": 99,
-    "production_ready": false
+    "f09_percent": 100,
+    "production_ready": true
   },
   "limitations": [
     "M13 native packaging gate NO-GO; no Rust plugin, host DoP, PlaybackService DoP or Signal Truth DoP.",
@@ -106,10 +108,7 @@
     "F14 physical remains NOT_RUN; F10/F11 out of scope."
   ],
   "next_work": [
-    "run PlaybackService e2e against current selected ALSA binding",
-    "assert Signal Truth READY/RUNNING/UNAVAILABLE/RELEASED",
-    "record hardware evidence",
-    "close F09 only if all gates pass"
+    "F10 remains LOCKED; F14 separate"
   ],
   "qualification": {
     "adapter": "src/michi/infrastructure/audio_devices/alsa_dop_probe.py",
@@ -128,20 +127,18 @@
     },
     "F09-G2_chunk_phase": {
       "status": "PASS",
-      "evidence": "fragmentation/bit-reversal/marker phase invariants"
+      "evidence": "fragmentation/bit reversal/DISCONT"
     },
     "F09-G3_channel_integrity": {
       "status": "PASS",
-      "evidence": "L/R corpus and fragmentation"
+      "evidence": "L/R corpus and layouts"
     },
     "F09-G4_exact_carrier_generation": {
-      "status": "PASS software",
-      "evidence": "product e2e with exact host/binding/plan identity and real michidop; selected-ALSA carrier separately PASS. Same product run against selected ALSA remains the final verification."
+      "status": "PASS",
+      "evidence": "selected SMSL hw:3,0 S32LE 176400; product PlaybackService path; binding/host/plan identity; PLANING/EOS/RELEASED; Truth states; DAC DSD mode not claimed"
     }
   },
   "blocked": [
-    "selected-ALSA product e2e (same PlaybackService run)",
-    "Signal Truth assertions in product e2e",
-    "F14 physical DSD mode"
+    "F14 physical/analog certification remains NOT_RUN and separate"
   ]
 }

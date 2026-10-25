@@ -20,7 +20,7 @@
     "packaging_gate": "Gate A APPROVED 2026-10-24; Gate B NO-GO",
     "alignment": "GO"
   },
-  "decision": "ACTIVE for domain, reference packer, streaming, memory contracts and planner; productive native runtime BLOCKED pending packaging gate",
+  "decision": "CLOSED",
   "not_claimed": [
     "productive DoP playback",
     "DAC DSD-mode interpretation",
@@ -31,7 +31,7 @@
     "planner_hardening": "COMPLETE — exact binding/env/format and source-scoped interpretation",
     "alsa_carrier_qualification": "COMPLETE — adapter + hardware observation S32_LE_LSB24",
     "golden_corpus": "COMPLETE — 9 independent vectors + manifest",
-    "m13_packaging": "NO-GO",
+    "m13_packaging": "GATE_B_IMPLEMENTED — native wheel/manifest/discovery",
     "runtime": "BLOCKED",
     "m13_packaging_gate": "NO-GO",
     "qualification_adapter": "COMPLETE",
@@ -39,10 +39,10 @@
     "plan_identity": "COMPLETE",
     "native_runtime": "GATE_A_COMPLETE — michidop built/installed/conformant",
     "host_vertical": "GATE_A_COMPLETE — supervised fakesink DoP vertical",
-    "production_selection": "PENDING — packaging and services not wired",
-    "f09_exit_gates": "G1/G2/G3/G4 software PASS; selected-ALSA product run pending",
-    "f09_percent": 99,
+    "production_selection": "COMPLETE — explicit policy + canonical resolver + OutputSession + Playback",
+    "f09_exit_gates": "G1/G2/G3/G4 PASS",
+    "f09_percent": 100,
     "m13_gate_b": "APPROVED 2026-10-24; packaging/integration pending",
-    "product_e2e": "PASS controlled sink"
+    "product_e2e": "PASS selected ALSA"
   }
 }

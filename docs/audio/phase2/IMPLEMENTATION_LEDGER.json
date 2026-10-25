@@ -204,6 +204,35 @@
       "tests": [
         "tests/dop/test_alsa_dop_probe.py"
       ]
+    },
+    {
+      "file": "src/michi/application/output_session_service.py",
+      "owner": "OutputSessionService",
+      "phase": "F09",
+      "contract": "DoP output family + lifecycle",
+      "tests": [
+        "tests/audio_phase2/test_dop_output_session.py",
+        "tests/audio_phase2/test_dop_product_alsa_e2e.py"
+      ]
+    },
+    {
+      "file": "src/michi/infrastructure/audio_output/dop_runtime.py",
+      "owner": "DopOutputExecutor",
+      "phase": "F09",
+      "contract": "productive DoP host executor",
+      "tests": [
+        "tests/audio_phase2/test_dop_runtime.py"
+      ]
+    },
+    {
+      "file": "src/michi/infrastructure/audio_engines/gstreamer_host_dop.py",
+      "owner": "host DoP runtime",
+      "phase": "F09",
+      "contract": "explicit DoP GStreamer pipeline/caps",
+      "tests": [
+        "tests/audio_phase2/test_dop_host_runtime.py",
+        "tests/audio_phase2/test_dop_product_alsa_e2e.py"
+      ]
     }
   ]
 }

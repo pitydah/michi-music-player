@@ -36,5 +36,21 @@
     "EOS observed"
   ],
   "dac_dsd_mode": "NOT_CLAIMED",
-  "f14": "NOT_RUN"
+  "f14": "NOT_RUN",
+  "product_e2e": {
+    "status": "PASS",
+    "path": "PlaybackService.load_and_play → resolver → planner → OutputSession → executor → host → michidop → alsasink",
+    "device_locator": "hw:3,0",
+    "carrier_format": "S32LE",
+    "carrier_rate_hz": 176400,
+    "playing": true,
+    "eos": true,
+    "released": true,
+    "signal_truth": [
+      "READY",
+      "RUNNING",
+      "UNAVAILABLE",
+      "RELEASED"
+    ]
+  }
 }
