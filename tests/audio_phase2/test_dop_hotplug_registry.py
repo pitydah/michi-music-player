@@ -170,3 +170,43 @@ def test_device_loss_during_ready_aborts_without_playing(tmp_path: Path) -> None
     assert "device_lost" in tx.aborted
     assert session._dop_prepared is None
     assert session.state is OutputSessionState.IDLE
+
+
+def test_registry_binding_feeds_supervised_qualification(tmp_path: Path) -> None:
+    from michi.domain.dop import DopCarrierLayout, DopCarrierSupport
+    from michi.infrastructure.audio_devices.alsa_dop_probe import (
+        DopCarrierProbeEvidence,
+        DopCarrierProbeRequest,
+    )
+    from michi.infrastructure.audio_devices.dop_qualification import (
+        qualification_from_probe,
+    )
+
+    _sysfs, _observer, stable_id, binding = _registry(tmp_path)
+    evidence = DopCarrierProbeEvidence(
+        stable_device_id=stable_id,
+        binding_locator=binding.locator,
+        binding_generation=binding.generation,
+        request=DopCarrierProbeRequest(
+            layout=DopCarrierLayout.S32_LE_LSB24,
+            alsa_format="S32_LE",
+            rate_hz=176_400,
+            channels=2,
+        ),
+        negotiated_rate_hz=176_400,
+        negotiated_format="S32_LE",
+        negotiated_channels=2,
+        support=DopCarrierSupport.QUALIFIED,
+        disposition="DOP_CARRIER_EXACT_NEGOTIATED",
+        errno_code=None,
+        environment_fingerprint="env:registry",
+        evidence_ref="registry:probe:1",
+        provenance="ALSA_SUPERVISED",
+    )
+    qualification = qualification_from_probe(
+        evidence, environment_fingerprint="env:registry"
+    )
+    assert qualification.stable_device_id == stable_id
+    assert qualification.binding_locator == binding.locator
+    assert qualification.binding_generation == binding.generation
+    assert qualification.provenance == "ALSA_SUPERVISED"
