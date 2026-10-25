@@ -13,8 +13,21 @@ import pytest
 from tests.audio_phase2.test_dsd_source_truth import build_dsf
 
 _HAS_GI = importlib.util.find_spec("gi") is not None
-_PREFIX = Path(os.environ.get("MICHI_DOP_PREFIX", "/tmp/michi-dop-gate-a"))
-_PLUGIN = _PREFIX / "lib/gstreamer-1.0/libmichidop.so"
+def _resolved_prefix():
+    from michi.infrastructure.audio_output.dop_plugin import resolve_dop_prefix
+
+    try:
+        return resolve_dop_prefix()
+    except RuntimeError:
+        return None
+
+
+_PREFIX = _resolved_prefix()
+_PLUGIN = (
+    _PREFIX / "libmichidop.so"
+    if _PREFIX is not None
+    else Path("/nonexistent/libmichidop.so")
+)
 _DEVICE = os.environ.get("MICHI_DOP_ALSA_DEVICE", "")
 
 pytestmark = pytest.mark.skipif(
@@ -35,7 +48,7 @@ def test_selected_alsa_receives_exact_carrier(monkeypatch) -> None:
     )
 
     monkeypatch.setenv("MICHI_DOP_PLUGIN_PREFIX", str(_PREFIX))
-    monkeypatch.setenv("GST_PLUGIN_PATH", str(_PLUGIN.parent))
+    monkeypatch.setenv("GST_PLUGIN_PATH", str(_PREFIX))
     path = Path(os.environ.get("TMPDIR", "/tmp")) / "michi-dop-silence.dsf"
     payload = bytes([0x69]) * ((352_800 // 4) * 2)
     path.write_bytes(build_dsf(sample_count=352_800 // 4, payload=payload))

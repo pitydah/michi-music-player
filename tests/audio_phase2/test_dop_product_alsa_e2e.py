@@ -38,8 +38,21 @@ from tests.audio_phase2.test_productive_output_resolver import (
 from tests.dop.test_dop_planner import _carrier
 
 _HAS_GI = importlib.util.find_spec("gi") is not None
-_PREFIX = Path(os.environ.get("MICHI_DOP_PREFIX", "/tmp/michi-dop-gate-a"))
-_PLUGIN = _PREFIX / "lib/gstreamer-1.0/libmichidop.so"
+def _resolved_prefix():
+    from michi.infrastructure.audio_output.dop_plugin import resolve_dop_prefix
+
+    try:
+        return resolve_dop_prefix()
+    except RuntimeError:
+        return None
+
+
+_PREFIX = _resolved_prefix()
+_PLUGIN = (
+    _PREFIX / "libmichidop.so"
+    if _PREFIX is not None
+    else Path("/nonexistent/libmichidop.so")
+)
 _DEVICE = os.environ.get("MICHI_DOP_ALSA_DEVICE", "")
 
 pytestmark = pytest.mark.skipif(
@@ -123,7 +136,7 @@ def test_selected_alsa_product_e2e(tmp_path, monkeypatch) -> None:
         GStreamerHostedAudioPort,
     )
 
-    monkeypatch.setenv("GST_PLUGIN_PATH", str(_PLUGIN.parent))
+    monkeypatch.setenv("GST_PLUGIN_PATH", str(_PREFIX))
     monkeypatch.setenv("MICHI_DOP_PLUGIN_PREFIX", str(_PREFIX))
     monkeypatch.delenv("MICHI_GST_LAB_SINK", raising=False)
     source = tmp_path / "doop-alsa.dsf"

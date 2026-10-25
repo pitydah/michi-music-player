@@ -31,6 +31,17 @@ jobs:
           pip install -e ".[test]"
           pip install PyGObject
 
+      - name: Pin QML linter to the supported Qt line
+        run: |
+          # PySide6 6.12 does not ship the Quick lint plugin categories used
+          # by the Premium Library gate. Pin the supported 6.11 line and fail
+          # before the gate if its contract is unavailable.
+          pip install --force-reinstall \
+            "PySide6==6.11.1" "PySide6-Essentials==6.11.1" \
+            "PySide6-Addons==6.11.1" "shiboken6==6.11.1"
+          python -c "import PySide6; assert PySide6.__version__ == '6.11.1', PySide6.__version__"
+          pyside6-qmllint --help | grep -q -- '--Quick.layout-positioning'
+
       - name: Lint
         run: |
           ruff check src tests scripts
@@ -332,12 +343,42 @@ jobs:
       - name: Build and install platform wheel
         run: |
           MICHI_BUILD_DOP=1 python -m build --wheel --outdir dist-native
+          rm -rf /tmp/michi-dop-wheel
           python -m venv --system-site-packages /tmp/michi-dop-wheel
           /tmp/michi-dop-wheel/bin/pip install --no-deps dist-native/*.whl
-          prefix=$(/tmp/michi-dop-wheel/bin/python -c             'from michi.infrastructure.audio_output.dop_plugin import installed_dop_prefix; print(installed_dop_prefix())')
+          prefix=$(/tmp/michi-dop-wheel/bin/python -c \
+            'from michi.infrastructure.audio_output.dop_plugin import resolve_dop_prefix; print(resolve_dop_prefix())')
+          test -f "$prefix/libmichidop.so"
           test -f "$prefix/michidop.manifest.json"
           GST_PLUGIN_PATH="$prefix" gst-inspect-1.0 michidop
-          MICHI_DOP_PREFIX="$prefix" GST_PLUGIN_PATH="$prefix"             MICHI_GST_LAB_SINK=fakesink             /tmp/michi-dop-wheel/bin/python -m pytest               tests/audio_phase2/test_dop_host_runtime.py               tests/audio_phase2/test_dop_product_e2e.py -q
+
+      - name: Installed wheel DoP end-to-end (fail closed)
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/artifacts"
+          prefix=$(/tmp/michi-dop-wheel/bin/python -c \
+            'from michi.infrastructure.audio_output.dop_plugin import resolve_dop_prefix; print(resolve_dop_prefix())')
+          rm -rf /tmp/michi-dop-installed-run
+          mkdir -p /tmp/michi-dop-installed-run
+          cp scripts/verify_installed_dop_e2e.py /tmp/michi-dop-installed-run/
+          cd /tmp/michi-dop-installed-run
+          env -u PYTHONPATH -u MICHI_DOP_PREFIX \
+            GST_PLUGIN_PATH="$prefix" \
+            MICHI_DOP_PLUGIN_PREFIX="$prefix" \
+            MICHI_GST_LAB_SINK=fakesink \
+            /tmp/michi-dop-wheel/bin/python -I verify_installed_dop_e2e.py \
+              --json-output installed-dop-e2e.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path("installed-dop-e2e.json").read_text())
+          assert report["status"] == "PASS", report
+          assert report["skipped"] is False, report
+          assert report["plugin_sha256"], report
+          print("installed wheel e2e: PASS")
+          PY
+          cp installed-dop-e2e.json "$GITHUB_WORKSPACE/artifacts/installed-dop-e2e.json"
 
       - name: Record artifact digest
         run: |
@@ -350,5 +391,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: michidop-gate-a-${{ github.sha }}
-          path: artifacts/michidop-gate-a.sha256
+          path: |
+            artifacts/michidop-gate-a.sha256
+            artifacts/installed-dop-e2e.json
           if-no-files-found: error

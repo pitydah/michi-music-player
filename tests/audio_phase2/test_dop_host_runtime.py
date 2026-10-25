@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import contextlib
 import importlib.util
-import os
 import time
 from pathlib import Path
 
@@ -17,8 +16,21 @@ import pytest
 from tests.audio_phase2.test_dsd_source_truth import build_dsf
 
 _HAS_GI = importlib.util.find_spec("gi") is not None
-_PREFIX = Path(os.environ.get("MICHI_DOP_PREFIX", "/tmp/michi-dop-gate-a"))
-_PLUGIN = _PREFIX / "lib/gstreamer-1.0/libmichidop.so"
+def _resolved_prefix():
+    from michi.infrastructure.audio_output.dop_plugin import resolve_dop_prefix
+
+    try:
+        return resolve_dop_prefix()
+    except RuntimeError:
+        return None
+
+
+_PREFIX = _resolved_prefix()
+_PLUGIN = (
+    _PREFIX / "libmichidop.so"
+    if _PREFIX is not None
+    else Path("/nonexistent/libmichidop.so")
+)
 
 pytestmark = pytest.mark.skipif(
     not _HAS_GI or not _PLUGIN.exists(),
@@ -72,7 +84,7 @@ def test_gate_a_dop_host_vertical_is_explicit_and_confirmed(
     dsf = tmp_path / "dop.dsf"
     dsf.write_bytes(build_dsf(sample_count=2_822_400))
     monkeypatch.setenv("MICHI_GST_LAB_SINK", "fakesink")
-    monkeypatch.setenv("GST_PLUGIN_PATH", str(_PLUGIN.parent))
+    monkeypatch.setenv("GST_PLUGIN_PATH", str(_PREFIX))
     monkeypatch.setenv("MICHI_DOP_PLUGIN_PREFIX", str(_PREFIX))
     supervisor, port = _supervisor_and_port()
     try:
