@@ -498,11 +498,6 @@ class ProductiveOutputRequestResolver:
                     raise OutputSessionError(
                         "DSD_BINDING_UNAVAILABLE", "the selected DAC is unavailable"
                     )
-                if self._dsd_qualification is None:
-                    raise OutputSessionError(
-                        "DSD_QUALIFICATION_UNAVAILABLE",
-                        "no Native DSD qualification is composed",
-                    )
                 dop_policy = (
                     self._dop_policy_provider(dsd.signal)
                     if self._dop_policy_provider is not None
@@ -561,6 +556,11 @@ class ProductiveOutputRequestResolver:
                     except DopPlannerError as exc:
                         raise OutputSessionError(exc.code, exc.detail) from exc
                     return OutputRequest.dop(dop_plan, selection.selected_profile_id)
+                if self._dsd_qualification is None:
+                    raise OutputSessionError(
+                        "DSD_QUALIFICATION_UNAVAILABLE",
+                        "no Native DSD qualification is composed",
+                    )
                 qualifications = self._dsd_qualification(
                     selected_device_id, binding, dsd.signal
                 )

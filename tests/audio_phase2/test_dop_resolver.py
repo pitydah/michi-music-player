@@ -48,7 +48,9 @@ def _dop_interp(_device, _source):
     )
 
 
-def _resolver(policy, *, qualification=_dop_carrier):
+def _resolver(
+    policy, *, qualification=_dop_carrier, native_qualification=_dsd_qualification
+):
     return ProductiveOutputRequestResolver(
         profiles=_Profiles(
             __import__("dataclasses").replace(
@@ -63,7 +65,7 @@ def _resolver(policy, *, qualification=_dop_carrier):
         source_characterizer=_Characterizer(),
         dsd_source_characterizer=_DsdCharacterizer(DsdSourceStatus.DSD_PROVEN),
         dsd_planner=NativeDsdPlanner(),
-        dsd_qualification=_dsd_qualification,
+        dsd_qualification=native_qualification,
         dop_policy_provider=lambda _source: policy,
         dop_qualification=qualification,
         dop_interpretation=_dop_interp,
@@ -128,3 +130,10 @@ def test_without_policy_native_dsd_is_preserved() -> None:
     request = resolver(Path("/media/track.dsf"))
     assert request.native_dsd_plan is not None
     assert request.dop_plan is None
+
+
+def test_dop_does_not_require_native_dsd_qualification() -> None:
+    policy = DopPolicyDecision(explicit_requested=True, auto_allowed=False)
+    request = _resolver(policy, native_qualification=None)(Path("/media/track.dsf"))
+    assert request.dop_plan is not None
+    assert request.native_dsd_plan is None
