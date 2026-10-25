@@ -16,6 +16,7 @@ executes one immutable request and reports primitive pad observations.
 from __future__ import annotations
 
 import contextlib
+import dataclasses
 import hashlib
 import json
 import os
@@ -99,6 +100,8 @@ def parse_request(payload: dict[str, Any]) -> _DopRequest:
             "DOP_HOST_CARRIER_RATE_INVALID",
             "carrier rate must be GStreamer DSD-byte rate / 2",
         )
+    if request.carrier_format == "S32_LE":
+        request = dataclasses.replace(request, carrier_format="S32LE")
     if request.carrier_format not in ("S24_3LE", "S32LE"):
         raise DopHostError("DOP_HOST_FORMAT_INVALID", request.carrier_format)
     if request.channels != 2:

@@ -28,6 +28,10 @@ class DopPrepared:
     observations: tuple[dict[str, Any], ...]
 
 
+def _host_carrier_format(alsa_format: str) -> str:
+    return "S32LE" if alsa_format in ("S32_LE", "S32LE") else alsa_format
+
+
 def _source_family(path: Path) -> str:
     suffix = path.suffix.lower()
     if suffix == ".dsf":
@@ -95,7 +99,7 @@ class DopOutputExecutor:
             "source_family": _source_family(path),
             "source_rate_hz": plan.source.bit_rate_hz // 8,
             "carrier_rate_hz": plan.carrier_rate.frames_per_second,
-            "carrier_format": plan.memory_contract.alsa_format,
+            "carrier_format": _host_carrier_format(plan.memory_contract.alsa_format),
             "channels": plan.source.channels,
             "reverse_payload_bits": plan.reverse_payload_bits,
             "sink_factory": self._sink_factory,
@@ -134,7 +138,7 @@ class DopOutputExecutor:
             "binding_generation": plan.binding_generation,
             "host_generation": plan.host_generation,
             "carrier_rate_hz": plan.carrier_rate.frames_per_second,
-            "carrier_format": plan.memory_contract.alsa_format,
+            "carrier_format": _host_carrier_format(plan.memory_contract.alsa_format),
             "channels": plan.source.channels,
             "dop": True,
             "prerolled": True,
@@ -167,7 +171,9 @@ class DopOutputExecutor:
                 "DOP_CARRIER_MISMATCH", "no negotiated michidop audio/x-raw pad"
             )
         fields = dict(carrier[0].get("fields") or [])
-        if fields.get("format") != plan.memory_contract.alsa_format:
+        if fields.get("format") != _host_carrier_format(
+            plan.memory_contract.alsa_format
+        ):
             raise DopExecutionError("DOP_CARRIER_MISMATCH", "format")
         if fields.get("rate") != str(plan.carrier_rate.frames_per_second):
             raise DopExecutionError("DOP_CARRIER_MISMATCH", "rate")
