@@ -52,6 +52,30 @@ jobs:
           pyside6-qmllint -I src/michi/presentation/qml \
             src/michi/presentation/qml/**/*.qml
 
+      - name: Negative control for the Library layout gate
+        run: |
+          cat > /tmp/qml-layout-negative.qml <<'QML'
+          import QtQuick
+          import QtQuick.Layouts
+          Item {
+              width: 100
+              height: 100
+              RowLayout {
+                  anchors.fill: parent
+                  Item { anchors.fill: parent }
+              }
+          }
+          QML
+          set +e
+          output=$(pyside6-qmllint -W 0 \
+            --Quick.layout-positioning error \
+            -I src/michi/presentation/qml \
+            /tmp/qml-layout-negative.qml 2>&1)
+          status=$?
+          set -e
+          test "$status" -ne 0
+          printf '%s\n' "$output" | grep -q 'Quick.layout-positioning'
+
       - name: Premium Library QML warning gate
         run: |
           pyside6-qmllint -W 0 \
