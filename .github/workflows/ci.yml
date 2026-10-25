@@ -338,6 +338,12 @@ jobs:
         with:
           components: rustfmt, clippy
 
+      - name: Configure reproducible native path remapping
+        run: |
+          # Cargo embeds registry/crate paths in panic locations. Remap them so
+          # clean builds from different runner paths produce one artifact SHA.
+          echo "RUSTFLAGS=--remap-path-prefix=$HOME/.cargo=/cargo --remap-path-prefix=$GITHUB_WORKSPACE/native/michi-dop=/michi" >> "$GITHUB_ENV"
+
       - name: Rust format, clippy, tests (locked)
         run: |
           cargo fmt --manifest-path native/michi-dop/Cargo.toml -- --check

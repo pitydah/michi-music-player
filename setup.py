@@ -17,6 +17,24 @@ ROOT = Path(__file__).resolve().parent
 NATIVE = ROOT / "native/michi-dop"
 
 
+def _reproducible_rustflags() -> str:
+    """Remap machine-specific paths so the native artifact is byte-stable.
+
+    Cargo embeds registry and crate paths in panic location strings. Without a
+    remap, a clean build from a different checkout produces a different
+    libmichidop.so even with the same toolchain and Cargo.lock.
+    """
+    existing = os.environ.get("RUSTFLAGS", "").strip()
+    if "--remap-path-prefix" in existing:
+        return existing
+    cargo_home = os.environ.get("CARGO_HOME") or str(Path.home() / ".cargo")
+    remap = (
+        f"--remap-path-prefix={cargo_home}=/cargo "
+        f"--remap-path-prefix={NATIVE}=/michi"
+    )
+    return f"{existing} {remap}".strip()
+
+
 class DopDistribution(Distribution):
     def has_ext_modules(self) -> bool:
         return os.environ.get("MICHI_BUILD_DOP") == "1"
@@ -31,6 +49,7 @@ class BuildPyWithDop(build_py):
             ["cargo", "build", "--release", "--locked"],
             cwd=NATIVE,
             check=True,
+            env={**os.environ, "RUSTFLAGS": _reproducible_rustflags()},
         )
         source = NATIVE / "target/release/libmichidop.so"
         if not source.is_file():
