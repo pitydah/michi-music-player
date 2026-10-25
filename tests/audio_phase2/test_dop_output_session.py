@@ -205,3 +205,204 @@ def test_supersession_abort_failure_keeps_current_session(tmp_path: Path) -> Non
         session.prepare_for_media(tmp_path / "two.dsf")
     assert info.value.code == "DOP_SUPERSESSION_UNCONFIRMED"
     assert session._dop_prepared is not None
+
+
+def _native_prepared():
+    from types import SimpleNamespace
+
+    return SimpleNamespace(
+        plan=SimpleNamespace(plan_id="native:plan", stable_device_id="dev:dac"),
+        execution_id="exec:native",
+        stable_device_id="dev:dac",
+        runtime_identity={},
+        handle=None,
+    )
+
+
+def _managed_prepared():
+    from types import SimpleNamespace
+
+    return SimpleNamespace(
+        plan=SimpleNamespace(
+            plan_id="managed:plan",
+            stable_device_id="dev:dac",
+            processing_plan_id=None,
+            transform_policy=(),
+        ),
+        execution_id="exec:managed",
+        runtime_identity={},
+    )
+
+
+def test_dop_to_native_requires_confirmed_cleanup(tmp_path: Path) -> None:
+    plan = _plan()
+    tx = _Tx(plan)
+    tx.fail_abort = True
+    session = _session(plan, tx)
+    session.prepare_for_media(tmp_path / "track.dsf")
+    native_aborts: list[str] = []
+    session._native_dsd_prepared = _native_prepared()
+    session._native_dsd_plan = session._native_dsd_prepared.plan
+    session._native_dsd_abort = lambda _prepared, reason: (
+        native_aborts.append(reason) or {"aborted": True}
+    )
+    with pytest.raises(OutputSessionError) as info:
+        session._begin_native_dsd_session(
+            tmp_path / "track.dsf",
+            OutputRequest.dop(plan, "profile:dop"),
+            _native_prepared(),
+            previous_direct=None,
+        )
+    assert info.value.code == "OUTPUT_OWNERSHIP_UNCONFIRMED"
+    assert session._dop_prepared is not None
+    assert session.mode == "dop"
+    assert native_aborts == []
+
+
+def test_dop_to_native_aborts_then_switches(tmp_path: Path) -> None:
+    plan = _plan()
+    tx = _Tx(plan)
+    session = _session(plan, tx)
+    session.prepare_for_media(tmp_path / "track.dsf")
+    native = _native_prepared()
+    session._native_dsd_prepared = native
+    session._native_dsd_plan = native.plan
+    session._native_dsd_abort = lambda _prepared, reason: {"aborted": True}
+    session._begin_native_dsd_session(
+        tmp_path / "track.dsf",
+        OutputRequest.dop(plan, "profile:dop"),
+        native,
+        previous_direct=None,
+    )
+    assert "superseded_by_native_dsd" in tx.aborted
+    assert session._dop_prepared is None
+    assert session.mode == "native_dsd"
+
+
+def test_dop_to_managed_requires_confirmed_cleanup(tmp_path: Path) -> None:
+    plan = _plan()
+    tx = _Tx(plan)
+    tx.fail_abort = True
+    session = _session(plan, tx)
+    session.prepare_for_media(tmp_path / "track.dsf")
+    managed = _managed_prepared()
+    session._managed_prepared = managed
+    session._managed_plan = managed.plan
+    session._managed_abort = lambda _prepared, _reason: {"stopped": True}
+    with pytest.raises(OutputSessionError) as info:
+        session._begin_managed_session(
+            tmp_path / "track.dsf",
+            OutputRequest.dop(plan, "profile:dop"),
+            managed,
+            previous_direct=None,
+        )
+    assert info.value.code == "OUTPUT_OWNERSHIP_UNCONFIRMED"
+    assert session._dop_prepared is not None
+    assert session.mode == "dop"
+
+
+def test_direct_to_dop_requires_confirmed_release(tmp_path: Path) -> None:
+    from types import SimpleNamespace
+
+    class _Executor:
+        def release(self, _reason: str) -> None:
+            raise RuntimeError("direct release failed")
+
+    plan = _plan()
+    tx = _Tx(plan)
+    session = _session(plan, tx)
+    previous = SimpleNamespace(
+        plan=SimpleNamespace(stable_device_id="dev:dac"),
+        executor=_Executor(),
+        receipt="direct:receipt",
+        state=OutputSessionState.RUNNING,
+        path=tmp_path / "old.wav",
+        selected_device_id="dev:dac",
+        selected_profile_id="profile:direct",
+    )
+    prepared = tx.prepare(plan, tmp_path / "track.dsf", "instance")
+    with pytest.raises(OutputSessionError) as info:
+        session._begin_dop_session(
+            tmp_path / "track.dsf",
+            OutputRequest.dop(plan, "profile:dop"),
+            prepared,
+            previous_direct=previous,
+        )
+    assert info.value.code == "OUTPUT_OWNERSHIP_UNCONFIRMED"
+    assert session._dop_prepared is None
+    assert session.last_cleanup_diagnostic is not None
+
+
+def test_native_to_dop_requires_confirmed_cleanup(tmp_path: Path) -> None:
+    plan = _plan()
+    tx = _Tx(plan)
+    session = _session(plan, tx)
+    native = _native_prepared()
+    session._native_dsd_prepared = native
+    session._native_dsd_plan = native.plan
+    session._native_dsd_abort = lambda _prepared, _reason: {
+        "aborted": False,
+        "stale": False,
+    }
+    prepared = tx.prepare(plan, tmp_path / "track.dsf", "instance")
+    with pytest.raises(OutputSessionError) as info:
+        session._begin_dop_session(
+            tmp_path / "track.dsf",
+            OutputRequest.dop(plan, "profile:dop"),
+            prepared,
+            previous_direct=None,
+        )
+    assert info.value.code == "OUTPUT_OWNERSHIP_UNCONFIRMED"
+    assert session._native_dsd_prepared is native
+    assert session._dop_prepared is None
+
+
+def test_managed_to_dop_requires_confirmed_cleanup(tmp_path: Path) -> None:
+    plan = _plan()
+    tx = _Tx(plan)
+    session = _session(plan, tx)
+    managed = _managed_prepared()
+    session._managed_prepared = managed
+    session._managed_plan = managed.plan
+    session._managed_abort = lambda _prepared, _reason: {
+        "stopped": False,
+        "stale": False,
+    }
+    prepared = tx.prepare(plan, tmp_path / "track.dsf", "instance")
+    with pytest.raises(OutputSessionError) as info:
+        session._begin_dop_session(
+            tmp_path / "track.dsf",
+            OutputRequest.dop(plan, "profile:dop"),
+            prepared,
+            previous_direct=None,
+        )
+    assert info.value.code == "OUTPUT_OWNERSHIP_UNCONFIRMED"
+    assert session._managed_prepared is managed
+    assert session._dop_prepared is None
+
+
+def test_abort_retry_after_failure_can_confirm(tmp_path: Path) -> None:
+    plan = _plan()
+    tx = _Tx(plan)
+    tx.fail_abort = True
+    session = _session(plan, tx)
+    token = session.prepare_for_media(tmp_path / "track.dsf")
+    with pytest.raises(OutputSessionError):
+        session.abort_media(token, "load_failed")
+    assert session._dop_prepared is not None
+    tx.fail_abort = False
+    session.abort_media(token, "retry")
+    assert session._dop_prepared is None
+    assert "retry" in tx.aborted
+
+
+def test_quiet_cleanup_retains_unconfirmed_receipt(tmp_path: Path) -> None:
+    plan = _plan()
+    tx = _Tx(plan)
+    tx.fail_abort = True
+    session = _session(plan, tx)
+    session.prepare_for_media(tmp_path / "track.dsf")
+    prepared = session._dop_prepared
+    session._dop_abort_quietly(prepared, "superseded_before_commit")
+    assert session._unconfirmed_cleanup == ("dop", prepared)
+    assert session.last_cleanup_diagnostic is not None

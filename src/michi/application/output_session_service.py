@@ -860,6 +860,7 @@ class OutputSessionService:
         self._lost_binding_generation = 0
         self._last_transition_kind: DirectTransitionKind | None = None
         self._last_cleanup_diagnostic: OutputCleanupDiagnostic | None = None
+        self._unconfirmed_cleanup: tuple[str, object] | None = None
         self._subscribers: list[Callable[[], None]] = []
 
     # ── lectura ───────────────────────────────────────────────────────
@@ -1741,10 +1742,177 @@ class OutputSessionService:
     def _dop_abort_quietly(
         self, prepared: DopSessionPrepared | None, reason: str
     ) -> None:
-        if prepared is None or self._dop_abort is None:
+        """Best-effort cleanup that NEVER hides an unconfirmed release.
+
+        The preparation receipt is retained as uncertainty evidence when the
+        host cannot confirm abort; a later reconciliation can still identify
+        the exact execution that may own the device.
+        """
+        if prepared is None:
             return
-        with suppress(Exception):
-            self._dop_abort(prepared, reason)
+        abort = self._dop_abort
+        if abort is None:
+            self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                reason=reason,
+                code="DOP_CLEANUP_UNAVAILABLE",
+                detail="no DoP abort authority is composed",
+            )
+            self._unconfirmed_cleanup = ("dop", prepared)
+            return
+        try:
+            result = abort(prepared, reason)
+        except Exception as exc:  # noqa: BLE001 - teardown boundary
+            self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                reason=reason,
+                code=getattr(exc, "code", "DOP_CLEANUP_FAILED"),
+                detail=str(exc),
+            )
+            self._unconfirmed_cleanup = ("dop", prepared)
+            self._record_dop_family(
+                OutputFamilyState.UNAVAILABLE, prepared, detail="cleanup_unconfirmed"
+            )
+            return
+        if not isinstance(result, dict) or not (
+            result.get("aborted") is True
+            or result.get("already") is True
+            or result.get("stale") is True
+        ):
+            self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                reason=reason,
+                code="DOP_CLEANUP_UNCONFIRMED",
+                detail="host did not confirm abort",
+            )
+            self._unconfirmed_cleanup = ("dop", prepared)
+            self._record_dop_family(
+                OutputFamilyState.UNAVAILABLE, prepared, detail="cleanup_unconfirmed"
+            )
+
+    def _strict_dop_abort(
+        self,
+        prepared: DopSessionPrepared,
+        reason: str,
+        *,
+        code: str = "OUTPUT_OWNERSHIP_UNCONFIRMED",
+    ) -> None:
+        """Require confirmed release before acquiring another family."""
+        if self._dop_abort is None:
+            raise OutputSessionError(
+                code,
+                "no DoP abort authority is composed",
+            )
+        try:
+            result = self._dop_abort(prepared, reason)
+        except Exception as exc:  # noqa: BLE001 - preserve current owner
+            self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                reason=reason,
+                code=getattr(exc, "code", "DOP_CLEANUP_FAILED"),
+                detail=str(exc),
+            )
+            self._unconfirmed_cleanup = ("dop", prepared)
+            raise OutputSessionError(
+                code,
+                f"DoP cleanup failed before switching family: {exc}",
+            ) from exc
+        if not isinstance(result, dict) or not (
+            result.get("aborted") is True
+            or result.get("already") is True
+            or result.get("stale") is True
+        ):
+            self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                reason=reason,
+                code="DOP_CLEANUP_UNCONFIRMED",
+                detail="host did not confirm abort",
+            )
+            self._unconfirmed_cleanup = ("dop", prepared)
+            raise OutputSessionError(
+                code,
+                "current DoP execution was not released",
+            )
+        self._record_dop_family(OutputFamilyState.UNAVAILABLE, prepared, detail=reason)
+        self._dop_prepared = None
+        self._dop_plan = None
+
+    def _strict_native_abort(
+        self, prepared: NativeDsdSessionPrepared, reason: str
+    ) -> None:
+        if self._native_dsd_abort is None:
+            raise OutputSessionError(
+                "OUTPUT_OWNERSHIP_UNCONFIRMED",
+                "no Native DSD abort authority is composed",
+            )
+        try:
+            result = self._native_dsd_abort(prepared, reason)
+        except Exception as exc:  # noqa: BLE001 - preserve current owner
+            self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                reason=reason,
+                code=getattr(exc, "code", "NATIVE_DSD_CLEANUP_FAILED"),
+                detail=str(exc),
+            )
+            self._unconfirmed_cleanup = ("native_dsd", prepared)
+            raise OutputSessionError(
+                "OUTPUT_OWNERSHIP_UNCONFIRMED",
+                f"Native DSD cleanup failed before switching family: {exc}",
+            ) from exc
+        if not isinstance(result, dict) or not (
+            result.get("aborted") is True
+            or result.get("already") is True
+            or result.get("stale") is True
+        ):
+            self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                reason=reason,
+                code="NATIVE_DSD_CLEANUP_UNCONFIRMED",
+                detail="host did not confirm abort",
+            )
+            self._unconfirmed_cleanup = ("native_dsd", prepared)
+            raise OutputSessionError(
+                "OUTPUT_OWNERSHIP_UNCONFIRMED",
+                "current Native DSD execution was not released",
+            )
+        self._record_native_dsd_family(
+            OutputFamilyState.UNAVAILABLE, prepared, detail=reason
+        )
+        self._native_dsd_prepared = None
+        self._native_dsd_plan = None
+
+    def _strict_managed_abort(
+        self, prepared: ManagedOutputPrepared, reason: str
+    ) -> None:
+        if self._managed_abort is None:
+            raise OutputSessionError(
+                "OUTPUT_OWNERSHIP_UNCONFIRMED",
+                "no Managed abort authority is composed",
+            )
+        try:
+            result = self._managed_abort(prepared, reason)
+        except Exception as exc:  # noqa: BLE001 - preserve current owner
+            self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                reason=reason,
+                code=getattr(exc, "code", "MANAGED_CLEANUP_FAILED"),
+                detail=str(exc),
+            )
+            self._unconfirmed_cleanup = ("managed", prepared)
+            raise OutputSessionError(
+                "OUTPUT_OWNERSHIP_UNCONFIRMED",
+                f"Managed cleanup failed before switching family: {exc}",
+            ) from exc
+        if not isinstance(result, dict) or not (
+            result.get("stopped") is True
+            or result.get("aborted") is True
+            or result.get("stale") is True
+            or result.get("already") is True
+        ):
+            self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                reason=reason,
+                code="MANAGED_CLEANUP_UNCONFIRMED",
+                detail="host did not confirm stop/abort",
+            )
+            self._unconfirmed_cleanup = ("managed", prepared)
+            raise OutputSessionError(
+                "OUTPUT_OWNERSHIP_UNCONFIRMED",
+                "current Managed execution was not released",
+            )
+        self._managed_prepared = None
+        self._managed_plan = None
 
     def _record_dop_family(
         self,
@@ -1812,50 +1980,43 @@ class OutputSessionService:
             )
         current_dop = self._dop_prepared
         if current_dop is not None and current_dop is not prepared:
-            if self._dop_abort is None:
-                raise OutputSessionError(
-                    "DOP_SUPERSESSION_UNCONFIRMED",
-                    "no DoP abort authority is composed",
-                )
-            try:
-                aborted = self._dop_abort(current_dop, "superseded")
-            except Exception as exc:  # noqa: BLE001 - preserve current receipt
-                raise OutputSessionError(
-                    "DOP_SUPERSESSION_UNCONFIRMED", str(exc)
-                ) from exc
-            if not isinstance(aborted, dict) or not (
-                aborted.get("aborted") is True or aborted.get("already") is True
-            ):
-                raise OutputSessionError(
-                    "DOP_SUPERSESSION_UNCONFIRMED",
-                    "current DoP execution was not released",
-                )
-            self._record_dop_family(
-                OutputFamilyState.UNAVAILABLE, current_dop, detail="superseded"
+            self._strict_dop_abort(
+                current_dop,
+                "superseded",
+                code="DOP_SUPERSESSION_UNCONFIRMED",
             )
-            self._dop_prepared = None
-            self._dop_plan = None
         current_native = self._native_dsd_prepared
         if current_native is not None:
-            self._record_native_dsd_family(
-                OutputFamilyState.UNAVAILABLE,
-                current_native,
-                detail="superseded_by_dop",
-            )
-            self._native_dsd_prepared = None
-            self._native_dsd_plan = None
-            self._native_dsd_abort_quietly(current_native, "superseded_by_dop")
+            self._strict_native_abort(current_native, "superseded_by_dop")
         current_managed = self._managed_prepared
         if current_managed is not None:
-            self._managed_prepared = None
-            self._managed_plan = None
-            self._managed_abort_quietly(current_managed, "superseded_by_dop")
+            self._strict_managed_abort(current_managed, "superseded_by_dop")
         if self._mode == "shared" and self._shared_receipt is not None:
-            with suppress(Exception):
+            try:
                 self._shared.abort_media(self._shared_receipt, "superseded_by_dop")
+            except Exception as exc:  # noqa: BLE001 - preserve current owner
+                self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                    reason="superseded_by_dop",
+                    code=getattr(exc, "code", "SHARED_CLEANUP_FAILED"),
+                    detail=str(exc),
+                )
+                raise OutputSessionError(
+                    "OUTPUT_OWNERSHIP_UNCONFIRMED",
+                    f"Shared cleanup failed before DoP acquisition: {exc}",
+                ) from exc
         if previous_direct is not None:
-            with suppress(Exception):
+            try:
                 previous_direct.executor.release("switch_to_dop")
+            except Exception as exc:  # noqa: BLE001 - preserve current owner
+                self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                    reason="switch_to_dop",
+                    code=getattr(exc, "code", "DIRECT_CLEANUP_FAILED"),
+                    detail=str(exc),
+                )
+                raise OutputSessionError(
+                    "OUTPUT_OWNERSHIP_UNCONFIRMED",
+                    f"Direct cleanup failed before DoP acquisition: {exc}",
+                ) from exc
         if self._state is not OutputSessionState.IDLE:
             if self._state in (
                 OutputSessionState.READY,
@@ -1909,27 +2070,41 @@ class OutputSessionService:
         *,
         previous_direct: _DirectSessionSnapshot | None,
     ) -> str:
+        current_dop = self._dop_prepared
+        if current_dop is not None:
+            self._strict_dop_abort(current_dop, "superseded_by_native_dsd")
         current_managed = self._managed_prepared
         if current_managed is not None:
-            self._managed_prepared = None
-            self._managed_plan = None
-            self._managed_abort_quietly(current_managed, "superseded_by_native_dsd")
+            self._strict_managed_abort(current_managed, "superseded_by_native_dsd")
         current_native = self._native_dsd_prepared
         if current_native is not None and current_native is not prepared:
-            self._record_native_dsd_family(
-                OutputFamilyState.UNAVAILABLE,
-                current_native,
-                detail="superseded",
-            )
-            self._native_dsd_prepared = None
-            self._native_dsd_plan = None
-            self._native_dsd_abort_quietly(current_native, "superseded")
+            self._strict_native_abort(current_native, "superseded")
         if self._mode == "shared" and self._shared_receipt is not None:
-            with suppress(Exception):
+            try:
                 self._shared.abort_media(self._shared_receipt, "superseded")
+            except Exception as exc:  # noqa: BLE001 - preserve current owner
+                self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                    reason="superseded_by_native_dsd",
+                    code=getattr(exc, "code", "SHARED_CLEANUP_FAILED"),
+                    detail=str(exc),
+                )
+                raise OutputSessionError(
+                    "OUTPUT_OWNERSHIP_UNCONFIRMED",
+                    f"Shared cleanup failed before Native DSD acquisition: {exc}",
+                ) from exc
         if previous_direct is not None:
-            with suppress(Exception):
+            try:
                 previous_direct.executor.release("switch_to_native_dsd")
+            except Exception as exc:  # noqa: BLE001 - preserve current owner
+                self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                    reason="switch_to_native_dsd",
+                    code=getattr(exc, "code", "DIRECT_CLEANUP_FAILED"),
+                    detail=str(exc),
+                )
+                raise OutputSessionError(
+                    "OUTPUT_OWNERSHIP_UNCONFIRMED",
+                    f"Direct cleanup failed before Native DSD acquisition: {exc}",
+                ) from exc
         if self._state is not OutputSessionState.IDLE:
             if self._state in (
                 OutputSessionState.READY,
@@ -1998,17 +2173,41 @@ class OutputSessionService:
                     "OUTPUT_BINDING_STALE",
                     "Managed binding changed before candidate preparation",
                 )
+        current_dop = self._dop_prepared
+        if current_dop is not None:
+            self._strict_dop_abort(current_dop, "superseded_by_managed")
+        current_native = self._native_dsd_prepared
+        if current_native is not None:
+            self._strict_native_abort(current_native, "superseded_by_managed")
         current = self._managed_prepared
         if current is not None and current is not prepared:
-            self._managed_prepared = None
-            self._managed_plan = None
-            self._managed_abort_quietly(current, "superseded")
+            self._strict_managed_abort(current, "superseded")
         if self._mode == "shared" and self._shared_receipt is not None:
-            with suppress(Exception):
+            try:
                 self._shared.abort_media(self._shared_receipt, "superseded")
+            except Exception as exc:  # noqa: BLE001 - preserve current owner
+                self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                    reason="superseded_by_managed",
+                    code=getattr(exc, "code", "SHARED_CLEANUP_FAILED"),
+                    detail=str(exc),
+                )
+                raise OutputSessionError(
+                    "OUTPUT_OWNERSHIP_UNCONFIRMED",
+                    f"Shared cleanup failed before Managed acquisition: {exc}",
+                ) from exc
         if previous_direct is not None:
-            with suppress(Exception):
+            try:
                 previous_direct.executor.release("switch_to_managed")
+            except Exception as exc:  # noqa: BLE001 - preserve current owner
+                self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                    reason="switch_to_managed",
+                    code=getattr(exc, "code", "DIRECT_CLEANUP_FAILED"),
+                    detail=str(exc),
+                )
+                raise OutputSessionError(
+                    "OUTPUT_OWNERSHIP_UNCONFIRMED",
+                    f"Direct cleanup failed before Managed acquisition: {exc}",
+                ) from exc
         if self._state is not OutputSessionState.IDLE:
             if self._state in (
                 OutputSessionState.READY,
@@ -2415,6 +2614,12 @@ class OutputSessionService:
             )
             self._clear_execution(keep_error=True)
             if self._state is not OutputSessionState.IDLE:
+                if self._state in (
+                    OutputSessionState.READY,
+                    OutputSessionState.RUNNING,
+                    OutputSessionState.PAUSED,
+                ):
+                    self._transition(OutputSessionState.RELEASING)
                 self._transition(OutputSessionState.IDLE)
             self._notify()
             return
@@ -2706,8 +2911,6 @@ class OutputSessionService:
             ):
                 return
             prepared = self._dop_prepared
-            self._dop_prepared = None
-            self._dop_plan = None
             self._lost_device_id = stable_device_id or (
                 plan.stable_device_id if plan else None
             )
@@ -2719,7 +2922,16 @@ class OutputSessionService:
             self._record_dop_family(
                 OutputFamilyState.UNAVAILABLE, prepared, detail="device_lost"
             )
-            self._dop_abort_quietly(prepared, "device_lost")
+            try:
+                self._strict_dop_abort(prepared, "device_lost")
+            except OutputSessionError:
+                # The physical device disappeared, but the host did not
+                # confirm teardown. Keep the exact execution as recoverable
+                # uncertainty; never publish RELEASED or free the route.
+                self._dop_plan = plan
+                self._dop_terminal_execution = prepared.execution_id
+                self._notify()
+                return
         native_was_active = self._native_dsd_prepared is not None
         if self._mode == "native_dsd" and self._native_dsd_prepared is not None:
             plan = self._native_dsd_plan
