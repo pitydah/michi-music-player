@@ -1,14 +1,20 @@
 # M13 Gate B — production decision request
 
-Status: **AWAITING_EXTERNAL_DECISION**  
+Status: **APPROVED — 2026-10-24**  
 Gate A: APPROVED_AND_VERIFIED  
-Gate B: **NO-GO** until explicit owner decision  
+Gate B: approved; packaging/integration pending  
 Related: ADR 0012, AP2-F09, `M13_DOP_PACKAGING_GATE.json`
 
 ## Authority
 
 The product owner is the only authority for distribution, default discovery and
 productive DoP selection. The agent cannot derive Gate B from Gate A.
+
+## Recorded authorization
+
+On 2026-10-24 the product owner explicitly selected **“Sí, autorizo Gate B”**
+for distribution, app-private default discovery, canonical service wiring and
+selected-ALSA opt-in. Physical DSD-mode certification/F14 remain outside.
 
 ## Decision requested
 

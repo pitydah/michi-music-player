@@ -3,7 +3,7 @@
   "gate": "M13_NATIVE_DOP_PLUGIN_PACKAGING",
   "phase": "AP2-F09",
   "evaluated_at": "2026-10-24",
-  "status": "NO-GO",
+  "status": "GATE_A_VERIFIED_GATE_B_APPROVED_PACKAGING_PENDING",
   "authority": "M13 release/packaging ownership; ADR 0012 requires this gate before productive native code",
   "observed": {
     "rust": "1.96.0",
@@ -24,12 +24,12 @@
     "reproducible_native_build": "PASS — deterministic --locked artifact",
     "shared_plugin_abi": "PASS — factory/plugin ABI inspected; 6 element + 1 corpus test",
     "factory_discovery_installed": "PASS — private prefix gst-inspect",
-    "wheel_plugin_package": "NOT_IMPLEMENTED — Gate B",
-    "appimage_flatpak_deb_plugin": "NOT_IMPLEMENTED — Gate B",
-    "release_manifest_sbom": "NOT_IMPLEMENTED — Gate B",
+    "wheel_plugin_package": "NOT_IMPLEMENTED — authorized, pending",
+    "appimage_flatpak_deb_plugin": "NOT_IMPLEMENTED — authorized, pending",
+    "release_manifest_sbom": "NOT_IMPLEMENTED — authorized, pending",
     "ci_native_build_conformance": "PASS — dop-native-gate-a run 40120607660"
   },
-  "decision": "Gate A is authorized and technically verified. Gate B remains NO-GO: no wheel/AppImage/Flatpak/deb packaging, no release SBOM, no default discovery and no productive DoP selection. F09 is not CLOSED.",
+  "decision": "Gate A verified; Gate B approved. Native artifact is reproducible, manifest-bound and selected-ALSA carrier-tested. Distribution packaging and productive service integration are still pending, so F09 is not CLOSED.",
   "unblock_procedure": [
     "Gate B owner approval for distribution and default discovery",
     "package the plugin in the app-owned artifact and prove clean-install discovery",
@@ -52,14 +52,10 @@
     "ci": "PASS — run 40120607660"
   },
   "gate_b": {
-    "status": "AWAITING_EXTERNAL_DECISION",
-    "request": "docs/audio/phase2/M13_GATE_B_REQUEST.md",
-    "scope": "distribution, default app-private discovery, production selection and explicit physical DoP carrier authorization",
-    "not_authorized": [
-      "production selection",
-      "default discovery",
-      "distribution artifacts",
-      "physical playback"
-    ]
+    "status": "APPROVED_2026-10-24",
+    "authorization": "product owner explicit interactive decision",
+    "scope": "distribution, app-private default discovery, OutputSession/Playback/Signal Truth wiring, selected-ALSA opt-in",
+    "packaging": "PENDING",
+    "production_selection": "PENDING"
   }
 }

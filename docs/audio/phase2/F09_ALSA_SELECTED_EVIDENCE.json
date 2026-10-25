@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "phase": "AP2-F09",
+  "captured_at": "2026-10-24",
+  "authorization": "M13 Gate B + explicit hardware opt-in",
+  "environment": {
+    "device_locator": "hw:3,0",
+    "card": "SMSL USB AUDIO",
+    "gstreamer": "1.28.8",
+    "rust": "1.96.0"
+  },
+  "artifact_sha256": "72fce5983a765f8fa27deb9a1ea530619bb1d69548d178df3853ea2174dc1af8",
+  "plugin": "michidop-rust-0.1.0",
+  "source": {
+    "container": "dsf",
+    "family": "dsf",
+    "rate_hz": 352800,
+    "payload": "0x69 idle"
+  },
+  "carrier": {
+    "format": "S32LE",
+    "rate_hz": 176400,
+    "channels": 2,
+    "layout": "interleaved"
+  },
+  "identity": {
+    "plan_id": "dop:alsa-selected",
+    "execution_id": "exec:dop-alsa-selected",
+    "binding_generation": 1,
+    "host_generation": 1
+  },
+  "observations": [
+    "alsasink audio/x-raw NEGOTIATED_CURRENT",
+    "S32LE 176400 channels=2",
+    "PLAYING confirmed",
+    "EOS observed"
+  ],
+  "dac_dsd_mode": "NOT_CLAIMED",
+  "f14": "NOT_RUN"
+}

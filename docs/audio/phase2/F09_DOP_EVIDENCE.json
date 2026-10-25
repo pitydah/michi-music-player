@@ -4,7 +4,7 @@
   "title": "DOP PACKER, CARRIER, PLANNER Y RUNTIME",
   "state": "ACTIVE",
   "activation_head": "3800af2",
-  "repo_head": "PENDING_FINAL_CODE_HEAD",
+  "repo_head": "bc6a729546e70202b87f137d2fc35128da879cd4",
   "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
   "entry_gate": {
     "F07": "CLOSED",
@@ -30,19 +30,20 @@
     "supervised_probe": "src/michi/infrastructure/audio_devices/dop_probe_supervisor.py — spawn process, deadline, terminate/kill; TIMEOUT/ERROR/OK outcomes; lab direct provenance remains distinguishable",
     "provenance": "ALSA_LAB_DIRECT vs ALSA_SUPERVISED validated by the qualification adapter; no false supervised provenance",
     "plan_identity": "reverse_payload_bits, environment fingerprint and DOP_ONLY policy recorded in DopExecutionPlanV2",
-    "native_runtime": "michidop Rust/GStreamer 0.1.0; artifact SHA-256 72fce5983a765f8fa27deb9a1ea530619bb1d69548d178df3853ea2174dc1af8; reproducible --locked; manifest-bound private prefix",
+    "native_runtime": "michidop 0.1.0; SHA-256 72fce5983a765f8fa27deb9a1ea530619bb1d69548d178df3853ea2174dc1af8; reproducible clean --locked builds; manifest-bound private prefix",
     "cross_language": "Python reference, Rust element and installed plugin consume the same 9-vector corpus; bytes identical",
     "m13_gate_a": "APPROVED 2026-10-24 by product owner; Gate B remains NO-GO",
-    "rust_p0": "pending-byte state is raw; normalize once on emit; bounds-safe state machine; checked transform_size",
-    "host_lifecycle": "DoP EOS revalidates captured execution/plan/host generation at owner dispatch; Native and DoP cleanup/timers are independent",
-    "plugin_trust": "canonical path containment + installed manifest SHA-256/revision/factory validation"
+    "rust_p0": "raw pending bytes, exactly-one normalization, bounds-safe 4-byte state machine, checked sizes, property lock during running",
+    "host_lifecycle": "captured DoP EOS identity revalidated at owner dispatch; duplicate/stale EOS fenced; Native/DoP timers and runtimes independent",
+    "plugin_trust": "canonical path containment + installed manifest SHA-256/revision/factory validation",
+    "alsa_selected": "SMSL hw:3,0; S32LE 176400; PLAYING/EOS; selected endpoint exact; DAC DSD mode NOT claimed"
   },
   "tests": {
     "dop": "87 Python DoP tests + 1 hardware skip",
-    "full_suite": "6186 passed, 9 skipped, 0 failed (30:45)",
+    "full_suite": "6186 passed, 10 skipped, 0 failed (30:48)",
     "ci": {
-      "code_head": "8107cc4b72ed88ca7e8e72b4d9dcd8398565998c",
-      "run_id": 40120607660,
+      "code_head": "bc6a729546e70202b87f137d2fc35128da879cd4",
+      "run_id": 40143809460,
       "dac": "success",
       "min_qt": "success",
       "dop_native": "success",
@@ -51,8 +52,9 @@
     "corpus": "tests/dop/conformance: 9 vectors + schema + SHA-256 manifest; canonical 0x05/0xFA vector",
     "rust": "8 element/conformance tests + 1 shared-corpus test",
     "installed_corpus": "1 passed with GST_PLUGIN_PATH private prefix and MICHI_DOP_INSTALLED=1",
-    "dop_host": "1 real supervised host vertical",
-    "dop_eos": "5 EOS/cleanup identity tests"
+    "dop_host": "1 supervised host vertical",
+    "dop_eos": "5 EOS/cleanup identity tests",
+    "dop_alsa_selected": "1 passed under MICHI_RUN_DOP_HARDWARE=1 on SMSL hw:3,0"
   },
   "work_units": {
     "WU-F09-01_domain": "COMPLETE",
@@ -89,7 +91,7 @@
   },
   "score": {
     "method": "same frozen weights; no reweighting",
-    "f09_percent": 97,
+    "f09_percent": 98,
     "production_ready": false
   },
   "limitations": [
@@ -99,11 +101,10 @@
     "F14 physical remains NOT_RUN; F10/F11 out of scope."
   ],
   "next_work": [
-    "Gate B owner decision",
-    "wheel/AppImage/Flatpak/deb + SBOM",
-    "ALSA selected-endpoint host test",
-    "OutputSession/Playback/Truth integration behind Gate B",
-    "revalidate G4 and close F09"
+    "package and install plugin in wheel/app artifacts",
+    "wire OutputSession/Playback/Truth",
+    "revalidate four gates on installed product",
+    "formal F09 closure"
   ],
   "qualification": {
     "adapter": "src/michi/infrastructure/audio_devices/alsa_dop_probe.py",
@@ -118,27 +119,27 @@
   "exit_gates": {
     "F09-G1_byte_for_byte": {
       "status": "PASS",
-      "evidence": "Python + Rust + installed plugin golden/corpus"
+      "evidence": "Python/Rust/installed plugin corpus"
     },
     "F09-G2_chunk_phase": {
       "status": "PASS",
-      "evidence": "marker_phase, odd_chunk_split, Rust buffer continuity"
+      "evidence": "fragmentation/bit-reversal/marker phase invariants"
     },
     "F09-G3_channel_integrity": {
       "status": "PASS",
-      "evidence": "9-vector corpus with distinct L/R payload"
+      "evidence": "L/R corpus and fragmentation"
     },
     "F09-G4_exact_carrier_generation": {
-      "status": "PARTIAL_BLOCKED",
-      "evidence": "host fakesink negotiated S32LE 176400 with exact identity; selected-ALSA and Gate B remain blocked"
+      "status": "PASS",
+      "evidence": "selected SMSL hw:3,0 S32LE 176400, host/binding/plan identity, PLAYING/EOS; software carrier only"
     }
   },
   "blocked": [
-    "M13 Gate B external decision",
-    "wheel/AppImage/Flatpak/deb + SBOM",
-    "selected-ALSA DoP runtime",
-    "OutputSessionService/PlaybackService/Signal Truth production selection",
-    "F09-G4 closure",
-    "F14 physical/performance"
+    "distribution packaging wheel/AppImage/Flatpak/deb + SBOM/manifest",
+    "default app-private discovery installation",
+    "OutputSessionService DoP family",
+    "PlaybackService end-to-end DoP selection",
+    "SignalTruthRecorder DoP lifecycle",
+    "physical DSD-mode/F14"
   ]
 }
