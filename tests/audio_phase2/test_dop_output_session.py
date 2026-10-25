@@ -429,6 +429,29 @@ def test_unconfirmed_cleanup_blocks_new_acquisition_until_retry(tmp_path: Path) 
     assert session.pending_cleanup is None
 
 
+def test_async_prepare_fails_closed_on_unconfirmed_cleanup(tmp_path: Path) -> None:
+    plan = _plan()
+    tx = _Tx(plan)
+    tx.fail_abort = True
+    session = _session(plan, tx)
+    session.prepare_for_media(tmp_path / "track.dsf")
+    prepared = session._dop_prepared
+    session._dop_abort_quietly(prepared, "superseded_before_commit")
+
+    events: list[tuple[str, object]] = []
+    session.prepare_for_media_async(
+        tmp_path / "blocked-async.dsf",
+        lambda token: events.append(("prepared", token)),
+        lambda exc: events.append(("failed", exc)),
+    )
+
+    assert events and events[0][0] == "failed"
+    error = events[0][1]
+    assert isinstance(error, OutputSessionError)
+    assert error.code == "OUTPUT_OWNERSHIP_UNCONFIRMED"
+    assert session.pending_cleanup == ("dop", prepared)
+
+
 def test_async_prepare_fails_closed_on_pending_cleanup(tmp_path: Path) -> None:
     plan = _plan()
     tx = _Tx(plan)
