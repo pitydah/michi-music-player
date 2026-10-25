@@ -1000,6 +1000,10 @@ class GStreamerHostedAudioPort(AudioPort):
         return result
 
     def stop_dop(self, expected: dict[str, Any]) -> dict[str, Any]:
+        with self._lock:
+            already_released = not self._dop_active
+        if already_released:
+            return {"stopped": True, "already": True, "stale": False}
         self._require_dop_expected(expected)
         result = self._submit(
             HostOperation.STOP_DOP,
