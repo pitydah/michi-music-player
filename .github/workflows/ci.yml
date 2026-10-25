@@ -337,6 +337,7 @@ jobs:
           prefix=$(/tmp/michi-dop-wheel/bin/python -c             'from michi.infrastructure.audio_output.dop_plugin import installed_dop_prefix; print(installed_dop_prefix())')
           test -f "$prefix/michidop.manifest.json"
           GST_PLUGIN_PATH="$prefix" gst-inspect-1.0 michidop
+          MICHI_DOP_PREFIX="$prefix" GST_PLUGIN_PATH="$prefix"             MICHI_GST_LAB_SINK=fakesink             /tmp/michi-dop-wheel/bin/python -m pytest               tests/audio_phase2/test_dop_host_runtime.py               tests/audio_phase2/test_dop_product_e2e.py -q
 
       - name: Record artifact digest
         run: |

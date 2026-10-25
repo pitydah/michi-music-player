@@ -123,11 +123,8 @@ def test_playback_service_reaches_dop_playing_and_eos(tmp_path, monkeypatch) -> 
         execution_id = session.active_execution_id
         assert execution_id
         deadline = time.monotonic() + 8.0
-        while (
-            time.monotonic() < deadline
-            and session.notify_dop_eos(execution_id) is False
-        ):
-            # the host listener is authoritative; loop only while no EOS arrives
+        while time.monotonic() < deadline:
+            port.dispatch_pending()
             if session._dop_terminal_execution == execution_id:
                 break
             time.sleep(0.02)

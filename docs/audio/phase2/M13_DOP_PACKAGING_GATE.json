@@ -55,7 +55,7 @@
     "status": "APPROVED_AND_IMPLEMENTED",
     "authorization": "product owner explicit interactive decision",
     "scope": "distribution, app-private default discovery, OutputSession/Playback/Signal Truth wiring, selected-ALSA opt-in",
-    "packaging": "wheel + manifest + private discovery PASS",
-    "production_selection": "PENDING"
+    "packaging": "COMPLETE — wheel + manifest + private discovery",
+    "production_selection": "COMPLETE — canonical resolver/session/playback selected-ALSA e2e"
   }
 }

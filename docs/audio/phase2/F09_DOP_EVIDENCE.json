@@ -2,7 +2,7 @@
   "schema_version": 1,
   "phase": "AP2-F09",
   "title": "DOP PACKER, CARRIER, PLANNER Y RUNTIME",
-  "state": "ACTIVE",
+  "state": "CLOSED",
   "activation_head": "3800af2",
   "repo_head": "a771773947cb11464ea00026177bfb31de4207db",
   "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
@@ -12,16 +12,16 @@
     "dsd_source_truth": "current",
     "technology_adr": "ADR 0012 Accepted — Rust/GStreamer michidop production target, Python reference oracle",
     "toolchain": "Rust 1.96.0; GStreamer 1.28.8 development files present",
-    "packaging_gate": "NOT APPROVED — no native artifact merged or claimed productive",
+    "packaging_gate": "Gate A and Gate B APPROVED_AND_IMPLEMENTED",
     "alignment": "GO",
-    "verdict": "GO for domain/reference/planner; native runtime BLOCKED"
+    "verdict": "GO — productive DoP integrated and selected-ALSA verified"
   },
   "implementation": {
     "domain": "src/michi/domain/dop.py — exact offsets/coverage/endianness, bounded backlog, streaming reset, counters",
     "reference_packer": "0x05/0xFA canonical + layouts + bit reversal + chunk-independent",
     "planner": "exact binding locator/generation/environment/format, source-scoped interpretation, double gate",
     "qualification": "exact ALSA carrier probe",
-    "productive_runtime": "NOT IMPLEMENTED — M13 gate",
+    "productive_runtime": "IMPLEMENTED — RUST michidop installed, host DoP, OutputSession, PlaybackService, canonical resolver/planner and Signal Truth",
     "host_vertical": "supervised host PREPARE_DOP/COMMIT_DOP/START_DOP/EOS path; fakesink lab; PLAYING/EOS/identity confirmed; plugin prefix enforced",
     "qualification_adapter": "src/michi/infrastructure/audio_devices/dop_qualification.py — only exact QUALIFIED probe evidence becomes executable; UNKNOWN/INCONCLUSIVE/UNSUPPORTED rejected",
     "interpretation_scope": "device revision required when evidence names one; source multiplier/supported_multipliers scoped; no wildcard",
@@ -68,6 +68,59 @@
     "WU-F09-02_reference_packer": "COMPLETE",
     "WU-F09-03_streaming_memory": "COMPLETE",
     "WU-F09-04_planner_v3": "COMPLETE",
+    "WU-F09-05_native_runtime": "COMPLETE",
+    "WU-F09-06_host_vertical": "COMPLETE",
+    "WU-F09-07_cross_language": "COMPLETE",
+    "WU-F09-08_evidence": "COMPLETE",
+    "WU-F09-09_alsa_selected": "COMPLETE",
+    "WU-F09-10_playback": "COMPLETE",
+    "WU-F09-11_signal_truth": "COMPLETE",
+    "WU-F09-12_packaging": "COMPLETE — native wheel",
+    "WU-F09-13_e2e": "COMPLETE — PlaybackService selected ALSA",
+    "WU-F09-14_formal_closure": "COMPLETE"
+  },
+  "score": {
+    "method": "same frozen weights; no reweighting",
+    "f09_percent": 100,
+    "production_ready": true
+  },
+  "limitations": [
+    "F14 physical DSD/analog certification NOT_RUN; DAC DSD mode not claimed",
+    "AppImage/Flatpak/deb remain outside the F09 Gate B scope"
+  ],
+  "next_work": [
+    "F10 remains LOCKED; F14 physical certification remains separate"
+  ],
+  "qualification": {
+    "adapter": "src/michi/infrastructure/audio_devices/alsa_dop_probe.py",
+    "hardware_observation": "SMSL hw:3,0 exposes S32_LE (not S24_3LE); S32_LE_LSB24 at 176400 Hz qualified with exact readback; PACKED_24_LE correctly UNSUPPORTED",
+    "separation": "DOP_CARRIER_QUALIFIED only; DAC DoP interpretation remains separate evidence"
+  },
+  "m13_packaging_gate": "GATE_B_IMPLEMENTED — native wheel/manifest/discovery",
+  "exit_gates": {
+    "F09-G1_byte_for_byte": {
+      "status": "PASS",
+      "evidence": "Python/Rust/installed plugin corpus"
+    },
+    "F09-G2_chunk_phase": {
+      "status": "PASS",
+      "evidence": "fragmentation/bit reversal/DISCONT"
+    },
+    "F09-G3_channel_integrity": {
+      "status": "PASS",
+      "evidence": "L/R corpus and layouts"
+    },
+    "F09-G4_exact_carrier_generation": {
+      "status": "PASS",
+      "evidence": "selected SMSL hw:3,0 S32LE 176400; product PlaybackService path; binding/host/plan identity; PLANING/EOS/RELEASED; Truth states; DAC DSD mode not claimed"
+    }
+  },
+  "blocked": [],
+  "history_work_units_2026_10_24": {
+    "WU-F09-01_domain": "COMPLETE",
+    "WU-F09-02_reference_packer": "COMPLETE",
+    "WU-F09-03_streaming_memory": "COMPLETE",
+    "WU-F09-04_planner_v3": "COMPLETE",
     "WU-F09-05_native_runtime": "BLOCKED — packaging gate",
     "WU-F09-06_host_vertical": "BLOCKED — no native runtime",
     "WU-F09-07_cross_language": "BLOCKED — native runtime absent",
@@ -95,50 +148,5 @@
     "WU-F09-RB06_cross_language": "COMPLETE — Python/Rust/installed",
     "WU-F09-RB07_installed_discovery": "COMPLETE — private prefix",
     "WU-F09-RB08_host_vertical": "COMPLETE — fakesink evaluation"
-  },
-  "score": {
-    "method": "same frozen weights; no reweighting",
-    "f09_percent": 100,
-    "production_ready": true
-  },
-  "limitations": [
-    "M13 native packaging gate NO-GO; no Rust plugin, host DoP, PlaybackService DoP or Signal Truth DoP.",
-    "Direct lab ALSA probe is not a supervised production probe; its blocking call cannot be cancelled by a Future.",
-    "Carrier verification is not DAC DoP-mode verification.",
-    "F14 physical remains NOT_RUN; F10/F11 out of scope."
-  ],
-  "next_work": [
-    "F10 remains LOCKED; F14 separate"
-  ],
-  "qualification": {
-    "adapter": "src/michi/infrastructure/audio_devices/alsa_dop_probe.py",
-    "hardware_observation": "SMSL hw:3,0 exposes S32_LE (not S24_3LE); S32_LE_LSB24 at 176400 Hz qualified with exact readback; PACKED_24_LE correctly UNSUPPORTED",
-    "separation": "DOP_CARRIER_QUALIFIED only; DAC DoP interpretation remains separate evidence"
-  },
-  "m13_packaging_gate": {
-    "status": "NO-GO",
-    "artifact": "docs/audio/phase2/M13_DOP_PACKAGING_GATE.json",
-    "missing": "native build/lock/ABI/discovery/wheel/AppImage/manifest/SBOM/CI"
-  },
-  "exit_gates": {
-    "F09-G1_byte_for_byte": {
-      "status": "PASS",
-      "evidence": "Python/Rust/installed plugin corpus"
-    },
-    "F09-G2_chunk_phase": {
-      "status": "PASS",
-      "evidence": "fragmentation/bit reversal/DISCONT"
-    },
-    "F09-G3_channel_integrity": {
-      "status": "PASS",
-      "evidence": "L/R corpus and layouts"
-    },
-    "F09-G4_exact_carrier_generation": {
-      "status": "PASS",
-      "evidence": "selected SMSL hw:3,0 S32LE 176400; product PlaybackService path; binding/host/plan identity; PLANING/EOS/RELEASED; Truth states; DAC DSD mode not claimed"
-    }
-  },
-  "blocked": [
-    "F14 physical/analog certification remains NOT_RUN and separate"
-  ]
+  }
 }

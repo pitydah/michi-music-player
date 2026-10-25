@@ -1376,6 +1376,15 @@ class OutputSessionService:
             request, outcome, managed_prepared = value
             try:
                 if isinstance(managed_prepared, DopSessionPrepared):
+                    checker = self._dop_plan_still_current
+                    if checker is not None and not bool(checker(managed_prepared.plan)):
+                        self._dop_abort_quietly(
+                            managed_prepared, "binding_stale_before_ready"
+                        )
+                        raise OutputSessionError(
+                            "DOP_BINDING_STALE",
+                            "the DoP plan/binding changed before READY",
+                        )
                     token = self._begin_dop_session(
                         path,
                         request,
@@ -2510,6 +2519,8 @@ class OutputSessionService:
             and self._managed_prepared is not None
             or self._mode == "native_dsd"
             and self._native_dsd_prepared is not None
+            or self._mode == "dop"
+            and self._dop_prepared is not None
         )
         self._last_release_invalidated_media = was_specific
         if self._mode == "dop":
@@ -2869,6 +2880,13 @@ class OutputSessionService:
             and self._managed_plan is not None
             and self._state in _ACTIVE_STATES
             and self._managed_plan.stable_device_id == stable_device_id
+        ):
+            return True
+        if (
+            self._mode == "dop"
+            and self._dop_plan is not None
+            and self._state in _ACTIVE_STATES
+            and self._dop_plan.stable_device_id == stable_device_id
         ):
             return True
         previous = self._previous_direct
