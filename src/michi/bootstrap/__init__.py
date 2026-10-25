@@ -9,6 +9,7 @@ shutdown lifecycle.
 
 import contextlib
 import logging
+import os
 import sys
 from dataclasses import dataclass
 from enum import Enum
@@ -615,11 +616,24 @@ def _build_services(
         NativeDsdQualification,
     )
     from michi.application.dsd_source_characterizer import DsdSourceCharacterizer
-    from michi.application.output_session_service import NativeDsdSessionPrepared
+    from michi.application.output_session_service import (
+        DopSessionPrepared,
+        NativeDsdSessionPrepared,
+    )
+    from michi.infrastructure.audio_devices.alsa_dop_probe import (
+        DopCarrierProbeRequest,
+    )
     from michi.infrastructure.audio_devices.alsa_dsd_probe import (
         environment_fingerprint,
         probe_alsa_dsd,
     )
+    from michi.infrastructure.audio_devices.dop_probe_supervisor import (
+        probe_dop_carrier_supervised,
+    )
+    from michi.infrastructure.audio_devices.dop_qualification import (
+        qualification_from_probe,
+    )
+    from michi.infrastructure.audio_output.dop_runtime import DopOutputExecutor
     from michi.infrastructure.audio_output.native_dsd_executor import (
         NativeDsdOutputExecutor,
     )
@@ -627,6 +641,65 @@ def _build_services(
     dsd_characterizer = DsdSourceCharacterizer()
     dsd_planner = NativeDsdPlanner()
     dsd_environment = environment_fingerprint()
+
+    def _dop_policy(_source):
+        if os.environ.get("MICHI_DOP_EXPLICIT") != "1":
+            return None
+        from michi.domain.dop import DopInterpretationState, DopPolicyDecision
+
+        return DopPolicyDecision(
+            explicit_requested=True,
+            auto_allowed=False,
+            minimum_interpretation_state=DopInterpretationState.DECLARED,
+        )
+
+    def _dop_qualification(stable_device_id, binding, source):
+        from michi.domain.dop import DopCarrierLayout, memory_contract_for
+
+        layout = DopCarrierLayout.S32_LE_LSB24
+        contract = memory_contract_for(layout)
+        request = DopCarrierProbeRequest(
+            layout=layout,
+            alsa_format=contract.alsa_format,
+            rate_hz=source.dop_carrier_frames_per_second,
+        )
+        outcome = probe_dop_carrier_supervised(
+            stable_device_id,
+            binding.locator,
+            binding.generation,
+            request,
+            environment=dsd_environment,
+            timeout_s=3.0,
+            process_context="spawn",
+        )
+        if outcome.status != "OK" or outcome.evidence is None:
+            raise OutputSessionError(
+                "DOP_QUALIFICATION_FAILED", outcome.detail or outcome.status
+            )
+        return (
+            qualification_from_probe(
+                outcome.evidence, environment_fingerprint=dsd_environment
+            ),
+        )
+
+    def _dop_interpretation(stable_device_id, source):
+        from michi.domain.dop import (
+            DopDeviceInterpretationEvidence,
+            DopInterpretationState,
+        )
+
+        if os.environ.get("MICHI_DOP_EXPLICIT") != "1":
+            return ()
+        return (
+            DopDeviceInterpretationEvidence(
+                stable_device_id=stable_device_id,
+                source_dsd_multiplier=source.bit_rate_hz // 44_100,
+                state=DopInterpretationState.DECLARED,
+                source="user_setting:MICHI_DOP_EXPLICIT",
+                device_revision=None,
+                evidence_refs=("setting:MICHI_DOP_EXPLICIT",),
+            ),
+        )
 
     def _dsd_qualification(stable_device_id, binding, source):
         qualifications = []
@@ -682,6 +755,14 @@ def _build_services(
         dsd_source_characterizer=dsd_characterizer,
         dsd_planner=dsd_planner,
         dsd_qualification=_dsd_qualification,
+        dop_policy_provider=_dop_policy,
+        dop_qualification=_dop_qualification,
+        dop_interpretation=_dop_interpretation,
+        dop_host_generation=lambda: int(
+            gstreamer_provider.current_supervisor.host_generation
+        ),
+        dop_environment_fingerprint=lambda: dsd_environment,
+        dop_device_revision=lambda _device: None,
     )
     preparation_executor = output_preparation_executor or QtAsyncCallExecutor()
     # AP2-F05 Package A: ONE processing authority over the SAME hosted host.
@@ -1023,6 +1104,55 @@ def _build_services(
                 return {"released": True, "already": True}
             raise
 
+    def _dop_executor() -> DopOutputExecutor:
+        port = gstreamer_provider.current_port
+        if port is None:
+            raise OutputSessionError(
+                "DOP_HOST_UNAVAILABLE", "no hosted GStreamer port is open"
+            )
+        return DopOutputExecutor(port)
+
+    def _dop_prepare(plan, path, instance_id):
+        prepared = _dop_executor().prepare(plan, path)
+        port = gstreamer_provider.current_port
+        if port is not None and hasattr(port, "add_dop_eos_listener"):
+            port.add_dop_eos_listener(output_session.notify_dop_eos)
+        return DopSessionPrepared(
+            plan=plan,
+            execution_id=plan.execution_id,
+            stable_device_id=plan.stable_device_id,
+            runtime_identity=dict(prepared.identity),
+            evidence_refs=(
+                *plan.carrier_evidence_refs,
+                *plan.interpretation_evidence_refs,
+            ),
+            handle=prepared,
+        )
+
+    def _dop_commit(prepared: DopSessionPrepared) -> None:
+        if prepared.handle is None:
+            raise OutputSessionError("DOP_OUTPUT_MISSING", "no prepared handle")
+        _dop_executor().commit(prepared.handle)
+
+    def _dop_abort(prepared: DopSessionPrepared, reason: str) -> dict:
+        if prepared.handle is None:
+            return {"aborted": True, "already": True}
+        return _dop_executor().abort(prepared.handle, reason)
+
+    def _dop_stop(prepared: DopSessionPrepared, reason: str) -> dict:
+        if prepared.handle is None:
+            return {"stopped": True, "already": True}
+        return _dop_executor().stop(prepared.handle, reason)
+
+    def _dop_plan_still_current(plan) -> bool:
+        return any(
+            binding.kind is BindingKind.ALSA_PCM
+            and binding.currently_available
+            and binding.generation == plan.binding_generation
+            and binding.locator == plan.binding_locator
+            for binding in audio_devices.bindings_for(plan.stable_device_id)
+        )
+
     def _native_plan_still_current(plan) -> bool:
         return any(
             binding.kind is BindingKind.ALSA_PCM
@@ -1055,6 +1185,11 @@ def _build_services(
         native_dsd_abort=_native_abort,
         native_dsd_stop=_native_stop,
         native_dsd_plan_still_current=_native_plan_still_current,
+        dop_prepare=_dop_prepare,
+        dop_commit=_dop_commit,
+        dop_abort=_dop_abort,
+        dop_stop=_dop_stop,
+        dop_plan_still_current=_dop_plan_still_current,
         truth_recorder=signal_truth,
     )
     from michi.application.volume_policy_service import VolumePolicyService
