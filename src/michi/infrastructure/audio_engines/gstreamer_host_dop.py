@@ -143,19 +143,30 @@ class DopHostRuntime:
         return gst
 
     def _plugin(self, gst) -> Any:
+        from michi.infrastructure.audio_output.dop_plugin import resolve_dop_prefix
+
+        try:
+            root = resolve_dop_prefix()
+        except RuntimeError as exc:
+            raise DopHostError("DOP_RUNTIME_UNAVAILABLE", str(exc)) from exc
         factory = gst.ElementFactory.find("michidop")
+        if factory is None:
+            registry = gst.Registry.get()
+            for candidate in (root, root / "lib/gstreamer-1.0"):
+                if candidate.is_dir():
+                    registry.scan_path(str(candidate))
+            factory = gst.ElementFactory.find("michidop")
         if factory is None:
             raise DopHostError(
                 "DOP_PLUGIN_UNAVAILABLE",
                 "michidop is not registered in the host plugin registry",
             )
-        expected = os.environ.get("MICHI_DOP_PLUGIN_PREFIX", "").strip()
-        if not expected:
-            raise DopHostError(
-                "DOP_PLUGIN_PREFIX_REQUIRED",
-                "Gate A requires an explicit private plugin prefix",
-            )
-        root = Path(expected).resolve()
+        from michi.infrastructure.audio_output.dop_plugin import resolve_dop_prefix
+
+        try:
+            root = resolve_dop_prefix()
+        except RuntimeError as exc:
+            raise DopHostError("DOP_RUNTIME_UNAVAILABLE", str(exc)) from exc
         plugin = factory.get_plugin()
         filename = plugin.get_filename() if plugin is not None else None
         if not filename:
@@ -166,7 +177,9 @@ class DopHostRuntime:
                 "DOP_PLUGIN_NOT_PRIVATE",
                 f"michidop loaded outside the Gate A prefix: {path}",
             )
-        manifest = (root / "lib/gstreamer-1.0/michidop.manifest.json").resolve()
+        manifest = (root / "michidop.manifest.json").resolve()
+        if not manifest.is_file():
+            manifest = (root / "lib/gstreamer-1.0/michidop.manifest.json").resolve()
         if not manifest.is_relative_to(root) or not manifest.is_file():
             raise DopHostError(
                 "DOP_PLUGIN_MANIFEST_REQUIRED",
