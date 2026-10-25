@@ -367,6 +367,21 @@ class ProductiveOutputRequestResolver:
             Callable[[str, object, DsdSignalFormat], tuple[NativeDsdQualification, ...]]
             | None
         ) = None,
+        dop_policy_provider: Callable[[DsdSignalFormat], DopPolicyDecision | None]
+        | None = None,
+        dop_qualification: (
+            Callable[[str, object, DsdSignalFormat], tuple[object, ...]] | None
+        ) = None,
+        dop_interpretation: (
+            Callable[
+                [str, DsdSignalFormat], tuple[DopDeviceInterpretationEvidence, ...]
+            ]
+            | None
+        ) = None,
+        dop_host_generation: Callable[[], int] | None = None,
+        dop_environment_fingerprint: Callable[[], str] | None = None,
+        dop_device_revision: Callable[[str], str | None] | None = None,
+        dop_layout_preference: tuple[DopCarrierLayout, ...] | None = None,
     ) -> None:
         self._profiles = profiles
         self._devices = devices
@@ -377,6 +392,14 @@ class ProductiveOutputRequestResolver:
         self._dsd_source_characterizer = dsd_source_characterizer
         self._dsd_planner = dsd_planner
         self._dsd_qualification = dsd_qualification
+        self._dop_planner = DopPlannerV3() if dop_policy_provider else None
+        self._dop_policy_provider = dop_policy_provider
+        self._dop_qualification = dop_qualification
+        self._dop_interpretation = dop_interpretation
+        self._dop_host_generation = dop_host_generation
+        self._dop_environment_fingerprint = dop_environment_fingerprint
+        self._dop_device_revision = dop_device_revision
+        self._dop_layout_preference = dop_layout_preference
 
     def snapshot_output_intent(self):
         """Immutable output-intent snapshot (monotonic revision + ids).
@@ -480,6 +503,64 @@ class ProductiveOutputRequestResolver:
                         "DSD_QUALIFICATION_UNAVAILABLE",
                         "no Native DSD qualification is composed",
                     )
+                dop_policy = (
+                    self._dop_policy_provider(dsd.signal)
+                    if self._dop_policy_provider is not None
+                    else None
+                )
+                if dop_policy is not None:
+                    if (
+                        self._dop_qualification is None
+                        or self._dop_interpretation is None
+                        or self._dop_host_generation is None
+                        or self._dop_environment_fingerprint is None
+                    ):
+                        raise OutputSessionError(
+                            "DOP_AUTHORITIES_UNAVAILABLE",
+                            "DoP policy selected but its authorities are not composed",
+                        )
+                    if profile.volume_policy is VolumePolicy.SOFTWARE:
+                        raise OutputSessionError(
+                            "DOP_VOLUME_POLICY_UNSUPPORTED",
+                            "DoP cannot use software volume on the carrier",
+                        )
+                    try:
+                        dop_plan = self._dop_planner.plan(
+                            stable_device_id=selected_device_id,
+                            binding_locator=binding.locator,
+                            binding_generation=binding.generation,
+                            execution_id=f"dop-exec:{next(_EXECUTION_INSTANCE_SEQ)}",
+                            host_generation=self._dop_host_generation(),
+                            environment_fingerprint=self._dop_environment_fingerprint(),
+                            source=dsd.signal,
+                            carrier_qualifications=self._dop_qualification(
+                                selected_device_id, binding, dsd.signal
+                            ),
+                            interpretation=self._dop_interpretation(
+                                selected_device_id, dsd.signal
+                            ),
+                            policy=dop_policy,
+                            layout_preference=(
+                                self._dop_layout_preference
+                                if self._dop_layout_preference is not None
+                                else (
+                                    DopCarrierLayout.PACKED_24_LE,
+                                    DopCarrierLayout.S32_LE_LSB24,
+                                )
+                            ),
+                            processing_active=False,
+                            volume_authority="hardware",
+                            active_engine_id=active.value,
+                            binding_current=binding.currently_available,
+                            current_device_revision=(
+                                self._dop_device_revision(selected_device_id)
+                                if self._dop_device_revision is not None
+                                else None
+                            ),
+                        )
+                    except DopPlannerError as exc:
+                        raise OutputSessionError(exc.code, exc.detail) from exc
+                    return OutputRequest.dop(dop_plan, selection.selected_profile_id)
                 qualifications = self._dsd_qualification(
                     selected_device_id, binding, dsd.signal
                 )
