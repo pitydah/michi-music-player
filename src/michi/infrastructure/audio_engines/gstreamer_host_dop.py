@@ -429,7 +429,8 @@ class DopHostRuntime:
         self._committed = True
         return {"committed": True, "identity": dict(self._identity or {})}
 
-    def start(self) -> dict[str, Any]:
+    def start(self, expected: dict[str, Any] | None) -> dict[str, Any]:
+        self._require_expected(expected)
         if not self._committed or self._pipeline is None:
             raise DopHostError("DOP_HOST_NOT_COMMITTED", "commit before start")
         if self._errors:
@@ -455,7 +456,8 @@ class DopHostRuntime:
             )
         return True
 
-    def pause(self) -> dict[str, Any]:
+    def pause(self, expected: dict[str, Any] | None) -> dict[str, Any]:
+        self._require_expected(expected)
         if self._pipeline is None:
             raise DopHostError("DOP_HOST_NOT_PREPARED", "no DoP pipeline")
         self._pipeline.set_state(self._gst.State.PAUSED)
@@ -464,7 +466,8 @@ class DopHostRuntime:
             "confirmed": self._confirm(self._gst.State.PAUSED, "PAUSED"),
         }
 
-    def resume(self) -> dict[str, Any]:
+    def resume(self, expected: dict[str, Any] | None) -> dict[str, Any]:
+        self._require_expected(expected)
         if not self._committed or self._pipeline is None:
             raise DopHostError("DOP_HOST_NOT_COMMITTED", "commit before resume")
         self._pipeline.set_state(self._gst.State.PLAYING)

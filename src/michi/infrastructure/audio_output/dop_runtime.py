@@ -184,19 +184,19 @@ class DopOutputExecutor:
         return self._port.commit_dop(self._expected(prepared.plan))
 
     def start(self, prepared: DopPrepared) -> dict[str, Any]:
-        result = self._port.start_dop()
+        result = self._port.start_dop(self._expected(prepared.plan))
         if result.get("confirmed") is not True:
             raise DopExecutionError("DOP_PLAYING_NOT_CONFIRMED", "host did not confirm")
         return result
 
     def pause(self, prepared: DopPrepared) -> dict[str, Any]:
-        result = self._port.pause_dop()
+        result = self._port.pause_dop(self._expected(prepared.plan))
         if result.get("confirmed") is not True:
             raise DopExecutionError("DOP_PAUSE_NOT_CONFIRMED", "host did not confirm")
         return result
 
     def resume(self, prepared: DopPrepared) -> dict[str, Any]:
-        result = self._port.resume_dop()
+        result = self._port.resume_dop(self._expected(prepared.plan))
         if result.get("confirmed") is not True:
             raise DopExecutionError("DOP_RESUME_NOT_CONFIRMED", "host did not confirm")
         return result

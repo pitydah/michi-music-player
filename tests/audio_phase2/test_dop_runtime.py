@@ -108,3 +108,64 @@ def test_executor_rejects_host_generation_mismatch(tmp_path: Path) -> None:
     with pytest.raises(DopExecutionError) as info:
         DopOutputExecutor(port).prepare(plan, source)
     assert info.value.code == "DOP_HOST_IDENTITY_MISMATCH"
+
+
+def test_executor_threads_plan_identity_into_start_pause_resume(tmp_path: Path) -> None:
+    source = tmp_path / "track.dsf"
+    source.write_bytes(b"DSD ")
+    plan = _plan()
+    port = _Port(plan)
+    expected: list[dict] = []
+
+    def start(value):
+        expected.append(value)
+        return {"state": "PLAYING", "confirmed": True}
+
+    def pause(value):
+        expected.append(value)
+        return {"confirmed": True}
+
+    def resume(value):
+        expected.append(value)
+        return {"confirmed": True}
+
+    port.start_dop = start
+    port.pause_dop = pause
+    port.resume_dop = resume
+    executor = DopOutputExecutor(port)
+    prepared = executor.prepare(plan, source)
+    executor.start(prepared)
+    executor.pause(prepared)
+    executor.resume(prepared)
+    assert len(expected) == 3
+    assert all(item["execution_id"] == plan.execution_id for item in expected)
+    assert all(item["host_generation"] == plan.host_generation for item in expected)
+
+
+def test_child_runtime_rejects_stale_start_identity() -> None:
+    from michi.infrastructure.audio_engines.gstreamer_host_dop import (
+        DopHostError,
+        DopHostRuntime,
+    )
+
+    runtime = DopHostRuntime()
+    runtime._identity = {
+        "plan_id": "plan:new",
+        "execution_id": "exec:new",
+        "stable_device_id": "dev:dac",
+        "device": "hw:3,0",
+        "binding_generation": 7,
+        "host_generation": 2,
+    }
+    with pytest.raises(DopHostError) as info:
+        runtime.start(
+            {
+                "plan_id": "plan:old",
+                "execution_id": "exec:old",
+                "stable_device_id": "dev:dac",
+                "device": "hw:3,0",
+                "binding_generation": 7,
+                "host_generation": 2,
+            }
+        )
+    assert info.value.code == "DOP_HOST_IDENTITY_MISMATCH"

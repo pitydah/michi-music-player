@@ -955,14 +955,19 @@ class GStreamerHostedAudioPort(AudioPort):
         self._enqueue(lambda: self._commit_state(PlaybackStatus.STOPPED))
         return result
 
-    def start_dop(self) -> dict[str, Any]:
+    def start_dop(self, expected: dict[str, Any] | None = None) -> dict[str, Any]:
         with self._lock:
             if not self._dop_active:
                 raise AudioTransportCommandError(
                     "DOP_NOT_PREPARED: no DoP execution is active"
                 )
+            if expected is None:
+                expected = dict(self._dop_expected or {})
+        self._require_dop_expected(expected)
         result = self._submit(
-            HostOperation.START_DOP, {}, deadline_s=self._command_deadline_s
+            HostOperation.START_DOP,
+            {"expected": dict(expected)},
+            deadline_s=self._command_deadline_s,
         )
         if result.get("confirmed") is not True:
             raise OutputHostCommandError(
@@ -973,9 +978,14 @@ class GStreamerHostedAudioPort(AudioPort):
         self._enqueue(lambda: self._commit_state(PlaybackStatus.PLAYING))
         return result
 
-    def pause_dop(self) -> dict[str, Any]:
+    def pause_dop(self, expected: dict[str, Any] | None = None) -> dict[str, Any]:
+        if expected is None:
+            expected = dict(self._dop_expected or {})
+        self._require_dop_expected(expected)
         result = self._submit(
-            HostOperation.PAUSE_DOP, {}, deadline_s=self._command_deadline_s
+            HostOperation.PAUSE_DOP,
+            {"expected": dict(expected)},
+            deadline_s=self._command_deadline_s,
         )
         if result.get("confirmed") is not True:
             raise OutputHostCommandError(
@@ -986,9 +996,14 @@ class GStreamerHostedAudioPort(AudioPort):
         self._enqueue(lambda: self._commit_state(PlaybackStatus.PAUSED))
         return result
 
-    def resume_dop(self) -> dict[str, Any]:
+    def resume_dop(self, expected: dict[str, Any] | None = None) -> dict[str, Any]:
+        if expected is None:
+            expected = dict(self._dop_expected or {})
+        self._require_dop_expected(expected)
         result = self._submit(
-            HostOperation.RESUME_DOP, {}, deadline_s=self._command_deadline_s
+            HostOperation.RESUME_DOP,
+            {"expected": dict(expected)},
+            deadline_s=self._command_deadline_s,
         )
         if result.get("confirmed") is not True:
             raise OutputHostCommandError(

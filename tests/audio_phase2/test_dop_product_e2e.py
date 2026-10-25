@@ -21,6 +21,8 @@ from tests.audio_phase2.test_dop_resolver import _resolver
 from tests.audio_phase2.test_dsd_source_truth import build_dsf
 
 _HAS_GI = importlib.util.find_spec("gi") is not None
+
+
 def _resolved_prefix():
     from michi.infrastructure.audio_output.dop_plugin import resolve_dop_prefix
 
@@ -132,6 +134,21 @@ def test_playback_service_reaches_dop_playing_and_eos(tmp_path, monkeypatch) -> 
         assert session.mode == "dop"
         assert session.state is OutputSessionState.RUNNING
         assert session.dop_active is True
+        execution_id = session.active_execution_id
+        assert execution_id
+        deadline = time.monotonic() + 8.0
+        while time.monotonic() < deadline:
+            port.dispatch_pending()
+            if session._dop_terminal_execution == execution_id:
+                break
+            time.sleep(0.02)
+        assert session._dop_terminal_execution == execution_id
+        playback.stop()
+        assert session.state is OutputSessionState.IDLE
+        accepted.clear()
+        playback.load_and_play(source, on_accepted=accepted.append)
+        assert accepted == [source]
+        assert session.mode == "dop"
         execution_id = session.active_execution_id
         assert execution_id
         deadline = time.monotonic() + 8.0

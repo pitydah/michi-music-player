@@ -758,19 +758,19 @@ class HostEngineSession:
 
     def _op_start_dop(self, payload: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
         try:
-            return True, self._dop.start()
+            return True, self._dop.start(payload.get("expected"))
         except DopHostError as exc:
             return False, {"code": exc.code, "detail": exc.detail}
 
     def _op_pause_dop(self, payload: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
         try:
-            return True, self._dop.pause()
+            return True, self._dop.pause(payload.get("expected"))
         except DopHostError as exc:
             return False, {"code": exc.code, "detail": exc.detail}
 
     def _op_resume_dop(self, payload: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
         try:
-            return True, self._dop.resume()
+            return True, self._dop.resume(payload.get("expected"))
         except DopHostError as exc:
             return False, {"code": exc.code, "detail": exc.detail}
 
