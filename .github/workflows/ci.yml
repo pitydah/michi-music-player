@@ -328,6 +328,15 @@ jobs:
         run: |
           python -m pytest tests/audio_phase2/test_dop_host_runtime.py -q
 
+      - name: Build and install platform wheel
+        run: |
+          MICHI_BUILD_DOP=1 python -m build --wheel --outdir dist-native
+          python -m venv --system-site-packages /tmp/michi-dop-wheel
+          /tmp/michi-dop-wheel/bin/pip install --no-deps dist-native/*.whl
+          prefix=$(/tmp/michi-dop-wheel/bin/python -c             'from michi.infrastructure.audio_output.dop_plugin import installed_dop_prefix; print(installed_dop_prefix())')
+          test -f "$prefix/michidop.manifest.json"
+          GST_PLUGIN_PATH="$prefix" gst-inspect-1.0 michidop
+
       - name: Record artifact digest
         run: |
           mkdir -p artifacts
