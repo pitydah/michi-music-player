@@ -40,8 +40,9 @@
     "native_runtime": "GATE_A_COMPLETE — michidop built/installed/conformant",
     "host_vertical": "GATE_A_COMPLETE — supervised fakesink DoP vertical",
     "production_selection": "PENDING — packaging and services not wired",
-    "f09_exit_gates": "G1/G2/G3/G4 PASS (G4 selected-ALSA software carrier)",
-    "f09_percent": 98,
-    "m13_gate_b": "APPROVED 2026-10-24; packaging/integration pending"
+    "f09_exit_gates": "G1/G2/G3/G4 software PASS; selected-ALSA product run pending",
+    "f09_percent": 99,
+    "m13_gate_b": "APPROVED 2026-10-24; packaging/integration pending",
+    "product_e2e": "PASS controlled sink"
   }
 }
