@@ -321,6 +321,18 @@ class NativeDsdSessionPrepared:
 
 
 @dataclass(frozen=True, slots=True)
+class DopSessionPrepared:
+    """Worker-phase DoP execution committed by the owner."""
+
+    plan: DopExecutionPlanV2
+    execution_id: str
+    stable_device_id: str
+    runtime_identity: dict
+    evidence_refs: tuple[str, ...]
+    handle: object | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class ManagedOutputPrepared:
     """Worker-phase managed execution, committed by the owner.
 
@@ -783,6 +795,13 @@ class OutputSessionService:
         native_dsd_plan_still_current: (
             Callable[[NativeDsdOutputPlan], bool] | None
         ) = None,
+        dop_prepare: (
+            Callable[[DopExecutionPlanV2, Path, str], DopSessionPrepared] | None
+        ) = None,
+        dop_commit: (Callable[[DopSessionPrepared], None] | None) = None,
+        dop_abort: (Callable[[DopSessionPrepared, str], dict] | None) = None,
+        dop_stop: (Callable[[DopSessionPrepared, str], dict] | None) = None,
+        dop_plan_still_current: (Callable[[DopExecutionPlanV2], bool] | None) = None,
         truth_recorder=None,
     ) -> None:
         self._planner = planner
@@ -801,6 +820,11 @@ class OutputSessionService:
         self._native_dsd_abort = native_dsd_abort
         self._native_dsd_stop = native_dsd_stop
         self._native_dsd_plan_still_current = native_dsd_plan_still_current
+        self._dop_prepare = dop_prepare
+        self._dop_commit = dop_commit
+        self._dop_abort = dop_abort
+        self._dop_stop = dop_stop
+        self._dop_plan_still_current = dop_plan_still_current
         # ADDITIVE: the ONE canonical recorder (never a second one).
         self._truth_recorder = truth_recorder
         self._execution_instance_epoch = next(_EXECUTION_INSTANCE_SEQ)
@@ -816,6 +840,11 @@ class OutputSessionService:
         self._native_dsd_prepared: NativeDsdSessionPrepared | None = None
         self._native_eos_execution: str | None = None
         self._native_terminal_execution: str | None = None
+        self._dop_plan: DopExecutionPlanV2 | None = None
+        self._dop_prepared: DopSessionPrepared | None = None
+        self._dop_playing_execution: str | None = None
+        self._dop_eos_execution: str | None = None
+        self._dop_terminal_execution: str | None = None
         self._selected_device_id: str | None = None
         self._selected_profile_id: str | None = None
         self._error_code: str | None = None
@@ -853,6 +882,12 @@ class OutputSessionService:
     @property
     def active_device_id(self) -> str | None:
         if (
+            self._mode == "dop"
+            and self._state in _ACTIVE_STATES
+            and self._dop_plan is not None
+        ):
+            return self._dop_plan.stable_device_id
+        if (
             self._mode == "native_dsd"
             and self._state in _ACTIVE_STATES
             and self._native_dsd_plan is not None
@@ -887,6 +922,13 @@ class OutputSessionService:
         presentation layer must correlate against; a historical RUNNING event
         is never sufficient.
         """
+        dop = self._dop_prepared
+        if self._mode == "dop" and dop is not None:
+            return (
+                dop.execution_id
+                if self._state in (OutputSessionState.READY, OutputSessionState.RUNNING)
+                else None
+            )
         native = self._native_dsd_prepared
         if self._mode == "native_dsd" and native is not None:
             return (
@@ -962,6 +1004,38 @@ class OutputSessionService:
         self._notify()
         return True
 
+    def notify_dop_playing(self, execution_id: str) -> bool:
+        prepared = self._dop_prepared
+        if (
+            not isinstance(execution_id, str)
+            or not execution_id.strip()
+            or self._mode != "dop"
+            or self._state is not OutputSessionState.RUNNING
+            or prepared is None
+            or self._dop_terminal_execution == prepared.execution_id
+            or self._dop_playing_execution == execution_id
+            or execution_id != prepared.execution_id
+        ):
+            return False
+        self._dop_playing_execution = execution_id
+        self._record_dop_family(OutputFamilyState.RUNNING, prepared)
+        return True
+
+    def notify_dop_eos(self, execution_id: str) -> bool:
+        prepared = self._dop_prepared
+        if (
+            not isinstance(execution_id, str)
+            or self._mode != "dop"
+            or prepared is None
+            or execution_id != prepared.execution_id
+            or self._dop_terminal_execution == execution_id
+        ):
+            return False
+        self._dop_eos_execution = execution_id
+        self._dop_terminal_execution = execution_id
+        self._record_dop_family(OutputFamilyState.UNAVAILABLE, prepared, detail="eos")
+        return True
+
     def notify_native_dsd_eos(self, execution_id: str) -> bool:
         if (
             self._mode == "native_dsd"
@@ -995,6 +1069,15 @@ class OutputSessionService:
             return False
         self._record_native_dsd_family(OutputFamilyState.RUNNING)
         return True
+
+    @property
+    @property
+    def dop_active(self) -> bool:
+        return (
+            self._mode == "dop"
+            and self._state in _ACTIVE_STATES
+            and self._dop_prepared is not None
+        )
 
     @property
     def native_dsd_active(self) -> bool:
@@ -1034,6 +1117,8 @@ class OutputSessionService:
 
     @property
     def requires_release_on_media_loss(self) -> bool:
+        if self._mode == "dop":
+            return self._dop_prepared is not None
         if self._mode == "native_dsd":
             return self._native_dsd_prepared is not None
         if self._mode == "managed":
@@ -1041,6 +1126,8 @@ class OutputSessionService:
         return self._mode == "direct" and self._executor is not None
 
     def allows_automatic_engine_fallback(self) -> bool:
+        if self._mode in ("native_dsd", "dop"):
+            return False
         if self._mode == "native_dsd":
             return False
         if self._state is OutputSessionState.LOST:
@@ -1059,6 +1146,19 @@ class OutputSessionService:
         return "load_failed" if previous_source_preserved else "load_failed_source_lost"
 
     def selection_state(self) -> OutputSelectionState:
+        if (
+            self._mode == "dop"
+            and self._state in _ACTIVE_STATES
+            and self._dop_plan is not None
+        ):
+            return OutputSelectionState(
+                selected_device_id=self._selected_device_id,
+                selected_profile_id=self._selected_profile_id,
+                active_device_id=self._dop_plan.stable_device_id,
+                active_plan_id=self._dop_plan.plan_id,
+                session_state=self._state,
+                error_code=self._error_code,
+            )
         if (
             self._mode == "native_dsd"
             and self._state in _ACTIVE_STATES
@@ -1184,6 +1284,10 @@ class OutputSessionService:
 
         def work():
             request = self._request_for(path)
+            dop_plan = getattr(request, "dop_plan", None)
+            if dop_plan is not None:
+                prepared = self._run_dop_prepare(path, dop_plan, managed_instance_id)
+                return request, None, prepared
             native_plan = getattr(request, "native_dsd_plan", None)
             if native_plan is not None:
                 prepared = self._run_native_dsd_prepare(
@@ -1211,7 +1315,10 @@ class OutputSessionService:
         def _prepared_from(value):
             if not isinstance(value, tuple) or len(value) != 3:
                 return None
-            if isinstance(value[2], (ManagedOutputPrepared, NativeDsdSessionPrepared)):
+            if isinstance(
+                value[2],
+                (ManagedOutputPrepared, NativeDsdSessionPrepared, DopSessionPrepared),
+            ):
                 return value[2]
             return None
 
@@ -1221,7 +1328,9 @@ class OutputSessionService:
                 # MUST be stopped: a superseded preparation never keeps
                 # playing or holds the selected device.
                 prepared_value = _prepared_from(value)
-                if isinstance(prepared_value, NativeDsdSessionPrepared):
+                if isinstance(prepared_value, DopSessionPrepared):
+                    self._dop_abort_quietly(prepared_value, "superseded_before_commit")
+                elif isinstance(prepared_value, NativeDsdSessionPrepared):
                     self._native_dsd_abort_quietly(
                         prepared_value, "superseded_before_commit"
                     )
@@ -1246,7 +1355,11 @@ class OutputSessionService:
             # equality (ABA) insufficient to pass.
             if intent is not None and self._capture_output_intent() != intent:
                 prepared_value = _prepared_from(value)
-                if isinstance(prepared_value, NativeDsdSessionPrepared):
+                if isinstance(prepared_value, DopSessionPrepared):
+                    self._dop_abort_quietly(
+                        prepared_value, "intent_changed_before_commit"
+                    )
+                elif isinstance(prepared_value, NativeDsdSessionPrepared):
                     self._native_dsd_abort_quietly(
                         prepared_value, "intent_changed_before_commit"
                     )
@@ -1263,6 +1376,15 @@ class OutputSessionService:
                 return
             request, outcome, managed_prepared = value
             try:
+                if isinstance(managed_prepared, DopSessionPrepared):
+                    token = self._begin_dop_session(
+                        path,
+                        request,
+                        managed_prepared,
+                        previous_direct=self._committed_direct_snapshot(),
+                    )
+                    on_prepared(token)
+                    return
                 if isinstance(managed_prepared, NativeDsdSessionPrepared):
                     token = self._begin_native_dsd_session(
                         path,
@@ -1318,6 +1440,9 @@ class OutputSessionService:
                 cancel()
 
     def _prepare_request(self, path: Path, request: OutputRequest) -> str:
+        dop_plan = getattr(request, "dop_plan", None)
+        if dop_plan is not None:
+            return self._prepare_dop_request(path, request)
         native_plan = getattr(request, "native_dsd_plan", None)
         if native_plan is not None:
             return self._prepare_native_dsd_request(path, request)
@@ -1573,6 +1698,185 @@ class OutputSessionService:
             previous_direct=self._committed_direct_snapshot(),
         )
 
+    def _run_dop_prepare(
+        self, path: Path, plan: DopExecutionPlanV2, instance_id: str
+    ) -> DopSessionPrepared:
+        if self._dop_prepare is None:
+            raise OutputSessionError(
+                "DOP_OUTPUT_UNAVAILABLE",
+                "no DoP preparation is composed for this session",
+            )
+        self._dop_plan = plan
+        try:
+            prepared = self._dop_prepare(plan, path, instance_id)
+        except OutputSessionError:
+            raise
+        except Exception as exc:  # noqa: BLE001 - typed owner boundary
+            code = getattr(exc, "code", "DOP_OUTPUT_PREPARE_FAILED")
+            raise OutputSessionError(code, str(exc)) from exc
+        if not isinstance(prepared, DopSessionPrepared):
+            raise OutputSessionError(
+                "DOP_OUTPUT_PREPARE_FAILED",
+                "DoP preparation returned an invalid value",
+            )
+        if (
+            prepared.plan != plan
+            or prepared.execution_id != plan.execution_id
+            or prepared.stable_device_id != plan.stable_device_id
+        ):
+            self._dop_abort_quietly(prepared, "identity_mismatch")
+            raise OutputSessionError(
+                "DOP_OUTPUT_PREPARE_FAILED",
+                "DoP preparation does not match the plan identity",
+            )
+        return prepared
+
+    def _dop_abort_quietly(
+        self, prepared: DopSessionPrepared | None, reason: str
+    ) -> None:
+        if prepared is None or self._dop_abort is None:
+            return
+        with suppress(Exception):
+            self._dop_abort(prepared, reason)
+
+    def _record_dop_family(
+        self,
+        state: OutputFamilyState,
+        prepared: DopSessionPrepared | None = None,
+        *,
+        detail: str | None = None,
+    ) -> None:
+        recorder = self._truth_recorder
+        if recorder is None:
+            return
+        current = prepared or self._dop_prepared
+        plan = current.plan if current is not None else self._dop_plan
+        if plan is None:
+            return
+        with suppress(Exception):
+            recorder.record_output_family_event(
+                OutputFamilyEvent(
+                    family="dop",
+                    state=state,
+                    device_id=plan.stable_device_id,
+                    execution_id=current.execution_id if current else None,
+                    processing_plan_id=None,
+                    transform_policy=("dop",),
+                    runtime_identity=(
+                        dict(current.runtime_identity) if current is not None else {}
+                    ),
+                    bit_perfect=None,
+                    detail=detail,
+                )
+            )
+
+    def _prepare_dop_request(self, path: Path, request: OutputRequest) -> str:
+        plan = request.dop_plan
+        if plan is None:
+            raise OutputSessionError("DOP_PLAN_MISSING", "no plan")
+        if self._dop_prepare is None:
+            raise OutputSessionError(
+                "DOP_OUTPUT_UNAVAILABLE",
+                "no DoP preparation is composed for this session",
+            )
+        checker = self._dop_plan_still_current
+        if checker is not None and not bool(checker(plan)):
+            raise OutputSessionError(
+                "DOP_BINDING_STALE", "the DoP binding or plan is stale"
+            )
+        prepared = self._run_dop_prepare(path, plan, self._new_managed_instance())
+        return self._begin_dop_session(
+            path, request, prepared, previous_direct=self._committed_direct_snapshot()
+        )
+
+    def _begin_dop_session(
+        self,
+        path: Path,
+        request: OutputRequest,
+        prepared: DopSessionPrepared,
+        *,
+        previous_direct: _DirectSessionSnapshot | None,
+    ) -> str:
+        if request.dop_plan is None or request.dop_plan != prepared.plan:
+            self._dop_abort_quietly(prepared, "plan_mismatch")
+            raise OutputSessionError(
+                "DOP_OUTPUT_PREPARE_FAILED",
+                "DoP request plan does not match the prepared plan",
+            )
+        current_dop = self._dop_prepared
+        if current_dop is not None and current_dop is not prepared:
+            self._record_dop_family(
+                OutputFamilyState.UNAVAILABLE, current_dop, detail="superseded"
+            )
+            self._dop_prepared = None
+            self._dop_plan = None
+            self._dop_abort_quietly(current_dop, "superseded")
+        current_native = self._native_dsd_prepared
+        if current_native is not None:
+            self._record_native_dsd_family(
+                OutputFamilyState.UNAVAILABLE,
+                current_native,
+                detail="superseded_by_dop",
+            )
+            self._native_dsd_prepared = None
+            self._native_dsd_plan = None
+            self._native_dsd_abort_quietly(current_native, "superseded_by_dop")
+        current_managed = self._managed_prepared
+        if current_managed is not None:
+            self._managed_prepared = None
+            self._managed_plan = None
+            self._managed_abort_quietly(current_managed, "superseded_by_dop")
+        if self._mode == "shared" and self._shared_receipt is not None:
+            with suppress(Exception):
+                self._shared.abort_media(self._shared_receipt, "superseded_by_dop")
+        if previous_direct is not None:
+            with suppress(Exception):
+                previous_direct.executor.release("switch_to_dop")
+        if self._state is not OutputSessionState.IDLE:
+            if self._state in (
+                OutputSessionState.READY,
+                OutputSessionState.RUNNING,
+            ):
+                self._transition(OutputSessionState.RECONFIGURING)
+            elif self._state is OutputSessionState.PAUSED:
+                self._transition(OutputSessionState.RELEASING)
+                self._transition(OutputSessionState.IDLE)
+            else:
+                raise OutputSessionError(
+                    "illegal_transition", f"prepare desde {self._state.value}"
+                )
+        if self._state is OutputSessionState.IDLE:
+            self._transition(OutputSessionState.ACQUIRING)
+        self._generation += 1
+        self._mode = "dop"
+        self._dop_plan = prepared.plan
+        self._dop_prepared = prepared
+        self._dop_playing_execution = None
+        self._dop_eos_execution = None
+        self._dop_terminal_execution = None
+        self._plan = None
+        self._managed_plan = None
+        self._managed_prepared = None
+        self._path = Path(path)
+        self._executor = None
+        self._executor_receipt = prepared.execution_id
+        self._shared_receipt = None
+        self._previous_direct = None
+        self._session_id = f"session:{self._generation}"
+        self._error_code = None
+        self._last_transition_kind = None
+        self._last_release_invalidated_media = False
+        if self._state is OutputSessionState.ACQUIRING:
+            self._transition(OutputSessionState.CONFIGURING)
+        self._transition(OutputSessionState.READY)
+        self._token_value = f"output-tx:dop:{self._generation}"
+        activate = getattr(self._truth_recorder, "activate_execution", None)
+        if callable(activate):
+            with suppress(Exception):
+                activate(prepared.execution_id, plan_id=prepared.plan.plan_id)
+        self._record_dop_family(OutputFamilyState.READY, prepared)
+        return self._token_value
+
     def _begin_native_dsd_session(
         self,
         path: Path,
@@ -1729,6 +2033,14 @@ class OutputSessionService:
         the presentation model from presenting a dead managed execution as
         PROCESSED in the window before that release.
         """
+        if self._mode == "dop" and self._dop_prepared is not None:
+            self._dop_terminal_execution = self._dop_prepared.execution_id
+            self._record_dop_family(
+                OutputFamilyState.UNAVAILABLE,
+                self._dop_prepared,
+                detail=str(reason),
+            )
+            return
         if self._mode == "native_dsd" and self._native_dsd_prepared is not None:
             self._native_terminal_execution = self._native_dsd_prepared.execution_id
             self._record_native_dsd_family(
@@ -1961,6 +2273,27 @@ class OutputSessionService:
             return  # callback de generation vieja: descartado (§21)
         if self._path != Path(path):
             raise OutputSessionError("stale_path", "commit path does not own token")
+        if self._mode == "dop":
+            if self._state is not OutputSessionState.READY:
+                raise OutputSessionError(
+                    "illegal_transition", f"commit desde {self._state.value}"
+                )
+            prepared = self._dop_prepared
+            if prepared is None:
+                raise OutputSessionError("DOP_OUTPUT_MISSING", "no DoP preparation")
+            if self._dop_commit is None:
+                raise OutputSessionError(
+                    "DOP_OUTPUT_UNAVAILABLE", "no DoP commit is composed"
+                )
+            try:
+                self._dop_commit(prepared)
+            except Exception as exc:  # noqa: BLE001 - owner commit boundary
+                code = getattr(exc, "code", "DOP_OUTPUT_COMMIT_FAILED")
+                raise OutputSessionError(code, str(exc)) from exc
+            self._previous_direct = None
+            self._transition(OutputSessionState.RUNNING)
+            self._record_dop_family(OutputFamilyState.RUNNING, prepared)
+            return
         if self._mode == "native_dsd":
             if self._state is not OutputSessionState.READY:
                 raise OutputSessionError(
@@ -2014,6 +2347,53 @@ class OutputSessionService:
 
     def abort_media(self, token: str, reason: str) -> None:
         if self._is_stale(token):
+            return
+        if self._mode == "dop":
+            self._error_code = reason
+            prepared = self._dop_prepared
+            if prepared is None:
+                self._clear_execution(keep_error=True)
+                if self._state is not OutputSessionState.IDLE:
+                    self._transition(OutputSessionState.IDLE)
+                self._notify()
+                return
+            result: dict = {}
+            if self._dop_abort is not None:
+                try:
+                    result = self._dop_abort(prepared, reason)
+                except Exception as exc:  # noqa: BLE001 - preserve receipt
+                    self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                        reason="dop_abort",
+                        code="DOP_ABORT_UNCONFIRMED",
+                        detail=str(exc),
+                    )
+                    self._record_dop_family(
+                        OutputFamilyState.UNAVAILABLE, prepared, detail=str(reason)
+                    )
+                    self._notify()
+                    raise OutputSessionError("DOP_ABORT_UNCONFIRMED", str(exc)) from exc
+            if not isinstance(result, dict) or not (
+                result.get("aborted") is True or result.get("already") is True
+            ):
+                self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                    reason="dop_abort",
+                    code="DOP_ABORT_UNCONFIRMED",
+                    detail="host did not confirm abort",
+                )
+                self._record_dop_family(
+                    OutputFamilyState.UNAVAILABLE, prepared, detail=str(reason)
+                )
+                self._notify()
+                raise OutputSessionError(
+                    "DOP_ABORT_UNCONFIRMED", "host did not confirm abort"
+                )
+            self._record_dop_family(
+                OutputFamilyState.UNAVAILABLE, prepared, detail=str(reason)
+            )
+            self._clear_execution(keep_error=True)
+            if self._state is not OutputSessionState.IDLE:
+                self._transition(OutputSessionState.IDLE)
+            self._notify()
             return
         if self._mode == "native_dsd":
             self._error_code = reason
@@ -2118,6 +2498,54 @@ class OutputSessionService:
             and self._native_dsd_prepared is not None
         )
         self._last_release_invalidated_media = was_specific
+        if self._mode == "dop":
+            prepared = self._dop_prepared
+            if self._state not in (
+                OutputSessionState.IDLE,
+                OutputSessionState.RELEASING,
+            ):
+                self._transition(OutputSessionState.RELEASING)
+            result: dict = {"released": True, "already": True}
+            if prepared is not None and self._dop_stop is not None:
+                try:
+                    result = self._dop_stop(prepared, reason)
+                except Exception as exc:  # noqa: BLE001 - preserve receipt
+                    self._error_code = "DOP_RELEASE_FAILED"
+                    self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                        reason="dop_release", code=self._error_code, detail=str(exc)
+                    )
+                    self._record_dop_family(
+                        OutputFamilyState.UNAVAILABLE, prepared, detail=self._error_code
+                    )
+                    self._notify()
+                    raise OutputSessionError(self._error_code, str(exc)) from exc
+            if not isinstance(result, dict) or not (
+                result.get("released") is True
+                or result.get("stopped") is True
+                or result.get("already") is True
+            ):
+                self._error_code = "DOP_RELEASE_UNCONFIRMED"
+                self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                    reason="dop_release",
+                    code=self._error_code,
+                    detail="host did not confirm release",
+                )
+                self._record_dop_family(
+                    OutputFamilyState.UNAVAILABLE, prepared, detail=self._error_code
+                )
+                self._notify()
+                raise OutputSessionError(
+                    self._error_code, "host did not confirm release"
+                )
+            self._record_dop_family(
+                OutputFamilyState.RELEASED, prepared, detail=str(reason)
+            )
+            self._error_code = None
+            self._clear_execution(keep_error=True)
+            if self._state is not OutputSessionState.IDLE:
+                self._transition(OutputSessionState.IDLE)
+            self._notify()
+            return
         if self._mode == "native_dsd":
             prepared = self._native_dsd_prepared
             if self._state not in (
@@ -2228,6 +2656,29 @@ class OutputSessionService:
         generation: int | None = None,
     ) -> None:
         """Invalidate topology-dependent authority, then attempt cleanup."""
+        if self._mode == "dop" and self._dop_prepared is not None:
+            plan = self._dop_plan
+            if (
+                stable_device_id is not None
+                and plan is not None
+                and plan.stable_device_id != stable_device_id
+            ):
+                return
+            prepared = self._dop_prepared
+            self._dop_prepared = None
+            self._dop_plan = None
+            self._lost_device_id = stable_device_id or (
+                plan.stable_device_id if plan else None
+            )
+            self._lost_binding_generation = (
+                generation
+                if generation is not None
+                else (plan.binding_generation if plan else 0)
+            )
+            self._record_dop_family(
+                OutputFamilyState.UNAVAILABLE, prepared, detail="device_lost"
+            )
+            self._dop_abort_quietly(prepared, "device_lost")
         native_was_active = self._native_dsd_prepared is not None
         if self._mode == "native_dsd" and self._native_dsd_prepared is not None:
             plan = self._native_dsd_plan
@@ -2320,6 +2771,11 @@ class OutputSessionService:
         self._native_dsd_prepared = None
         self._native_eos_execution = None
         self._native_terminal_execution = None
+        self._dop_plan = None
+        self._dop_prepared = None
+        self._dop_playing_execution = None
+        self._dop_eos_execution = None
+        self._dop_terminal_execution = None
         self._path = None
         self._session_id = None
         self._mode = "lost" if wait_for_rebind else "shared"
@@ -2465,6 +2921,11 @@ class OutputSessionService:
         self._native_dsd_prepared = None
         self._native_eos_execution = None
         self._native_terminal_execution = None
+        self._dop_plan = None
+        self._dop_prepared = None
+        self._dop_playing_execution = None
+        self._dop_eos_execution = None
+        self._dop_terminal_execution = None
         self._path = None
         self._token_value = None
         self._executor = None
