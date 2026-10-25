@@ -912,6 +912,30 @@ class OutputSessionService:
         return self._last_cleanup_diagnostic
 
     @property
+    def pending_cleanup(self) -> tuple[str, object] | None:
+        """Cleanup uncertainty that still blocks a safe acquisition.
+
+        A quiet cleanup that could not be confirmed keeps the exact prepared
+        receipt here. The caller must reconcile it before acquiring another
+        output family; merely dropping the reference would hide ownership.
+        """
+        return self._unconfirmed_cleanup
+
+    def retry_pending_cleanup(self) -> bool:
+        """Retry the retained cleanup receipt; True only when confirmed."""
+        pending = self._unconfirmed_cleanup
+        if pending is None:
+            return True
+        family, prepared = pending
+        if family == "dop" and isinstance(prepared, DopSessionPrepared):
+            self._dop_abort_quietly(prepared, "cleanup_retry")
+        elif family == "native_dsd" and isinstance(prepared, NativeDsdSessionPrepared):
+            self._native_dsd_abort_quietly(prepared, "cleanup_retry")
+        elif family == "managed" and isinstance(prepared, ManagedOutputPrepared):
+            self._managed_abort_quietly(prepared, "cleanup_retry")
+        return self._unconfirmed_cleanup is None
+
+    @property
     def mode(self) -> str:
         return self._mode
 
@@ -1272,6 +1296,16 @@ class OutputSessionService:
         """
         self._async_prepare_generation += 1
         generation = self._async_prepare_generation
+        pending = self._unconfirmed_cleanup
+        if pending is not None:
+            on_failed(
+                OutputSessionError(
+                    "OUTPUT_OWNERSHIP_UNCONFIRMED",
+                    f"unconfirmed {pending[0]} cleanup retains the output device; "
+                    "reconcile it before preparing another execution",
+                )
+            )
+            return
         intent = self._capture_output_intent()
         pending_device = getattr(self._request_provider, "pending_device_id", None)
         if callable(pending_device):
@@ -1449,6 +1483,13 @@ class OutputSessionService:
                 cancel()
 
     def _prepare_request(self, path: Path, request: OutputRequest) -> str:
+        pending = self._unconfirmed_cleanup
+        if pending is not None:
+            raise OutputSessionError(
+                "OUTPUT_OWNERSHIP_UNCONFIRMED",
+                f"unconfirmed {pending[0]} cleanup retains the output device; "
+                "reconcile it before acquiring another execution",
+            )
         dop_plan = getattr(request, "dop_plan", None)
         if dop_plan is not None:
             return self._prepare_dop_request(path, request)
@@ -1637,8 +1678,29 @@ class OutputSessionService:
     ) -> None:
         if prepared is None or self._native_dsd_abort is None:
             return
-        with suppress(Exception):
-            self._native_dsd_abort(prepared, reason)
+        try:
+            result = self._native_dsd_abort(prepared, reason)
+        except Exception as exc:  # noqa: BLE001 - teardown boundary
+            self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                reason=reason,
+                code=getattr(exc, "code", "NATIVE_DSD_CLEANUP_FAILED"),
+                detail=str(exc),
+            )
+            self._unconfirmed_cleanup = ("native_dsd", prepared)
+            return
+        if isinstance(result, dict) and (
+            result.get("aborted") is True
+            or result.get("already") is True
+            or result.get("stale") is True
+        ):
+            self._clear_pending_cleanup("native_dsd", prepared)
+            return
+        self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+            reason=reason,
+            code="NATIVE_DSD_CLEANUP_UNCONFIRMED",
+            detail="host did not confirm abort",
+        )
+        self._unconfirmed_cleanup = ("native_dsd", prepared)
 
     def _record_native_dsd_family(
         self,
@@ -1739,6 +1801,10 @@ class OutputSessionService:
             )
         return prepared
 
+    def _clear_pending_cleanup(self, family: str, prepared: object) -> None:
+        if self._unconfirmed_cleanup == (family, prepared):
+            self._unconfirmed_cleanup = None
+
     def _dop_abort_quietly(
         self, prepared: DopSessionPrepared | None, reason: str
     ) -> None:
@@ -1786,6 +1852,8 @@ class OutputSessionService:
             self._record_dop_family(
                 OutputFamilyState.UNAVAILABLE, prepared, detail="cleanup_unconfirmed"
             )
+            return
+        self._clear_pending_cleanup("dop", prepared)
 
     def _strict_dop_abort(
         self,
@@ -1829,6 +1897,7 @@ class OutputSessionService:
                 "current DoP execution was not released",
             )
         self._record_dop_family(OutputFamilyState.UNAVAILABLE, prepared, detail=reason)
+        self._clear_pending_cleanup("dop", prepared)
         self._dop_prepared = None
         self._dop_plan = None
 
@@ -1871,6 +1940,7 @@ class OutputSessionService:
         self._record_native_dsd_family(
             OutputFamilyState.UNAVAILABLE, prepared, detail=reason
         )
+        self._clear_pending_cleanup("native_dsd", prepared)
         self._native_dsd_prepared = None
         self._native_dsd_plan = None
 
@@ -1913,6 +1983,7 @@ class OutputSessionService:
             )
         self._managed_prepared = None
         self._managed_plan = None
+        self._clear_pending_cleanup("managed", prepared)
 
     def _record_dop_family(
         self,
@@ -2347,16 +2418,25 @@ class OutputSessionService:
                 code=getattr(exc, "code", "MANAGED_CLEANUP_FAILED"),
                 detail=str(exc),
             )
+            self._unconfirmed_cleanup = ("managed", prepared)
             return
         if not isinstance(result, dict):
+            self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                reason=reason,
+                code="MANAGED_CLEANUP_UNCONFIRMED",
+                detail="host did not return a cleanup disposition",
+            )
+            self._unconfirmed_cleanup = ("managed", prepared)
             return
-        if result.get("stopped") or result.get("stale"):
+        if result.get("stopped") or result.get("stale") or result.get("already"):
+            self._clear_pending_cleanup("managed", prepared)
             return
         self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
             reason=reason,
             code=str(result.get("code") or "MANAGED_CLEANUP_FAILED"),
             detail=str(result.get("reason") or ""),
         )
+        self._unconfirmed_cleanup = ("managed", prepared)
 
     def _prepare_shared(
         self,

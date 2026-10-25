@@ -406,3 +406,43 @@ def test_quiet_cleanup_retains_unconfirmed_receipt(tmp_path: Path) -> None:
     session._dop_abort_quietly(prepared, "superseded_before_commit")
     assert session._unconfirmed_cleanup == ("dop", prepared)
     assert session.last_cleanup_diagnostic is not None
+
+
+def test_unconfirmed_cleanup_blocks_new_acquisition_until_retry(tmp_path: Path) -> None:
+    plan = _plan()
+    tx = _Tx(plan)
+    tx.fail_abort = True
+    session = _session(plan, tx)
+    session.prepare_for_media(tmp_path / "track.dsf")
+    prepared = session._dop_prepared
+    session._dop_abort_quietly(prepared, "superseded_before_commit")
+    assert session.pending_cleanup == ("dop", prepared)
+    with pytest.raises(OutputSessionError) as info:
+        session.prepare_for_media(tmp_path / "blocked.dsf")
+    assert info.value.code == "OUTPUT_OWNERSHIP_UNCONFIRMED"
+
+    tx.fail_abort = False
+    assert session.retry_pending_cleanup() is True
+    assert session.pending_cleanup is None
+    token = session.prepare_for_media(tmp_path / "allowed.dsf")
+    assert token.startswith("output-tx:dop:")
+    assert session.pending_cleanup is None
+
+
+def test_async_prepare_fails_closed_on_pending_cleanup(tmp_path: Path) -> None:
+    plan = _plan()
+    tx = _Tx(plan)
+    tx.fail_abort = True
+    session = _session(plan, tx)
+    session.prepare_for_media(tmp_path / "track.dsf")
+    prepared = session._dop_prepared
+    session._dop_abort_quietly(prepared, "superseded_before_commit")
+    errors: list[Exception] = []
+
+    session.prepare_for_media_async(
+        tmp_path / "blocked.dsf", lambda _token: None, errors.append
+    )
+
+    assert session.pending_cleanup == ("dop", prepared)
+    assert len(errors) == 1
+    assert getattr(errors[0], "code", None) == "OUTPUT_OWNERSHIP_UNCONFIRMED"
