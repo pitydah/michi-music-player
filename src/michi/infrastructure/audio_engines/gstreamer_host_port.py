@@ -96,6 +96,7 @@ class GStreamerHostedAudioPort(AudioPort):
         self._dop_state = "NONE"
         self._dop_expected: dict[str, Any] | None = None
         self._dop_path: str | None = None
+        self._dop_eos_listeners: list[Callable[[str], None]] = []
         self._pcm_active = False
         self._last_state: PlaybackStatus | None = None
         self._termination_kind: str | None = None
@@ -335,6 +336,14 @@ class GStreamerHostedAudioPort(AudioPort):
 
     def _load_once(self, path: Path, *, deadline_s: float) -> dict[str, Any]:
         with self._lock:
+            if self._dop_active:
+                expected_path = self._dop_path
+                if expected_path is None or Path(path).resolve() != Path(expected_path):
+                    raise AudioTransportCommandError(
+                        "DOP_LOAD_CONFLICT: a different DoP execution owns the output"
+                    )
+                self._commit_accepted(Path(path))
+                return {"dop": True, "accepted": True}
             if self._native_dsd_active:
                 expected_path = self._native_dsd_path
                 if expected_path is None or Path(path).resolve() != Path(expected_path):
@@ -379,6 +388,10 @@ class GStreamerHostedAudioPort(AudioPort):
     def play(self) -> None:
         with self._lock:
             native = self._native_dsd_active
+            dop = self._dop_active
+        if dop:
+            self.start_dop()
+            return
         if native:
             self.start_native_dsd()
             return
@@ -387,6 +400,10 @@ class GStreamerHostedAudioPort(AudioPort):
     def pause(self) -> None:
         with self._lock:
             native = self._native_dsd_active
+            dop = self._dop_active
+        if dop:
+            self.pause_dop()
+            return
         if native:
             self.pause_native_dsd()
             return
@@ -395,6 +412,10 @@ class GStreamerHostedAudioPort(AudioPort):
     def resume(self) -> None:
         with self._lock:
             native = self._native_dsd_active
+            dop = self._dop_active
+        if dop:
+            self.resume_dop()
+            return
         if native:
             self.resume_native_dsd()
             return
@@ -403,10 +424,15 @@ class GStreamerHostedAudioPort(AudioPort):
     def stop(self) -> None:
         with self._lock:
             native = self._native_dsd_active
-            expected = dict(self._native_dsd_expected or {})
+            dop = self._dop_active
+            native_expected = dict(self._native_dsd_expected or {})
+            dop_expected = dict(self._dop_expected or {})
             self._command_generation += 1
-        if native and expected:
-            self.stop_native_dsd(expected)
+        if dop and dop_expected:
+            self.stop_dop(dop_expected)
+            return
+        if native and native_expected:
+            self.stop_native_dsd(native_expected)
             return
         self._command(HostOperation.STOP)
         with self._lock:
@@ -415,6 +441,11 @@ class GStreamerHostedAudioPort(AudioPort):
     def seek(self, position_ms: int) -> None:
         with self._lock:
             native = self._native_dsd_active
+            dop = self._dop_active
+        if dop:
+            raise AudioTransportCommandError(
+                "DOP_SEEK_UNSUPPORTED: DoP seek is not demonstrated"
+            )
         if native:
             raise AudioTransportCommandError(
                 "NATIVE_DSD_SEEK_UNSUPPORTED: Native DSD seek is not demonstrated"
@@ -424,6 +455,11 @@ class GStreamerHostedAudioPort(AudioPort):
     def set_volume(self, value: int) -> None:
         with self._lock:
             native = self._native_dsd_active
+            dop = self._dop_active
+        if dop:
+            raise AudioTransportCommandError(
+                "DOP_VOLUME_UNSUPPORTED: no software volume on the DoP carrier"
+            )
         if native:
             raise AudioTransportCommandError(
                 "NATIVE_DSD_VOLUME_UNSUPPORTED: no PCM volume on a Native DSD route"
@@ -687,6 +723,10 @@ class GStreamerHostedAudioPort(AudioPort):
     def add_native_eos_listener(self, callback: Callable[[str], None]) -> None:
         if callback not in self._native_eos_listeners:
             self._native_eos_listeners.append(callback)
+
+    def add_dop_eos_listener(self, callback: Callable[[str], None]) -> None:
+        if callback not in self._dop_eos_listeners:
+            self._dop_eos_listeners.append(callback)
 
     @property
     def native_dsd_active(self) -> bool:
@@ -1651,6 +1691,10 @@ class GStreamerHostedAudioPort(AudioPort):
             if self._dop_state == "EOS":
                 return
             self._dop_state = "EOS"
+            listeners = list(self._dop_eos_listeners)
+        for listener in listeners:
+            with contextlib.suppress(Exception):
+                listener(execution_id)
         self._commit_eos()
 
     def _commit_eos(self) -> None:

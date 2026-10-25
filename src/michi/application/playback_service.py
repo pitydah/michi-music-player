@@ -477,7 +477,8 @@ class PlaybackService:
             # Native DSD has no PCM volume stage; the host owns the exact
             # DSD route and the automatic PCM volume sync is skipped.
             native_dsd = bool(getattr(self._output_tx, "native_dsd_active", False))
-            if native_dsd:
+            dop = bool(getattr(self._output_tx, "dop_active", False))
+            if native_dsd or dop:
                 # The host requires commit BEFORE start. The native media
                 # acceptance arrived during load and was latched; finalize it
                 # now so the output transaction is committed before play().
@@ -569,11 +570,17 @@ class PlaybackService:
         # completa; una aceptación latched se finaliza aquí (nunca dentro
         # de la ejecución parcial de play()).
         self._user_play_play_phase_complete = True
-        notify_playing = getattr(self._output_tx, "notify_native_dsd_playing", None)
-        if callable(notify_playing) and bool(
-            getattr(self._output_tx, "native_dsd_active", False)
-        ):
-            notify_playing(getattr(self._output_tx, "active_execution_id", None))
+        execution_id = getattr(self._output_tx, "active_execution_id", None)
+        if bool(getattr(self._output_tx, "dop_active", False)):
+            notify_dop_playing = getattr(self._output_tx, "notify_dop_playing", None)
+            if callable(notify_dop_playing):
+                notify_dop_playing(execution_id)
+        else:
+            notify_playing = getattr(self._output_tx, "notify_native_dsd_playing", None)
+            if callable(notify_playing) and bool(
+                getattr(self._output_tx, "native_dsd_active", False)
+            ):
+                notify_playing(execution_id)
         latched = self._user_play_acceptance_latched
         if latched is not None:
             self._finalize_media_acceptance(latched)
