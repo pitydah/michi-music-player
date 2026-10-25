@@ -38,6 +38,8 @@ from tests.audio_phase2.test_productive_output_resolver import (
 from tests.dop.test_dop_planner import _carrier
 
 _HAS_GI = importlib.util.find_spec("gi") is not None
+
+
 def _resolved_prefix():
     from michi.infrastructure.audio_output.dop_plugin import resolve_dop_prefix
 

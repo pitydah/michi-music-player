@@ -13,6 +13,8 @@ import pytest
 from tests.audio_phase2.test_dsd_source_truth import build_dsf
 
 _HAS_GI = importlib.util.find_spec("gi") is not None
+
+
 def _resolved_prefix():
     from michi.infrastructure.audio_output.dop_plugin import resolve_dop_prefix
 
