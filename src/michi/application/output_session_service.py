@@ -1071,7 +1071,6 @@ class OutputSessionService:
         return True
 
     @property
-    @property
     def dop_active(self) -> bool:
         return (
             self._mode == "dop"
@@ -1706,7 +1705,6 @@ class OutputSessionService:
                 "DOP_OUTPUT_UNAVAILABLE",
                 "no DoP preparation is composed for this session",
             )
-        self._dop_plan = plan
         try:
             prepared = self._dop_prepare(plan, path, instance_id)
         except OutputSessionError:
@@ -1805,12 +1803,29 @@ class OutputSessionService:
             )
         current_dop = self._dop_prepared
         if current_dop is not None and current_dop is not prepared:
+            if self._dop_abort is None:
+                raise OutputSessionError(
+                    "DOP_SUPERSESSION_UNCONFIRMED",
+                    "no DoP abort authority is composed",
+                )
+            try:
+                aborted = self._dop_abort(current_dop, "superseded")
+            except Exception as exc:  # noqa: BLE001 - preserve current receipt
+                raise OutputSessionError(
+                    "DOP_SUPERSESSION_UNCONFIRMED", str(exc)
+                ) from exc
+            if not isinstance(aborted, dict) or not (
+                aborted.get("aborted") is True or aborted.get("already") is True
+            ):
+                raise OutputSessionError(
+                    "DOP_SUPERSESSION_UNCONFIRMED",
+                    "current DoP execution was not released",
+                )
             self._record_dop_family(
                 OutputFamilyState.UNAVAILABLE, current_dop, detail="superseded"
             )
             self._dop_prepared = None
             self._dop_plan = None
-            self._dop_abort_quietly(current_dop, "superseded")
         current_native = self._native_dsd_prepared
         if current_native is not None:
             self._record_native_dsd_family(
@@ -2292,7 +2307,6 @@ class OutputSessionService:
                 raise OutputSessionError(code, str(exc)) from exc
             self._previous_direct = None
             self._transition(OutputSessionState.RUNNING)
-            self._record_dop_family(OutputFamilyState.RUNNING, prepared)
             return
         if self._mode == "native_dsd":
             if self._state is not OutputSessionState.READY:
@@ -2506,6 +2520,22 @@ class OutputSessionService:
             ):
                 self._transition(OutputSessionState.RELEASING)
             result: dict = {"released": True, "already": True}
+            if prepared is not None and self._dop_stop is None:
+                self._error_code = "DOP_RELEASE_UNAVAILABLE"
+                self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                    reason="dop_release",
+                    code=self._error_code,
+                    detail="no DoP release authority is composed",
+                )
+                self._record_dop_family(
+                    OutputFamilyState.UNAVAILABLE,
+                    prepared,
+                    detail=self._error_code,
+                )
+                self._notify()
+                raise OutputSessionError(
+                    self._error_code, "no DoP release authority is composed"
+                )
             if prepared is not None and self._dop_stop is not None:
                 try:
                     result = self._dop_stop(prepared, reason)
