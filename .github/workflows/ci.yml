@@ -326,7 +326,8 @@ jobs:
           GST_PLUGIN_PATH: ${{ runner.temp }}/michi-dop-gate-a/lib/gstreamer-1.0
           MICHI_GST_LAB_SINK: fakesink
         run: |
-          python -m pytest tests/audio_phase2/test_dop_host_runtime.py -q
+          python -m pytest tests/audio_phase2/test_dop_host_runtime.py \
+            tests/audio_phase2/test_dop_product_e2e.py -q
 
       - name: Build and install platform wheel
         run: |
