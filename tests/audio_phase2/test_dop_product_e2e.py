@@ -12,14 +12,14 @@ import pytest
 from michi.application.audio_output_planner import OutputPlanner
 from michi.application.output_session_service import (
     DopSessionPrepared,
-    OutputRequest,
     OutputSessionService,
 )
 from michi.application.playback_service import PlaybackService
 from michi.domain.audio_output import OutputSessionState
+from michi.domain.dop import DopInterpretationState, DopPolicyDecision
 from michi.infrastructure.audio_output.dop_runtime import DopOutputExecutor
+from tests.audio_phase2.test_dop_resolver import _resolver
 from tests.audio_phase2.test_dsd_source_truth import build_dsf
-from tests.dop.test_dop_planner import _plan
 
 _HAS_GI = importlib.util.find_spec("gi") is not None
 _PREFIX = Path(os.environ.get("MICHI_DOP_PREFIX", "/tmp/michi-dop-gate-a"))
@@ -54,7 +54,13 @@ def test_playback_service_reaches_dop_playing_and_eos(tmp_path, monkeypatch) -> 
     source.write_bytes(
         build_dsf(sample_count=352_800 // 4, payload=bytes([0x69]) * 176_400)
     )
-    plan = _plan()
+    resolver = _resolver(
+        DopPolicyDecision(
+            explicit_requested=True,
+            auto_allowed=False,
+            minimum_interpretation_state=DopInterpretationState.USER_CONFIRMED,
+        )
+    )
     supervisor = GStreamerHostSupervisor(
         start_timeout_s=45.0,
         command_timeout_s=30.0,
@@ -96,7 +102,7 @@ def test_playback_service_reaches_dop_playing_and_eos(tmp_path, monkeypatch) -> 
 
     session = OutputSessionService(
         OutputPlanner(),
-        request_provider=lambda _path: OutputRequest.dop(plan, "profile:dop"),
+        request_provider=resolver,
         async_submit=None,
         dop_prepare=prepare,
         dop_commit=commit,
@@ -114,16 +120,18 @@ def test_playback_service_reaches_dop_playing_and_eos(tmp_path, monkeypatch) -> 
         assert session.mode == "dop"
         assert session.state is OutputSessionState.RUNNING
         assert session.dop_active is True
+        execution_id = session.active_execution_id
+        assert execution_id
         deadline = time.monotonic() + 8.0
         while (
             time.monotonic() < deadline
-            and session.notify_dop_eos(plan.execution_id) is False
+            and session.notify_dop_eos(execution_id) is False
         ):
             # the host listener is authoritative; loop only while no EOS arrives
-            if session._dop_terminal_execution == plan.execution_id:
+            if session._dop_terminal_execution == execution_id:
                 break
             time.sleep(0.02)
-        assert session._dop_terminal_execution == plan.execution_id
+        assert session._dop_terminal_execution == execution_id
         playback.stop()
         assert session.state is OutputSessionState.IDLE
     finally:
