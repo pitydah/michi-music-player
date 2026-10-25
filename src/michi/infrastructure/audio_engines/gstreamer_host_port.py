@@ -847,6 +847,11 @@ class GStreamerHostedAudioPort(AudioPort):
     def prepare_dop(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Build/preroll the Gate A DoP pipeline in the supervised child."""
         with self._lock:
+            if self._dop_active:
+                raise AudioTransportCommandError(
+                    "DOP_SUPERSESSION_UNAUTHORIZED: release the active "
+                    "DoP execution first"
+                )
             if self._native_dsd_active:
                 raise AudioTransportCommandError(
                     "DOP_NATIVE_DSD_CONFLICT: release Native DSD before DoP"
@@ -1487,6 +1492,14 @@ class GStreamerHostedAudioPort(AudioPort):
             else:
                 with self._lock:
                     self._stale_events += 1
+            return
+        with self._lock:
+            dop_owns_output = bool(self._dop_active and self._dop_expected)
+        if kind == HostEvent.EOS.value and dop_owns_output:
+            # DoP owns the transport: an identity-less/ambiguous EOS must never
+            # fall through to the generic PCM end-of-media path.
+            with self._lock:
+                self._stale_events += 1
             return
         native_eos = kind == HostEvent.EOS.value and bool(
             payload.get("execution_id") or payload.get("plan_id")

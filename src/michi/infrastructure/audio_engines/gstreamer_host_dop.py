@@ -193,6 +193,11 @@ class DopHostRuntime:
 
     def prepare(self, payload: dict[str, Any]) -> dict[str, Any]:
         request = parse_request(payload)
+        if self._identity is not None:
+            raise DopHostError(
+                "DOP_HOST_SUPERSESSION_UNAUTHORIZED",
+                "release the active DoP execution before preparing another",
+            )
         self.close()
         gst = self._ensure_gst()
         factory = self._plugin(gst)

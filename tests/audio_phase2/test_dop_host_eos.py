@@ -90,6 +90,16 @@ def test_dop_eos_is_committed_once_with_captured_identity(tmp_path) -> None:
 def test_dop_eos_cannot_terminate_a_superseding_execution(tmp_path) -> None:
     port, submit = _port(tmp_path)
     eom = _eom(port)
+    port.stop_dop(
+        {
+            "plan_id": "dop:plan",
+            "execution_id": "exec:dop",
+            "stable_device_id": "usb:test",
+            "device": "hw:3,0",
+            "binding_generation": 3,
+            "host_generation": 1,
+        }
+    )
     submit.execution = "exec:new"
     port.prepare_dop({"path": str(tmp_path / "dop.dsf")})
     port._on_host_event(_eos("exec:dop"))
@@ -145,3 +155,21 @@ def test_native_and_dop_cleanup_are_independent() -> None:
     assert session._dop_active is True
     session._clear_dop_eos_timer()
     assert session._native_dsd_active is True
+
+
+def test_ambiguous_pcm_eos_cannot_terminate_active_dop(tmp_path) -> None:
+    port, _ = _port(tmp_path)
+    eom = _eom(port)
+    port._on_host_event({"command_generation": 1, "payload": {"event": "eos"}})
+    port.dispatch_pending()
+    assert eom == []
+
+
+def test_second_prepare_without_release_is_rejected(tmp_path) -> None:
+    port, _ = _port(tmp_path)
+    import pytest
+
+    from michi.application.ports import AudioTransportCommandError
+
+    with pytest.raises(AudioTransportCommandError, match="DOP_SUPERSESSION"):
+        port.prepare_dop({"path": str(tmp_path / "dop.dsf")})
