@@ -937,6 +937,21 @@ class GStreamerHostedAudioPort(AudioPort):
         return result
 
     def abort_dop(self, expected: dict[str, Any] | None = None) -> dict[str, Any]:
+        # A normal stop already released the route. Abort is idempotent, and
+        # must prove WHICH execution is already absent instead of raising an
+        # identity error that would look like an unconfirmed physical cleanup.
+        with self._lock:
+            already_released = not self._dop_active
+        if already_released:
+            execution_id = ""
+            if isinstance(expected, dict):
+                execution_id = str(expected.get("execution_id") or "")
+            return {
+                "aborted": True,
+                "already": True,
+                "stale": False,
+                "execution_id": execution_id,
+            }
         self._require_dop_expected(expected)
         result = self._submit(
             HostOperation.ABORT_DOP,
@@ -953,6 +968,9 @@ class GStreamerHostedAudioPort(AudioPort):
             self._dop_expected = None
             self._dop_path = None
         self._enqueue(lambda: self._commit_state(PlaybackStatus.STOPPED))
+        execution_id = str(expected.get("execution_id") or "")
+        if execution_id:
+            result = {**result, "execution_id": execution_id}
         return result
 
     def start_dop(self, expected: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -975,7 +993,13 @@ class GStreamerHostedAudioPort(AudioPort):
             )
         with self._lock:
             self._dop_state = "RUNNING"
-        self._enqueue(lambda: self._commit_state(PlaybackStatus.PLAYING))
+            command_generation = self._command_generation
+        execution_id = str(expected.get("execution_id") or "")
+        self._enqueue(
+            lambda: self._commit_dop_state_if_current(
+                execution_id, PlaybackStatus.PLAYING, command_generation
+            )
+        )
         return result
 
     def pause_dop(self, expected: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -993,7 +1017,13 @@ class GStreamerHostedAudioPort(AudioPort):
             )
         with self._lock:
             self._dop_state = "PAUSED"
-        self._enqueue(lambda: self._commit_state(PlaybackStatus.PAUSED))
+            command_generation = self._command_generation
+        execution_id = str(expected.get("execution_id") or "")
+        self._enqueue(
+            lambda: self._commit_dop_state_if_current(
+                execution_id, PlaybackStatus.PAUSED, command_generation
+            )
+        )
         return result
 
     def resume_dop(self, expected: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -1011,14 +1041,26 @@ class GStreamerHostedAudioPort(AudioPort):
             )
         with self._lock:
             self._dop_state = "RUNNING"
-        self._enqueue(lambda: self._commit_state(PlaybackStatus.PLAYING))
+            command_generation = self._command_generation
+        execution_id = str(expected.get("execution_id") or "")
+        self._enqueue(
+            lambda: self._commit_dop_state_if_current(
+                execution_id, PlaybackStatus.PLAYING, command_generation
+            )
+        )
         return result
 
     def stop_dop(self, expected: dict[str, Any]) -> dict[str, Any]:
         with self._lock:
             already_released = not self._dop_active
+        execution_id = str(expected.get("execution_id") or "")
         if already_released:
-            return {"stopped": True, "already": True, "stale": False}
+            return {
+                "stopped": True,
+                "already": True,
+                "stale": False,
+                "execution_id": execution_id,
+            }
         self._require_dop_expected(expected)
         result = self._submit(
             HostOperation.STOP_DOP,
@@ -1035,6 +1077,8 @@ class GStreamerHostedAudioPort(AudioPort):
             self._dop_expected = None
             self._dop_path = None
         self._enqueue(lambda: self._commit_state(PlaybackStatus.STOPPED))
+        if execution_id:
+            result = {**result, "execution_id": execution_id}
         return result
 
     def query_dop_identity(self) -> dict[str, Any]:
@@ -1652,6 +1696,28 @@ class GStreamerHostedAudioPort(AudioPort):
         self._relay_runtime_failure(reason)
 
     # ── commits owner ─────────────────────────────────────────────────
+    def _commit_dop_state_if_current(
+        self, execution_id: str, status: PlaybackStatus, command_generation: int
+    ) -> None:
+        """Publish a transport state only while its exact DoP command owns output.
+
+        A state update queued by START/PAUSE/RESUME can still be pending when a
+        later stop/abort releases the execution. The owner queue must not
+        replay that stale PLAYING/PAUSED observation against the next
+        execution (or after device-loss convergence).
+        """
+        with self._lock:
+            expected = dict(self._dop_expected or {})
+            current = bool(
+                self._dop_active
+                and execution_id
+                and expected.get("execution_id") == execution_id
+                and self._command_generation == command_generation
+            )
+        if not current:
+            return
+        self._commit_state(status)
+
     def _commit_state(self, status: PlaybackStatus) -> None:
         with self._lock:
             self._last_state = status

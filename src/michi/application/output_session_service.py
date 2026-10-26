@@ -922,13 +922,21 @@ class OutputSessionService:
         return self._unconfirmed_cleanup
 
     def retry_pending_cleanup(self) -> bool:
-        """Retry the retained cleanup receipt; True only when confirmed."""
+        """Retry the retained cleanup receipt; True only when confirmed.
+
+        A confirmed retry must reconcile the logical session that owned the
+        receipt. Releasing the physical route alone is not enough: a stale
+        prepared handle, media token or playing/EOS fence would otherwise keep
+        authorizing an execution the host no longer owns.
+        """
         pending = self._unconfirmed_cleanup
         if pending is None:
             return True
         family, prepared = pending
         if family == "dop" and isinstance(prepared, DopSessionPrepared):
-            self._dop_abort_quietly(prepared, "cleanup_retry")
+            if not self._dop_abort_quietly(prepared, "cleanup_retry"):
+                return False
+            self._reconcile_confirmed_dop_cleanup(prepared)
         elif family == "native_dsd" and isinstance(prepared, NativeDsdSessionPrepared):
             self._native_dsd_abort_quietly(prepared, "cleanup_retry")
         elif family == "managed" and isinstance(prepared, ManagedOutputPrepared):
@@ -1801,21 +1809,128 @@ class OutputSessionService:
             )
         return prepared
 
+    def _retain_pending_cleanup(self, family: str, prepared: object) -> None:
+        """Keep the FIRST unconfirmed receipt; never overwrite uncertainty."""
+        if self._unconfirmed_cleanup is None:
+            self._unconfirmed_cleanup = (family, prepared)
+        elif (
+            self._unconfirmed_cleanup != (family, prepared)
+            and self._last_cleanup_diagnostic is None
+        ):
+            # A different execution must not replace the receipt that still
+            # owns the route. The caller remains fail-closed and the original
+            # uncertainty stays auditable.
+            self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                reason="cleanup_overlap",
+                code="OUTPUT_CLEANUP_OVERLAP",
+                detail="a different cleanup receipt is already pending",
+            )
+
+    @staticmethod
+    def _dop_cleanup_confirmed(result: object, prepared: DopSessionPrepared) -> bool:
+        """Positive evidence for THIS execution, never a generic stale flag."""
+        if not isinstance(result, dict):
+            return False
+        if result.get("execution_id") != prepared.execution_id:
+            return False
+        if result.get("stale") is True:
+            return False
+        return result.get("aborted") is True or result.get("already") is True
+
+    @staticmethod
+    def _dop_stop_confirmed(result: object, prepared: DopSessionPrepared) -> bool:
+        """Positive evidence that THIS execution's carrier route is gone."""
+        if not isinstance(result, dict):
+            return False
+        if result.get("execution_id") != prepared.execution_id:
+            return False
+        if result.get("stale") is True:
+            return False
+        return (
+            result.get("stopped") is True
+            or result.get("released") is True
+            or result.get("already") is True
+        )
+
+    def _reconcile_confirmed_dop_cleanup(self, prepared: DopSessionPrepared) -> None:
+        """Reconcile the logical session after exact DoP route release.
+
+        The physical route is already confirmed free. Only the exact execution
+        may be retired here; a newer prepared execution is left untouched.
+        """
+        current = self._dop_prepared
+        owned = False
+        if current is not None:
+            if (
+                current.execution_id != prepared.execution_id
+                or current.plan.plan_id != prepared.plan.plan_id
+                or current.stable_device_id != prepared.stable_device_id
+            ):
+                return
+            self._dop_prepared = None
+            owned = True
+        if (
+            self._dop_plan is not None
+            and self._dop_plan.execution_id == prepared.execution_id
+        ):
+            self._dop_plan = None
+            owned = True
+        if not owned and (self._dop_prepared is not None or self._dop_plan is not None):
+            # A newer execution owns the logical session; this receipt's
+            # cleanup must not retire it.
+            return
+        if self._dop_playing_execution == prepared.execution_id:
+            self._dop_playing_execution = None
+        if self._dop_eos_execution == prepared.execution_id:
+            self._dop_eos_execution = None
+        if self._dop_terminal_execution == prepared.execution_id:
+            self._dop_terminal_execution = None
+        if self._executor_receipt == prepared.execution_id:
+            self._executor_receipt = None
+        self._token_value = None
+        lost = (
+            self._lost_device_id is not None
+            and self._lost_device_id == prepared.stable_device_id
+        )
+        if lost:
+            self._mode = "lost"
+            return
+        self._mode = "shared"
+        self._path = None
+        self._error_code = None
+        if self._state in (
+            OutputSessionState.READY,
+            OutputSessionState.RUNNING,
+            OutputSessionState.PAUSED,
+        ):
+            self._transition(OutputSessionState.RELEASING)
+            self._transition(OutputSessionState.IDLE)
+        elif self._state is OutputSessionState.RECONFIGURING:
+            self._transition(OutputSessionState.READY)
+            self._transition(OutputSessionState.RELEASING)
+            self._transition(OutputSessionState.IDLE)
+        self._notify()
+
     def _clear_pending_cleanup(self, family: str, prepared: object) -> None:
         if self._unconfirmed_cleanup == (family, prepared):
             self._unconfirmed_cleanup = None
 
     def _dop_abort_quietly(
-        self, prepared: DopSessionPrepared | None, reason: str
-    ) -> None:
+        self,
+        prepared: DopSessionPrepared | None,
+        reason: str,
+        *,
+        record_failure: bool = True,
+    ) -> bool:
         """Best-effort cleanup that NEVER hides an unconfirmed release.
 
         The preparation receipt is retained as uncertainty evidence when the
         host cannot confirm abort; a later reconciliation can still identify
-        the exact execution that may own the device.
+        the exact execution that may own the device. Returns True only for
+        positive, exact evidence that the receipt no longer owns the route.
         """
         if prepared is None:
-            return
+            return True
         abort = self._dop_abort
         if abort is None:
             self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
@@ -1823,8 +1938,8 @@ class OutputSessionService:
                 code="DOP_CLEANUP_UNAVAILABLE",
                 detail="no DoP abort authority is composed",
             )
-            self._unconfirmed_cleanup = ("dop", prepared)
-            return
+            self._retain_pending_cleanup("dop", prepared)
+            return False
         try:
             result = abort(prepared, reason)
         except Exception as exc:  # noqa: BLE001 - teardown boundary
@@ -1833,27 +1948,30 @@ class OutputSessionService:
                 code=getattr(exc, "code", "DOP_CLEANUP_FAILED"),
                 detail=str(exc),
             )
-            self._unconfirmed_cleanup = ("dop", prepared)
-            self._record_dop_family(
-                OutputFamilyState.UNAVAILABLE, prepared, detail="cleanup_unconfirmed"
-            )
-            return
-        if not isinstance(result, dict) or not (
-            result.get("aborted") is True
-            or result.get("already") is True
-            or result.get("stale") is True
-        ):
+            self._retain_pending_cleanup("dop", prepared)
+            if record_failure:
+                self._record_dop_family(
+                    OutputFamilyState.UNAVAILABLE,
+                    prepared,
+                    detail="cleanup_unconfirmed",
+                )
+            return False
+        if not self._dop_cleanup_confirmed(result, prepared):
             self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
                 reason=reason,
                 code="DOP_CLEANUP_UNCONFIRMED",
-                detail="host did not confirm abort",
+                detail="host did not confirm release of this exact execution",
             )
-            self._unconfirmed_cleanup = ("dop", prepared)
-            self._record_dop_family(
-                OutputFamilyState.UNAVAILABLE, prepared, detail="cleanup_unconfirmed"
-            )
-            return
+            self._retain_pending_cleanup("dop", prepared)
+            if record_failure:
+                self._record_dop_family(
+                    OutputFamilyState.UNAVAILABLE,
+                    prepared,
+                    detail="cleanup_unconfirmed",
+                )
+            return False
         self._clear_pending_cleanup("dop", prepared)
+        return True
 
     def _strict_dop_abort(
         self,
@@ -1876,22 +1994,18 @@ class OutputSessionService:
                 code=getattr(exc, "code", "DOP_CLEANUP_FAILED"),
                 detail=str(exc),
             )
-            self._unconfirmed_cleanup = ("dop", prepared)
+            self._retain_pending_cleanup("dop", prepared)
             raise OutputSessionError(
                 code,
                 f"DoP cleanup failed before switching family: {exc}",
             ) from exc
-        if not isinstance(result, dict) or not (
-            result.get("aborted") is True
-            or result.get("already") is True
-            or result.get("stale") is True
-        ):
+        if not self._dop_cleanup_confirmed(result, prepared):
             self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
                 reason=reason,
                 code="DOP_CLEANUP_UNCONFIRMED",
-                detail="host did not confirm abort",
+                detail="host did not confirm release of this exact execution",
             )
-            self._unconfirmed_cleanup = ("dop", prepared)
+            self._retain_pending_cleanup("dop", prepared)
             raise OutputSessionError(
                 code,
                 "current DoP execution was not released",
@@ -2105,6 +2219,8 @@ class OutputSessionService:
             self._transition(OutputSessionState.ACQUIRING)
         self._generation += 1
         self._mode = "dop"
+        self._selected_device_id = prepared.stable_device_id
+        self._selected_profile_id = request.selected_profile_id
         self._dop_plan = prepared.plan
         self._dop_prepared = prepared
         self._dop_playing_execution = None
@@ -2674,13 +2790,11 @@ class OutputSessionService:
                     )
                     self._notify()
                     raise OutputSessionError("DOP_ABORT_UNCONFIRMED", str(exc)) from exc
-            if not isinstance(result, dict) or not (
-                result.get("aborted") is True or result.get("already") is True
-            ):
+            if not self._dop_cleanup_confirmed(result, prepared):
                 self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
                     reason="dop_abort",
                     code="DOP_ABORT_UNCONFIRMED",
-                    detail="host did not confirm abort",
+                    detail="host did not confirm abort of this exact execution",
                 )
                 self._record_dop_family(
                     OutputFamilyState.UNAVAILABLE, prepared, detail=str(reason)
@@ -2845,11 +2959,7 @@ class OutputSessionService:
                     )
                     self._notify()
                     raise OutputSessionError(self._error_code, str(exc)) from exc
-            if not isinstance(result, dict) or not (
-                result.get("released") is True
-                or result.get("stopped") is True
-                or result.get("already") is True
-            ):
+            if prepared is not None and not self._dop_stop_confirmed(result, prepared):
                 self._error_code = "DOP_RELEASE_UNCONFIRMED"
                 self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
                     reason="dop_release",
@@ -3002,16 +3112,28 @@ class OutputSessionService:
             self._record_dop_family(
                 OutputFamilyState.UNAVAILABLE, prepared, detail="device_lost"
             )
-            try:
-                self._strict_dop_abort(prepared, "device_lost")
-            except OutputSessionError:
-                # The physical device disappeared, but the host did not
-                # confirm teardown. Keep the exact execution as recoverable
-                # uncertainty; never publish RELEASED or free the route.
-                self._dop_plan = plan
-                self._dop_terminal_execution = prepared.execution_id
-                self._notify()
-                return
+            # Device loss is logical truth, not a consequence of fallible
+            # teardown. Invalidate every lease BEFORE the abort attempt so a
+            # failed/unknown IPC can never leave a RUNNING DoP authority.
+            if self._state is not OutputSessionState.LOST:
+                self._transition(OutputSessionState.LOST)
+            self._mode = "lost"
+            self._error_code = "device_lost"
+            self._token_value = None
+            self._dop_prepared = None
+            self._dop_plan = None
+            self._dop_playing_execution = None
+            self._dop_eos_execution = None
+            self._dop_terminal_execution = prepared.execution_id
+            self._executor_receipt = None
+            self._path = None
+            self._last_release_invalidated_media = True
+            self._notify()
+            # Best-effort physical teardown. On failure the exact receipt is
+            # retained and acquisition stays blocked, but LOST is final.
+            self._dop_abort_quietly(prepared, "device_lost", record_failure=False)
+            self._notify()
+            return
         native_was_active = self._native_dsd_prepared is not None
         if self._mode == "native_dsd" and self._native_dsd_prepared is not None:
             plan = self._native_dsd_plan
@@ -3201,6 +3323,7 @@ class OutputSessionService:
         """Acknowledge a newer same-device binding without activating playback."""
         if (
             self._state is not OutputSessionState.LOST
+            or self._unconfirmed_cleanup is not None
             or stable_device_id != self._lost_device_id
             or stable_device_id != self._selected_device_id
             or generation <= self._lost_binding_generation
