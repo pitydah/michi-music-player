@@ -59,15 +59,18 @@
     "product_e2e": "PASS selected ALSA"
   },
   "rc1_recertification": {
-    "status": "PENDING_CI",
+    "status": "RECERTIFIED_CI_GREEN",
     "sprint": "AP2-F09-RC1",
-    "installed_wheel": "LOCAL PASS 2026-10-25 — wheel installed in clean venv, package-only imports from site-packages, real host/plugin, RUNNING/EOS/RELEASED, skipped=false; CI pending",
-    "local_results": "dop 87 passed + 1 skipped; full suite 6227 passed / 13 skipped / 0 failed (30:35) on 04c99cd; test-only 6b1afd4 adds one async-gate test (20 focused passed); selected ALSA hardware e2e 1 passed",
+    "ci_run": 40246039532,
+    "certified_head": "e46376e561da9e8691abbfdecef726efc2dfc99a",
+    "installed_wheel": "PASS local 2026-10-25 and CI — clean venv, package-only imports, real host/plugin, RUNNING/EOS/RELEASED, skipped=false",
+    "local_results": "dop 87 passed + 1 skipped; local full suite 6227 passed / 13 skipped / 0 failed; CI check 6200 passed / 41 skipped / 0 failed; selected ALSA hardware e2e 1 passed",
     "ownership": "COMPLETE — unconfirmed cleanup blocks acquisition and is retryable",
     "hotplug_registry": "COMPLETE — real AudioDeviceRegistry generation and topology loss",
     "playback_lifecycle": "COMPLETE — START/PAUSE/RESUME identity and replay/EOS lifecycle",
-    "qml_gate": "COMPLETE — PySide6 6.11.1 pin, preflight and negative control",
+    "qml_gate": "COMPLETE — PySide6 6.11.1 pin, preflight, negative control; CI check SUCCESS",
     "evidence": "RECONCILED — historical NO-GO records preserved separately",
-    "f14": "NOT_RUN"
+    "f14": "NOT_RUN",
+    "residual": "cross-environment byte-identical native artifact not claimed"
   }
 }

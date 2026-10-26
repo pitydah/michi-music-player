@@ -9,7 +9,7 @@
     "gstreamer": "1.28.8",
     "rust": "1.96.0"
   },
-  "artifact_sha256": "72fce5983a765f8fa27deb9a1ea530619bb1d69548d178df3853ea2174dc1af8",
+  "artifact_sha256": "89399d572ad80e4eeaeb9bc801cd74a68744290d11085659f8e7fe6f714d9418",
   "plugin": "michidop-rust-0.1.0",
   "source": {
     "container": "dsf",
