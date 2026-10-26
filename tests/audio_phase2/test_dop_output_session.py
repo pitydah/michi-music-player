@@ -29,6 +29,22 @@ class _Tx:
         self.fail_stop = False
         self.abort_result: dict[str, Any] | None = None
 
+    @staticmethod
+    def _receipt(prepared: DopSessionPrepared, operation: str) -> dict[str, Any]:
+        plan = prepared.plan
+        return {
+            "confirmed": True,
+            "operation": operation,
+            "plan_id": plan.plan_id,
+            "execution_id": plan.execution_id,
+            "stable_device_id": plan.stable_device_id,
+            "device": plan.binding_locator,
+            "binding_generation": plan.binding_generation,
+            "host_generation": plan.host_generation,
+            "terminal_state": "RELEASED",
+            "provenance": "SUPERVISED_HOST",
+        }
+
     def prepare(self, plan, path: Path, instance: str) -> DopSessionPrepared:
         return DopSessionPrepared(
             plan=plan,
@@ -51,6 +67,7 @@ class _Tx:
             "aborted": True,
             "stale": False,
             "execution_id": prepared.execution_id,
+            "release": self._receipt(prepared, "abort"),
         }
 
     def stop(self, prepared: DopSessionPrepared, reason: str) -> dict[str, Any]:
@@ -61,6 +78,7 @@ class _Tx:
             "stopped": True,
             "stale": False,
             "execution_id": prepared.execution_id,
+            "release": self._receipt(prepared, "stop"),
         }
 
 

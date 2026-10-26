@@ -44,7 +44,23 @@ class _Submit:
         if name == "start_dop":
             return {"state": "PLAYING", "confirmed": True}
         if name == "stop_dop":
-            return {"stopped": True, "stale": False}
+            expected = dict(payload["expected"])
+            return {
+                "stopped": True,
+                "stale": False,
+                "release": {
+                    "confirmed": True,
+                    "operation": "stop",
+                    "plan_id": expected["plan_id"],
+                    "execution_id": expected["execution_id"],
+                    "stable_device_id": expected["stable_device_id"],
+                    "device": expected["device"],
+                    "binding_generation": expected["binding_generation"],
+                    "host_generation": expected["host_generation"],
+                    "terminal_state": "RELEASED",
+                    "provenance": "SUPERVISED_HOST",
+                },
+            }
         return {}
 
 
