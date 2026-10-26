@@ -209,11 +209,12 @@
       "file": "src/michi/application/output_session_service.py",
       "owner": "OutputSessionService",
       "phase": "F09",
-      "contract": "DoP output family + lifecycle + receipt-preserving ownership/cleanup",
+      "contract": "DoP output family + lifecycle + receipt-preserving ownership/cleanup + proven release evidence",
       "tests": [
         "tests/audio_phase2/test_dop_output_session.py",
         "tests/audio_phase2/test_dop_product_alsa_e2e.py",
-        "tests/audio_phase2/test_dop_hotplug_registry.py"
+        "tests/audio_phase2/test_dop_hotplug_registry.py",
+        "tests/audio_phase2/test_dop_product_e2e.py"
       ]
     },
     {
@@ -229,10 +230,12 @@
       "file": "src/michi/infrastructure/audio_engines/gstreamer_host_dop.py",
       "owner": "host DoP runtime",
       "phase": "F09",
-      "contract": "explicit DoP GStreamer pipeline/caps",
+      "contract": "explicit DoP GStreamer pipeline/caps + exact supervised release receipt",
       "tests": [
         "tests/audio_phase2/test_dop_host_runtime.py",
-        "tests/audio_phase2/test_dop_product_alsa_e2e.py"
+        "tests/audio_phase2/test_dop_product_alsa_e2e.py",
+        "tests/audio_phase2/test_dop_host_eos.py",
+        "tests/audio_phase2/test_dop_product_e2e.py"
       ]
     },
     {
@@ -279,6 +282,16 @@
       "tests": [
         "native/michi-dop/tests/conformance.rs",
         "native/michi-dop/tests/corpus.rs"
+      ]
+    },
+    {
+      "file": "src/michi/infrastructure/audio_engines/gstreamer_host_port.py",
+      "owner": "supervised host transport port",
+      "phase": "F09",
+      "contract": "exact DoP release receipt retention/validation; stale state and generation fencing",
+      "tests": [
+        "tests/audio_phase2/test_dop_host_runtime.py",
+        "tests/audio_phase2/test_dop_host_eos.py"
       ]
     }
   ]

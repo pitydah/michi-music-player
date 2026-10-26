@@ -74,10 +74,18 @@ release sequence; a skip is a failure.
 The plugin never runs in the Qt owner process. The supervised host owns the
 pipeline and exposes explicit `PREPARE_DOP` / `COMMIT_DOP` / `START_DOP` /
 `PAUSE_DOP` / `RESUME_DOP` / `STOP_DOP` / `ABORT_DOP` / query operations.
-Destructive operations bind plan, execution, device, binding generation and
-host generation. A lost device is logical `LOST` even when physical abort is
-unconfirmed; the exact execution receipt is retained until a later command
-proves release, and no resource is declared released on uncertainty.
+Destructive operations bind plan, execution, stable device, binding locator and
+generation, and host generation. A successful STOP or ABORT returns a release
+receipt with those exact fields, terminal state `RELEASED` and provenance
+`SUPERVISED_HOST`; a response is never treated as proof merely because it echoes
+the caller's execution ID. The parent accepts a repeat STOP/ABORT only from a
+receipt it retained for the exact execution and current host generation, and the
+child can replay its retained receipt only after its pipeline and identity are
+gone. Receipts are invalidated by a new prepare, host loss, supervisor restart,
+identity loss or generation change, so receipt A can never certify execution B.
+If release cannot be proven, the result is `DOP_RELEASE_UNCONFIRMED`; a lost
+device remains logical `LOST`, the exact execution receipt stays pending, and no
+resource is declared released on uncertainty.
 
 ## Scope
 
