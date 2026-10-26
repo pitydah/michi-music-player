@@ -76,7 +76,7 @@
   "rc2_recovery_seal": {
     "sprint": "AP2-F09-RC2",
     "baseline_head": "d548f956c5db357befd6b8907563fb28f1aa9de5",
-    "status": "RECERTIFIED_LOCAL_PENDING_CI",
+    "status": "SUPERSEDED_BY_RC3_CI_GREEN",
     "scope": "transactional recovery seal after RC1 closure",
     "device_loss": "logical LOST independent of abort success; exact receipt retained; no false RELEASED",
     "cleanup_retry": "exact execution reconciliation only; newer execution untouched; rebind blocked while uncertain",
@@ -86,20 +86,23 @@
     "f14": "NOT_RUN physical DAC DSD/analog",
     "code_head": "61e304be363cb2057b8786b50402bfccb70dcd76",
     "local_results": "full suite 6235 passed / 15 skipped / 0 failed; focused RC2 41 passed; DoP 87 passed + 1 skipped; selected ALSA hardware 1 passed",
-    "installed_wheel": "PASS local \u2014 RC2 wheel /tmp/michi-dop-wheel-rc2b, site-packages import, real host/plugin, skipped=false, plugin SHA-256 89399d57..."
+    "installed_wheel": "PASS local \u2014 RC2 wheel /tmp/michi-dop-wheel-rc2b, site-packages import, real host/plugin, skipped=false, plugin SHA-256 89399d57...",
+    "historical_status": "RECERTIFIED_LOCAL_PENDING_CI"
   },
   "rc3_recovery_seal": {
     "sprint": "AP2-F09-RC3",
     "baseline_head": "5d95f8d809f4358b040cd65315b3dff6759a6d2e",
-    "status": "RECERTIFIED_LOCAL_PENDING_CI",
+    "status": "RECERTIFIED_CI_GREEN",
     "code_head": "39765a0463333a187f6b607e9657318e08719bc6",
     "scope": "proven release identity, uncertain-release recovery against real host, locked Cargo retrieval hardening",
     "release_identity": "STOP/ABORT requires exact supervised-host receipt and current generation; caller IDs are not proof",
     "recovery": "host retaining A blocks B until exact release is proven; host restart/new generation rejects old commands",
     "local_results": "full suite 6235 passed / 22 skipped / 0 failed; focused RC3 55 passed; DoP 87 passed + 1 skipped; selected ALSA hardware 1 passed; installed wheel e2e PASS",
     "installed_wheel": "PASS local - RC3 wheel /tmp/michi-dop-wheel-rc3b, site-packages import, real host/plugin, skipped=false, plugin SHA-256 89399d57...",
-    "ci": "PENDING_PUSH; prior native job failed at crates.io HTTP2, hardening applied",
+    "ci": "SUCCESS - run 40406073897; all four jobs success; check 6207 passed, 50 skipped, 0 failed in 1792.96s (29:52)",
     "f10": "READY_FOR_ACTIVATION_REVIEW report only; F10 remains LOCKED",
-    "f14": "NOT_RUN physical DAC DSD/analog"
+    "f14": "NOT_RUN physical DAC DSD/analog",
+    "certified_head": "d7b6e9091b32b1ceadf1204985b8f24e7fa7337d",
+    "ci_run": 40406073897
   }
 }

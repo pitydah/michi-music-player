@@ -62,8 +62,10 @@
     ]
   },
   "ci": {
-    "status": "PENDING_PUSH",
-    "note": "RC3 hardware e2e remains opt-in and is not run by GitHub hosted CI; CI covers installed plugin with fakesink. Prior native job crates.io failure is dependency retrieval, not audio regression."
+    "status": "CI_GREEN",
+    "run_id": 40406073897,
+    "head": "d7b6e9091b32b1ceadf1204985b8f24e7fa7337d",
+    "note": "All four CI jobs success; hardware e2e remains opt-in and is not run by GitHub hosted CI. CI covers the installed plugin with fakesink. Prior native crates.io failure was dependency retrieval, not audio regression."
   },
   "rc2_recovery_seal": {
     "sprint": "AP2-F09-RC2",
@@ -77,6 +79,8 @@
     "rerun": "2026-10-26 - 1 passed in 0.92s under MICHI_RUN_DOP_HARDWARE=1 with /tmp/michi-dop-gate-a-rc1",
     "result": "selected SMSL hw:3,0 S32LE 176400 carrier endpoint unchanged after release-identity hardening",
     "dac_dsd_mode": "NOT_CLAIMED",
-    "f14": "NOT_RUN"
+    "f14": "NOT_RUN",
+    "ci": "SUCCESS - run 40406073897; all jobs success; hardware carrier rerun remains local opt-in",
+    "certified_head": "d7b6e9091b32b1ceadf1204985b8f24e7fa7337d"
   }
 }

@@ -3,9 +3,9 @@
   "gate": "M13_NATIVE_DOP_PLUGIN_PACKAGING",
   "phase": "AP2-F09",
   "evaluated_at": "2026-10-24",
-  "status": "GATE_B_IMPLEMENTED_RC3_LOCAL_PENDING_CI",
-  "ci_run": "PENDING_PUSH",
-  "decision_head": "39765a0463333a187f6b607e9657318e08719bc6",
+  "status": "GATE_B_IMPLEMENTED_RC3_CI_GREEN",
+  "ci_run": 40406073897,
+  "decision_head": "d7b6e9091b32b1ceadf1204985b8f24e7fa7337d",
   "authority": "M13 release/packaging ownership; ADR 0012 requires this gate before productive native code",
   "observed": {
     "rust": "1.96.0",
@@ -23,7 +23,9 @@
     "production_selection": "DoP composed through canonical resolver/session/playback; selected ALSA e2e PASS",
     "installed_wheel_e2e": "LOCAL PASS 2026-10-26 - RC3 wheel in clean venv; script outside checkout; package imported from site-packages; installed plugin; RUNNING/EOS/RELEASED; skipped=false; plugin SHA-256 89399d572ad80e4eeaeb9bc801cd74a68744290d11085659f8e7fe6f714d9418",
     "installed_wheel_contract": "FAIL CLOSED on missing plugin/manifest/factory/import/PASS/skip; CI artifact installed-dop-e2e.json",
-    "local_verification": "RC3 full suite 6235 passed / 22 skipped / 0 failed; DoP 87 passed + 1 skipped; focused RC3 55 passed; selected ALSA hardware e2e 1 passed; installed wheel e2e PASS (skipped=false)"
+    "local_verification": "RC3 full suite 6235 passed / 22 skipped / 0 failed; DoP 87 passed + 1 skipped; focused RC3 55 passed; selected ALSA hardware e2e 1 passed; installed wheel e2e PASS (skipped=false)",
+    "ci_artifact_sha256": "ff3039feb4db80ce4e4c29c6d10535bf56c36220b6a0bf856b4b0fc8201d98ca",
+    "ci_check": "6207 passed, 50 skipped, 0 failed in 1792.96s (29:52)"
   },
   "criteria": {
     "pinned_toolchain": "PASS \u2014 Gate A",
@@ -32,10 +34,10 @@
     "shared_plugin_abi": "PASS \u2014 factory/plugin ABI inspected; element/conformance + corpus tests",
     "factory_discovery_installed": "PASS \u2014 clean venv discovery + gst-inspect from the wheel-directory contract",
     "wheel_plugin_package": "PASS \u2014 cp311-linux_x86_64 wheel includes native plugin and manifest",
-    "installed_wheel_end_to_end": "PASS local 2026-10-26; RC3 CI pending after crates.io retrieval hardening",
+    "installed_wheel_end_to_end": "PASS local 2026-10-26 and CI run 40406073897 - no skip",
     "appimage_flatpak_deb_plugin": "NOT_IMPLEMENTED \u2014 outside F09 gate scope",
     "release_manifest_sbom": "PARTIAL \u2014 plugin manifest present; full distribution SBOM remains future packaging",
-    "ci_native_build_conformance": "RETRY - prior run 40356585314 failed only at crates.io HTTP2 during locked dependency download; RC3 adds cache + bounded fetch retry; pending"
+    "ci_native_build_conformance": "SUCCESS - run 40406073897 (dop-native-gate-a), Cargo cache + bounded locked fetch"
   },
   "decision": "F09 DoP production path remains implemented. RC3 proves exact release identity and retained-resource recovery locally. The prior native CI failure was dependency retrieval, not audio code; RC3 CI is pending. Cross-environment byte identity and physical F14 remain not claimed.",
   "historical_unblock_procedure": [
@@ -90,7 +92,9 @@
     "runtime_impact": "STOP/ABORT release receipts are exact and generation-bound; host restart invalidates old receipts; retained A blocks B until proven release",
     "installed_wheel_e2e": "RC3 wheel /tmp/michi-dop-wheel-rc3b installed in a clean venv; package-only imports from outside checkout; real host/installed plugin; RUNNING/EOS/RELEASED; skipped=false; plugin SHA-256 89399d57...",
     "local_results": "full suite 6235 passed / 22 skipped / 0 failed; focused RC3 55 passed; DoP 87 passed + 1 skipped; selected ALSA hardware 1 passed",
-    "ci": "prior run 40356585314 native job failed on crates.io HTTP2; cache + bounded locked fetch retry added; RC3 CI pending",
-    "code_head": "39765a0463333a187f6b607e9657318e08719bc6"
+    "ci": "SUCCESS - run 40406073897; all four jobs success; installed wheel e2e PASS",
+    "code_head": "39765a0463333a187f6b607e9657318e08719bc6",
+    "ci_artifact_sha256": "ff3039feb4db80ce4e4c29c6d10535bf56c36220b6a0bf856b4b0fc8201d98ca",
+    "certified_head": "d7b6e9091b32b1ceadf1204985b8f24e7fa7337d"
   }
 }
