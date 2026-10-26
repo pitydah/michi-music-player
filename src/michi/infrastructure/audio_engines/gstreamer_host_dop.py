@@ -127,6 +127,7 @@ class DopHostRuntime:
         self._pipeline = None
         self._request: _DopRequest | None = None
         self._identity: dict[str, Any] | None = None
+        self._last_release_receipt: dict[str, Any] | None = None
         self._committed = False
         self._errors: list[dict[str, str]] = []
         self._eos = False
@@ -348,6 +349,7 @@ class DopHostRuntime:
             "prerolled": True,
             "path": request.path,
         }
+        self._last_release_receipt = None
         return dict(self._identity)
 
     def _bus_error(self) -> str:
@@ -477,14 +479,108 @@ class DopHostRuntime:
         }
 
     def stop(self, expected: dict[str, Any]) -> dict[str, Any]:
+        release = self._repeat_release(expected)
+        if release is not None:
+            return {
+                "stopped": True,
+                "already": True,
+                "stale": False,
+                "release": release,
+            }
         self._require_expected(expected)
-        self.close()
-        return {"stopped": True, "stale": False}
+        receipt = self._release_receipt("stop")
+        if not self._release_route():
+            raise DopHostError(
+                "DOP_HOST_RELEASE_UNCONFIRMED",
+                "pipeline did not confirm NULL state",
+            )
+        self._last_release_receipt = receipt
+        return {"stopped": True, "stale": False, "release": receipt}
 
     def abort(self, expected: dict[str, Any]) -> dict[str, Any]:
+        release = self._repeat_release(expected)
+        if release is not None:
+            return {
+                "aborted": True,
+                "already": True,
+                "stale": False,
+                "release": release,
+            }
         self._require_expected(expected)
-        self.close()
-        return {"aborted": True, "stale": False}
+        receipt = self._release_receipt("abort")
+        if not self._release_route():
+            raise DopHostError(
+                "DOP_HOST_RELEASE_UNCONFIRMED",
+                "pipeline did not confirm NULL state",
+            )
+        self._last_release_receipt = receipt
+        return {"aborted": True, "stale": False, "release": receipt}
+
+    def _repeat_release(self, expected: dict[str, Any]) -> dict[str, Any] | None:
+        """Return a retained release proof for an exact repeated release.
+
+        A response can be lost after the child has already set the pipeline to
+        NULL. The receipt is retained so a retry can prove that exact
+        execution was released; a different execution never matches.
+        """
+        if self._identity is not None or self._pipeline is not None:
+            return None
+        receipt = self._last_release_receipt
+        if not isinstance(receipt, dict) or not expected:
+            return None
+        for field in (
+            "plan_id",
+            "execution_id",
+            "stable_device_id",
+            "device",
+            "binding_generation",
+            "host_generation",
+        ):
+            if str(expected.get(field)) != str(receipt.get(field)):
+                return None
+        if (
+            receipt.get("confirmed") is not True
+            or receipt.get("terminal_state") != "RELEASED"
+            or receipt.get("provenance") != "SUPERVISED_HOST"
+        ):
+            return None
+        return dict(receipt)
+
+    def _release_receipt(self, operation: str) -> dict[str, Any]:
+        identity = self._identity or {}
+        return {
+            "confirmed": True,
+            "operation": operation,
+            "plan_id": str(identity.get("plan_id") or ""),
+            "execution_id": str(identity.get("execution_id") or ""),
+            "stable_device_id": str(identity.get("stable_device_id") or ""),
+            "device": str(identity.get("device") or ""),
+            "binding_generation": int(identity.get("binding_generation") or 0),
+            "host_generation": int(identity.get("host_generation") or 0),
+            "terminal_state": "RELEASED",
+            "provenance": "SUPERVISED_HOST",
+        }
+
+    def _release_route(self) -> bool:
+        pipeline = self._pipeline
+        if pipeline is None:
+            return False
+        try:
+            result = pipeline.set_state(self._gst.State.NULL)
+            if result == self._gst.StateChangeReturn.FAILURE:
+                return False
+            _result, state, _pending = pipeline.get_state(self._gst.SECOND)
+            if state != self._gst.State.NULL:
+                return False
+        except Exception:
+            return False
+        self._pipeline = None
+        self._request = None
+        self._identity = None
+        self._committed = False
+        self._errors = []
+        self._eos = False
+        return True
 
     def query_identity(self) -> dict[str, Any]:
         self._drain_bus()
@@ -558,6 +654,7 @@ class DopHostRuntime:
         self._pipeline = None
         self._request = None
         self._identity = None
+        self._last_release_receipt = None
         self._committed = False
         self._errors = []
         self._eos = False

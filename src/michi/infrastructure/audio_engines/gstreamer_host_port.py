@@ -96,6 +96,7 @@ class GStreamerHostedAudioPort(AudioPort):
         self._dop_state = "NONE"
         self._dop_expected: dict[str, Any] | None = None
         self._dop_path: str | None = None
+        self._dop_release_receipt: dict[str, Any] | None = None
         self._dop_eos_listeners: list[Callable[[str], None]] = []
         self._pcm_active = False
         self._last_state: PlaybackStatus | None = None
@@ -194,6 +195,7 @@ class GStreamerHostedAudioPort(AudioPort):
             self._dop_state = "RELEASED"
             self._dop_expected = None
             self._dop_path = None
+            self._dop_release_receipt = None
             self._pcm_active = False
         if cleanup_error is not None:
             # Truth was invalidated; keep the port retryable for the provider.
@@ -919,6 +921,7 @@ class GStreamerHostedAudioPort(AudioPort):
                 "host_generation": int(self._supervisor.host_generation),
             }
             self._dop_path = str(Path(str(payload.get("path") or "")).resolve())
+            self._dop_release_receipt = None
         return identity
 
     def commit_dop(self, expected: dict[str, Any]) -> dict[str, Any]:
@@ -937,20 +940,21 @@ class GStreamerHostedAudioPort(AudioPort):
         return result
 
     def abort_dop(self, expected: dict[str, Any] | None = None) -> dict[str, Any]:
-        # A normal stop already released the route. Abort is idempotent, and
-        # must prove WHICH execution is already absent instead of raising an
-        # identity error that would look like an unconfirmed physical cleanup.
+        # A normal stop may already have released the route. Idempotence is
+        # allowed only with a stored release receipt for THIS exact execution
+        # on the current host generation. A caller-supplied execution id is
+        # never evidence that the host released it.
         with self._lock:
             already_released = not self._dop_active
         if already_released:
-            execution_id = ""
-            if isinstance(expected, dict):
-                execution_id = str(expected.get("execution_id") or "")
+            self._require_dop_release_expected(expected)
+            receipt = dict(self._dop_release_receipt or {})
             return {
                 "aborted": True,
                 "already": True,
                 "stale": False,
-                "execution_id": execution_id,
+                "execution_id": str(expected.get("execution_id") or ""),
+                "release": receipt,
             }
         self._require_dop_expected(expected)
         result = self._submit(
@@ -962,16 +966,19 @@ class GStreamerHostedAudioPort(AudioPort):
             raise OutputHostCommandError(
                 "OUTPUT_HOST_INVALID_RESULT", "DoP abort was not confirmed"
             )
+        receipt = self._require_confirmed_release(result, expected)
         with self._lock:
             self._dop_active = False
             self._dop_state = "RELEASED"
             self._dop_expected = None
             self._dop_path = None
+            self._dop_release_receipt = dict(receipt)
         self._enqueue(lambda: self._commit_state(PlaybackStatus.STOPPED))
-        execution_id = str(expected.get("execution_id") or "")
-        if execution_id:
-            result = {**result, "execution_id": execution_id}
-        return result
+        return {
+            **result,
+            "execution_id": str(expected.get("execution_id") or ""),
+            "release": receipt,
+        }
 
     def start_dop(self, expected: dict[str, Any] | None = None) -> dict[str, Any]:
         with self._lock:
@@ -1053,13 +1060,15 @@ class GStreamerHostedAudioPort(AudioPort):
     def stop_dop(self, expected: dict[str, Any]) -> dict[str, Any]:
         with self._lock:
             already_released = not self._dop_active
-        execution_id = str(expected.get("execution_id") or "")
         if already_released:
+            self._require_dop_release_expected(expected)
+            receipt = dict(self._dop_release_receipt or {})
             return {
                 "stopped": True,
                 "already": True,
                 "stale": False,
-                "execution_id": execution_id,
+                "execution_id": str(expected.get("execution_id") or ""),
+                "release": receipt,
             }
         self._require_dop_expected(expected)
         result = self._submit(
@@ -1071,15 +1080,19 @@ class GStreamerHostedAudioPort(AudioPort):
             raise OutputHostCommandError(
                 "OUTPUT_HOST_INVALID_RESULT", "DoP stop was not confirmed"
             )
+        receipt = self._require_confirmed_release(result, expected)
         with self._lock:
             self._dop_active = False
             self._dop_state = "RELEASED"
             self._dop_expected = None
             self._dop_path = None
+            self._dop_release_receipt = dict(receipt)
         self._enqueue(lambda: self._commit_state(PlaybackStatus.STOPPED))
-        if execution_id:
-            result = {**result, "execution_id": execution_id}
-        return result
+        return {
+            **result,
+            "execution_id": str(expected.get("execution_id") or ""),
+            "release": receipt,
+        }
 
     def query_dop_identity(self) -> dict[str, Any]:
         payload = self._submit(
@@ -1102,6 +1115,64 @@ class GStreamerHostedAudioPort(AudioPort):
                 "OUTPUT_HOST_INVALID_RESULT", "DoP evidence payload is not an object"
             )
         return evidence
+
+    _DOP_RELEASE_FIELDS = (
+        "plan_id",
+        "execution_id",
+        "stable_device_id",
+        "device",
+        "binding_generation",
+        "host_generation",
+    )
+
+    def _release_receipt_matches(
+        self,
+        receipt: object,
+        expected: dict[str, Any],
+        *,
+        require_current_host: bool = True,
+    ) -> bool:
+        if not isinstance(receipt, dict):
+            return False
+        if receipt.get("confirmed") is not True:
+            return False
+        if receipt.get("terminal_state") != "RELEASED":
+            return False
+        if receipt.get("provenance") != "SUPERVISED_HOST":
+            return False
+        for field in self._DOP_RELEASE_FIELDS:
+            wanted = str(expected.get(field) or "")
+            observed = str(receipt.get(field) or "")
+            if not wanted or observed != wanted:
+                return False
+        current_generation = int(self._supervisor.host_generation)
+        return not (
+            require_current_host
+            and int(receipt.get("host_generation") or 0) != current_generation
+        )
+
+    def _require_dop_release_expected(self, expected: dict[str, Any] | None) -> None:
+        if not isinstance(expected, dict) or not expected:
+            raise AudioTransportCommandError(
+                "DOP_HOST_IDENTITY_REQUIRED: release identity required"
+            )
+        if not self._release_receipt_matches(self._dop_release_receipt, expected):
+            raise AudioTransportCommandError(
+                "DOP_RELEASE_UNCONFIRMED: no proven release receipt for this exact "
+                "execution on the current host generation"
+            )
+
+    def _require_confirmed_release(
+        self, result: dict[str, Any], expected: dict[str, Any]
+    ) -> dict[str, Any]:
+        receipt = result.get("release")
+        if not self._release_receipt_matches(receipt, expected):
+            raise OutputHostCommandError(
+                "DOP_RELEASE_UNCONFIRMED",
+                "host result did not carry an exact proved release receipt",
+            )
+        assert isinstance(receipt, dict)
+        return dict(receipt)
 
     def _require_dop_expected(self, expected: dict[str, Any] | None) -> None:
         if not isinstance(expected, dict) or not expected:
@@ -1671,6 +1742,7 @@ class GStreamerHostedAudioPort(AudioPort):
             if self._closed:
                 return
             self._host_lost_reason = f"{code}: {detail}"
+            self._dop_release_receipt = None
         reason = f"{code}: {detail}"
         self._enqueue(lambda: self._commit_host_loss(reason))
 

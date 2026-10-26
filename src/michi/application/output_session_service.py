@@ -1827,30 +1827,71 @@ class OutputSessionService:
             )
 
     @staticmethod
-    def _dop_cleanup_confirmed(result: object, prepared: DopSessionPrepared) -> bool:
+    def _dop_release_evidence(
+        result: object,
+        prepared: DopSessionPrepared,
+        operations: tuple[str, ...],
+    ) -> bool:
+        """Prove THIS exact execution was released by the supervised host.
+
+        A caller-echoed execution id is not evidence. The host result must
+        carry a receipt with the exact plan, execution, endpoint, binding and
+        host generation that this prepared session owns.
+        """
+        if not isinstance(result, dict):
+            return False
+        if result.get("execution_id") != prepared.execution_id:
+            return False
+        if result.get("stale") is True:
+            return False
+        receipt = result.get("release")
+        if not isinstance(receipt, dict):
+            return False
+        if receipt.get("confirmed") is not True:
+            return False
+        if receipt.get("terminal_state") != "RELEASED":
+            return False
+        if receipt.get("provenance") != "SUPERVISED_HOST":
+            return False
+        if receipt.get("operation") not in operations:
+            return False
+        plan = prepared.plan
+        expected = {
+            "plan_id": plan.plan_id,
+            "execution_id": plan.execution_id,
+            "stable_device_id": plan.stable_device_id,
+            "device": plan.binding_locator,
+            "binding_generation": plan.binding_generation,
+            "host_generation": plan.host_generation,
+        }
+        for field, wanted in expected.items():
+            if str(receipt.get(field) or "") != str(wanted):
+                return False
+        return True
+
+    @classmethod
+    def _dop_cleanup_confirmed(
+        cls, result: object, prepared: DopSessionPrepared
+    ) -> bool:
         """Positive evidence for THIS execution, never a generic stale flag."""
         if not isinstance(result, dict):
             return False
-        if result.get("execution_id") != prepared.execution_id:
+        if result.get("aborted") is not True and result.get("already") is not True:
             return False
-        if result.get("stale") is True:
-            return False
-        return result.get("aborted") is True or result.get("already") is True
+        return cls._dop_release_evidence(result, prepared, ("abort", "stop"))
 
-    @staticmethod
-    def _dop_stop_confirmed(result: object, prepared: DopSessionPrepared) -> bool:
+    @classmethod
+    def _dop_stop_confirmed(cls, result: object, prepared: DopSessionPrepared) -> bool:
         """Positive evidence that THIS execution's carrier route is gone."""
         if not isinstance(result, dict):
             return False
-        if result.get("execution_id") != prepared.execution_id:
+        if (
+            result.get("stopped") is not True
+            and result.get("released") is not True
+            and result.get("already") is not True
+        ):
             return False
-        if result.get("stale") is True:
-            return False
-        return (
-            result.get("stopped") is True
-            or result.get("released") is True
-            or result.get("already") is True
-        )
+        return cls._dop_release_evidence(result, prepared, ("stop", "abort"))
 
     def _reconcile_confirmed_dop_cleanup(self, prepared: DopSessionPrepared) -> None:
         """Reconcile the logical session after exact DoP route release.
@@ -2785,6 +2826,7 @@ class OutputSessionService:
                         code="DOP_ABORT_UNCONFIRMED",
                         detail=str(exc),
                     )
+                    self._retain_pending_cleanup("dop", prepared)
                     self._record_dop_family(
                         OutputFamilyState.UNAVAILABLE, prepared, detail=str(reason)
                     )
@@ -2796,6 +2838,7 @@ class OutputSessionService:
                     code="DOP_ABORT_UNCONFIRMED",
                     detail="host did not confirm abort of this exact execution",
                 )
+                self._retain_pending_cleanup("dop", prepared)
                 self._record_dop_family(
                     OutputFamilyState.UNAVAILABLE, prepared, detail=str(reason)
                 )
@@ -2803,6 +2846,7 @@ class OutputSessionService:
                 raise OutputSessionError(
                     "DOP_ABORT_UNCONFIRMED", "host did not confirm abort"
                 )
+            self._clear_pending_cleanup("dop", prepared)
             self._record_dop_family(
                 OutputFamilyState.UNAVAILABLE, prepared, detail=str(reason)
             )
@@ -2954,6 +2998,7 @@ class OutputSessionService:
                     self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
                         reason="dop_release", code=self._error_code, detail=str(exc)
                     )
+                    self._retain_pending_cleanup("dop", prepared)
                     self._record_dop_family(
                         OutputFamilyState.UNAVAILABLE, prepared, detail=self._error_code
                     )
@@ -2966,6 +3011,7 @@ class OutputSessionService:
                     code=self._error_code,
                     detail="host did not confirm release",
                 )
+                self._retain_pending_cleanup("dop", prepared)
                 self._record_dop_family(
                     OutputFamilyState.UNAVAILABLE, prepared, detail=self._error_code
                 )
@@ -2973,6 +3019,7 @@ class OutputSessionService:
                 raise OutputSessionError(
                     self._error_code, "host did not confirm release"
                 )
+            self._clear_pending_cleanup("dop", prepared)
             self._record_dop_family(
                 OutputFamilyState.RELEASED, prepared, detail=str(reason)
             )
