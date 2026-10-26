@@ -43,9 +43,10 @@
       "file": "src/michi/application/dsd_policy_service.py",
       "owner": "DsdPolicyService",
       "phase": "F10",
-      "contract": "DSD/DSP decision policy",
+      "contract": "DSD/DSP decision policy, explicit conversion consent, quality/decoder/target decisions",
       "tests": [
-        "test_dsd_dsp_matrix.py"
+        "tests/audio_phase2/test_dsd_dsp_matrix.py",
+        "tests/audio_phase2/test_dsd_to_pcm_plan.py"
       ]
     },
     {
@@ -292,6 +293,24 @@
       "tests": [
         "tests/audio_phase2/test_dop_host_runtime.py",
         "tests/audio_phase2/test_dop_host_eos.py"
+      ]
+    },
+    {
+      "file": "src/michi/application/dsd_to_pcm_plan.py",
+      "owner": "DsdToPcmPlanner under DsdPolicyService",
+      "phase": "F10",
+      "contract": "deterministic DSD->PCM plan and quality ladders",
+      "tests": [
+        "tests/audio_phase2/test_dsd_to_pcm_plan.py"
+      ]
+    },
+    {
+      "file": "src/michi/infrastructure/dsd/dsd_to_pcm.py",
+      "owner": "DSD to PCM runtime",
+      "phase": "F10",
+      "contract": "explicit gst-libav decoder node with resampler and PCM caps",
+      "tests": [
+        "tests/audio_phase2/test_dsd_to_pcm_runtime.py"
       ]
     }
   ]

@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "profiles": {
+    "FAST": {"ladder_hz": [88200], "purpose": "diagnostic"},
+    "BALANCED": {"ladder_hz": [176400, 88200], "purpose": "efficient"},
+    "HIGH": {"ladder_hz": [352800, 176400, 88200], "purpose": "default explicit conversion"},
+    "REFERENCE": {"ladder_hz": [705600, 352800, 176400, 88200], "purpose": "requires qualification and resource evidence"}
+  },
+  "resampler": {"quality": 10, "resample_method": "kaiser", "sinc_filter_mode": "full", "sinc_filter_interpolation": "none"},
+  "backend": "gst-libav",
+  "decoders": {
+    "planar_lsbf": "avdec_dsd_lsbf_planar",
+    "planar_msbf": "avdec_dsd_msbf_planar",
+    "interleaved_lsbf": "avdec_dsd_lsbf",
+    "interleaved_msbf": "avdec_dsd_msbf"
+  }
+}
