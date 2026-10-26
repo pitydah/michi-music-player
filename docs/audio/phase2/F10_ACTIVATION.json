@@ -1,0 +1,51 @@
+{
+  "schema_version": 2,
+  "phase": "AP2-F10",
+  "title": "DSD -> PCM AND DSP INTEROPERABILITY",
+  "recorded_at": "2026-10-26",
+  "activation_head": "3d43341a9a3537e9eff8ce8f2031a12f259fcada",
+  "previous_state": "LOCKED",
+  "new_state": "ACTIVE",
+  "dependencies": {
+    "AP2-F06": "CLOSED",
+    "AP2-F08": "CLOSED",
+    "AP2-F09": "CLOSED"
+  },
+  "spec": {
+    "path": "docs/audio/MICHI_AUDIO_PHASE_2_DSP_DSD_DOP_SIGNAL_PATH_MEGA_PLAN.md",
+    "sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12"
+  },
+  "entry_gate": {
+    "pcm_dsp": "F06 CLOSED, frozen hashes intact",
+    "native_dsd": "F08 CLOSED and recertified",
+    "dop": "F09 CLOSED, RC3 CI green run 40413031157",
+    "policy_authority": "DsdPolicyService is the single DSD/DSP decision owner; existing planners/executors remain authorities for their families",
+    "signal_path": "SignalPathService can represent source, conversion, resampler, DSP and output nodes",
+    "alignment": "GO for AP2-F10 before activation",
+    "verdict": "GO"
+  },
+  "allowed_scope": [
+    "explicit DSD->PCM policy and consent",
+    "deterministic DSD->PCM planning and quality ladders",
+    "gst-libav avdec_dsd_* runtime using explicit nodes",
+    "generation-safe family transitions",
+    "Signal Truth/Path conversion evidence",
+    "conformance harness for tested paths"
+  ],
+  "restrictions": [
+    "no silent DSD->PCM conversion",
+    "no DSP on Native DSD or DoP carrier",
+    "no bit-perfect claim for converted DSD",
+    "no PCM fallback from Native/DoP failure",
+    "F11-F15 remain LOCKED",
+    "F14 physical certification NOT_RUN"
+  ],
+  "not_claimed": [
+    "F10 CLOSED",
+    "all quality profiles certified",
+    "DSD512 qualification",
+    "physical DAC DSD-mode interpretation",
+    "UI convergence (F11)"
+  ],
+  "f14": "NOT_RUN"
+}
