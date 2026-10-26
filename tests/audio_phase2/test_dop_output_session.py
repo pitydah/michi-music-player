@@ -27,6 +27,7 @@ class _Tx:
         self.committed = 0
         self.fail_abort = False
         self.fail_stop = False
+        self.abort_result: dict[str, Any] | None = None
 
     def prepare(self, plan, path: Path, instance: str) -> DopSessionPrepared:
         return DopSessionPrepared(
@@ -44,13 +45,23 @@ class _Tx:
         if self.fail_abort:
             raise RuntimeError("abort failed")
         self.aborted.append(reason)
-        return {"aborted": True, "stale": False}
+        if self.abort_result is not None:
+            return dict(self.abort_result)
+        return {
+            "aborted": True,
+            "stale": False,
+            "execution_id": prepared.execution_id,
+        }
 
     def stop(self, prepared: DopSessionPrepared, reason: str) -> dict[str, Any]:
         if self.fail_stop:
             raise RuntimeError("stop failed")
         self.stopped.append(reason)
-        return {"stopped": True, "stale": False}
+        return {
+            "stopped": True,
+            "stale": False,
+            "execution_id": prepared.execution_id,
+        }
 
 
 def _session(plan, tx: _Tx) -> OutputSessionService:
@@ -469,3 +480,157 @@ def test_async_prepare_fails_closed_on_pending_cleanup(tmp_path: Path) -> None:
     assert session.pending_cleanup == ("dop", prepared)
     assert len(errors) == 1
     assert getattr(errors[0], "code", None) == "OUTPUT_OWNERSHIP_UNCONFIRMED"
+
+
+def test_device_loss_is_lost_even_when_abort_is_unconfirmed(tmp_path: Path) -> None:
+    plan = _plan()
+    tx = _Tx(plan)
+    tx.fail_abort = True
+    recorder = _Recorder()
+    session = OutputSessionService(
+        OutputPlanner(),
+        request_provider=lambda _path: OutputRequest.dop(plan, "profile:dop"),
+        dop_prepare=tx.prepare,
+        dop_commit=tx.commit,
+        dop_abort=tx.abort,
+        dop_stop=tx.stop,
+        dop_plan_still_current=lambda _plan: True,
+        truth_recorder=recorder,
+    )
+    session.prepare_for_media(tmp_path / "track.dsf")
+    token = session._token_value
+    session.commit_media(token, tmp_path / "track.dsf")
+    prepared = session._dop_prepared
+
+    session.device_lost(plan.stable_device_id, 7)
+
+    assert session.state is OutputSessionState.LOST
+    assert session.mode == "lost"
+    assert session._error_code == "device_lost"
+    assert session._dop_prepared is None
+    assert session._dop_plan is None
+    assert session._dop_playing_execution is None
+    assert session._dop_terminal_execution == plan.execution_id
+    assert session.pending_cleanup == ("dop", prepared)
+    assert session.last_cleanup_diagnostic is not None
+    assert not any(
+        event == ("dop", OutputFamilyState.RELEASED) for event in recorder.events
+    )
+    assert session.notify_dop_eos(plan.execution_id) is False
+
+
+def test_retry_reconciles_the_logical_dop_session(tmp_path: Path) -> None:
+    plan = _plan()
+    tx = _Tx(plan)
+    tx.fail_abort = True
+    session = _session(plan, tx)
+    token = session.prepare_for_media(tmp_path / "track.dsf")
+    session.commit_media(token, tmp_path / "track.dsf")
+    session.notify_dop_playing(plan.execution_id)
+    prepared = session._dop_prepared
+    session._dop_abort_quietly(prepared, "superseded_before_commit")
+    assert session.pending_cleanup == ("dop", prepared)
+    assert session._dop_playing_execution == plan.execution_id
+
+    tx.fail_abort = False
+    assert session.retry_pending_cleanup() is True
+
+    assert session.pending_cleanup is None
+    assert session._dop_prepared is None
+    assert session._dop_plan is None
+    assert session._dop_playing_execution is None
+    assert session._token_value is None
+    assert session.state is OutputSessionState.IDLE
+    assert session.notify_dop_playing(plan.execution_id) is False
+    assert session.prepare_for_media(tmp_path / "next.dsf").startswith("output-tx:dop:")
+
+
+def test_device_loss_retry_keeps_lost_until_newer_binding(tmp_path: Path) -> None:
+    plan = _plan()
+    tx = _Tx(plan)
+    tx.fail_abort = True
+    session = _session(plan, tx)
+    token = session.prepare_for_media(tmp_path / "track.dsf")
+    session.commit_media(token, tmp_path / "track.dsf")
+    session.device_lost(plan.stable_device_id, 7)
+    assert session.state is OutputSessionState.LOST
+    assert session.pending_cleanup is not None
+    assert session.rebind_after_topology_change(plan.stable_device_id, 8) is False
+
+    tx.fail_abort = False
+    assert session.retry_pending_cleanup() is True
+
+    assert session.state is OutputSessionState.LOST
+    assert session.mode == "lost"
+    assert session.pending_cleanup is None
+    assert session._dop_terminal_execution is None
+    assert session.rebind_after_topology_change(plan.stable_device_id, 7) is False
+    assert session.rebind_after_topology_change(plan.stable_device_id, 8) is True
+    assert session.state is OutputSessionState.IDLE
+
+
+def test_second_cleanup_failure_does_not_replace_the_first_receipt(
+    tmp_path: Path,
+) -> None:
+    plan = _plan()
+    tx = _Tx(plan)
+    tx.fail_abort = True
+    session = _session(plan, tx)
+    session.prepare_for_media(tmp_path / "track.dsf")
+    first = session._dop_prepared
+    session._dop_abort_quietly(first, "first")
+
+    newer = tx.prepare(plan, tmp_path / "newer.dsf", "instance")
+    session._retain_pending_cleanup("dop", newer)
+
+    assert session.pending_cleanup == ("dop", first)
+    assert session.last_cleanup_diagnostic is not None
+
+
+def test_stale_abort_evidence_is_not_treated_as_release(tmp_path: Path) -> None:
+    plan = _plan()
+    tx = _Tx(plan)
+    tx.abort_result = {"aborted": True, "stale": True}
+    session = _session(plan, tx)
+    session.prepare_for_media(tmp_path / "track.dsf")
+    prepared = session._dop_prepared
+
+    assert session._dop_abort_quietly(prepared, "cleanup_retry") is False
+
+    assert session.pending_cleanup == ("dop", prepared)
+    assert session._dop_prepared is prepared
+
+
+def test_generic_already_without_execution_identity_is_not_release(
+    tmp_path: Path,
+) -> None:
+    plan = _plan()
+    tx = _Tx(plan)
+    tx.abort_result = {"aborted": True, "already": True, "stale": False}
+    session = _session(plan, tx)
+    session.prepare_for_media(tmp_path / "track.dsf")
+    prepared = session._dop_prepared
+
+    assert session._dop_abort_quietly(prepared, "cleanup_retry") is False
+
+    assert session.pending_cleanup == ("dop", prepared)
+    assert session._dop_prepared is prepared
+
+
+def test_stop_identity_is_required_for_release(tmp_path: Path) -> None:
+    plan = _plan()
+    tx = _Tx(plan)
+    session = _session(plan, tx)
+    path = tmp_path / "track.dsf"
+    token = session.prepare_for_media(path)
+    prepared = session._dop_prepared
+    assert prepared is not None
+    session.commit_media(token, path)
+
+    def unproven_stop(_prepared, _reason):
+        return {"stopped": True, "stale": False}
+
+    session._dop_stop = unproven_stop
+    with pytest.raises(OutputSessionError, match="DOP_RELEASE_UNCONFIRMED"):
+        session.release_active("stop")
+    assert session._dop_prepared is prepared

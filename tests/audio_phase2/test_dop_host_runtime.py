@@ -126,3 +126,37 @@ def test_gate_a_dop_host_vertical_is_explicit_and_confirmed(
         with contextlib.suppress(Exception):
             port.abort_dop(expected)
         supervisor.close()
+
+
+def test_abort_after_a_confirmed_stop_is_exact_not_identity_failure(
+    tmp_path, monkeypatch
+) -> None:
+    dsf = tmp_path / "dop.dsf"
+    dsf.write_bytes(build_dsf(sample_count=2_822_400))
+    monkeypatch.setenv("MICHI_GST_LAB_SINK", "fakesink")
+    monkeypatch.setenv("GST_PLUGIN_PATH", str(_PREFIX))
+    monkeypatch.setenv("MICHI_DOP_PLUGIN_PREFIX", str(_PREFIX))
+    supervisor, port = _supervisor_and_port()
+    try:
+        port.activate()
+        identity = port.prepare_dop(_payload(dsf))
+        expected = {
+            "plan_id": identity["plan_id"],
+            "execution_id": identity["execution_id"],
+            "stable_device_id": identity["stable_device_id"],
+            "device": identity["device"],
+            "binding_generation": identity["binding_generation"],
+            "host_generation": identity["host_generation"],
+        }
+        assert port.commit_dop(expected)["committed"] is True
+        stopped = port.stop_dop(expected)
+        assert stopped["stopped"] is True and stopped["stale"] is False
+        aborted = port.abort_dop(expected)
+        assert aborted["aborted"] is True
+        assert aborted["already"] is True
+        assert aborted["stale"] is False
+        assert aborted["execution_id"] == expected["execution_id"]
+    finally:
+        with contextlib.suppress(Exception):
+            port.abort_dop(expected)
+        supervisor.close()

@@ -144,7 +144,8 @@ def test_registry_generation_drives_dop_topology_loss(tmp_path: Path) -> None:
     session.device_lost(stable_id, binding.generation)
     assert "device_lost" in tx.aborted
     assert session._dop_prepared is None
-    assert session.state is OutputSessionState.IDLE
+    assert session.state is OutputSessionState.LOST
+    assert session.mode == "lost"
     assert session.notify_dop_eos(plan.execution_id) is False
 
 
@@ -169,7 +170,7 @@ def test_device_loss_during_ready_aborts_without_playing(tmp_path: Path) -> None
     session.device_lost(stable_id, binding.generation)
     assert "device_lost" in tx.aborted
     assert session._dop_prepared is None
-    assert session.state is OutputSessionState.IDLE
+    assert session.state is OutputSessionState.LOST
 
 
 def test_registry_binding_feeds_supervised_qualification(tmp_path: Path) -> None:
