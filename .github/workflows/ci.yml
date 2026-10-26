@@ -338,6 +338,34 @@ jobs:
         with:
           components: rustfmt, clippy
 
+      - name: Cache locked Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-locked-${{ hashFiles('native/michi-dop/Cargo.lock') }}-1.96.0
+          restore-keys: |
+            ${{ runner.os }}-cargo-locked-${{ hashFiles('native/michi-dop/Cargo.lock') }}-
+            ${{ runner.os }}-cargo-locked-
+
+      - name: Fetch locked Cargo dependencies (bounded retry)
+        run: |
+          set -euo pipefail
+          export CARGO_NET_RETRY=10
+          export CARGO_HTTP_TIMEOUT=120
+          for attempt in 1 2 3; do
+            echo "cargo fetch attempt ${attempt}/3"
+            if cargo fetch --manifest-path native/michi-dop/Cargo.toml --locked; then
+              exit 0
+            fi
+            if [ "${attempt}" -eq 3 ]; then
+              echo "cargo fetch failed after 3 attempts" >&2
+              exit 1
+            fi
+            sleep $((attempt * 10))
+          done
+
       - name: Configure reproducible native path remapping
         run: |
           # Cargo embeds registry/crate paths in panic locations. Remap them so
