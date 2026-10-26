@@ -23,7 +23,7 @@
     "production_selection": "DoP composed through canonical resolver/session/playback; selected ALSA e2e PASS",
     "installed_wheel_e2e": "LOCAL PASS 2026-10-25 — wheel in clean venv; script outside checkout; package imported from site-packages; installed plugin; RUNNING/EOS/RELEASED; skipped=false; plugin SHA-256 89399d572ad80e4eeaeb9bc801cd74a68744290d11085659f8e7fe6f714d9418",
     "installed_wheel_contract": "FAIL CLOSED on missing plugin/manifest/factory/import/PASS/skip; CI artifact installed-dop-e2e.json",
-    "local_verification": "dop 87 passed + 1 skipped; full suite 6227 passed / 13 skipped / 0 failed; CI check 6200 passed / 41 skipped / 0 failed; selected ALSA hardware e2e 1 passed"
+    "local_verification": "RC2 full suite 6235 passed / 15 skipped / 0 failed; DoP 87 passed + 1 skipped; focused RC2 41 passed; selected ALSA hardware e2e 1 passed; installed wheel e2e PASS (skipped=false)"
   },
   "criteria": {
     "pinned_toolchain": "PASS — Gate A",
@@ -74,5 +74,14 @@
     "production_selection": "COMPLETE — canonical resolver/session/playback selected-ALSA e2e",
     "installed_wheel_e2e": "PASS locally and in CI run 40246039532 (skipped=false)",
     "residual": "physical DAC DSD-mode/analog certification is F14, NOT_RUN"
+  },
+  "rc2_recovery_note": {
+    "sprint": "AP2-F09-RC2",
+    "packaging_impact": "none; no new artifact format or discovery path",
+    "runtime_impact": "abort-after-stop idempotence and stale transport-state fencing verified against installed plugin",
+    "status": "PACKAGING_GATE_UNCHANGED",
+    "installed_wheel_e2e": "RC2 wheel /tmp/michi-dop-wheel-rc2b installed in a clean venv; package-only imports from outside the checkout; real host/installed plugin; RUNNING/EOS/RELEASED; skipped=false; plugin SHA-256 89399d57...",
+    "local_results": "full suite 6235 passed / 15 skipped / 0 failed; focused RC2 41 passed; DoP 87 passed + 1 skipped; selected ALSA hardware 1 passed",
+    "code_head": "61e304be363cb2057b8786b50402bfccb70dcd76"
   }
 }

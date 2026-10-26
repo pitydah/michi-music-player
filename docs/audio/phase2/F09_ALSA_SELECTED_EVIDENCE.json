@@ -46,7 +46,7 @@
   "f14": "NOT_RUN",
   "product_e2e": {
     "status": "PASS",
-    "local_run": "2026-10-25 — 1 passed in 0.88s under MICHI_RUN_DOP_HARDWARE=1 with /tmp/michi-dop-gate-a-rc1",
+    "local_run": "2026-10-25 — 1 passed in 0.85s under MICHI_RUN_DOP_HARDWARE=1 with /tmp/michi-dop-gate-a-rc1",
     "path": "PlaybackService.load_and_play → resolver → planner → OutputSession → executor → host → michidop → alsasink",
     "device_locator": "hw:3,0",
     "carrier_format": "S32LE",
@@ -64,5 +64,12 @@
   "ci": {
     "status": "PENDING_PUSH",
     "note": "Hardware e2e remains opt-in and is not run by GitHub hosted CI; CI covers the installed plugin with fakesink."
+  },
+  "rc2_recovery_seal": {
+    "sprint": "AP2-F09-RC2",
+    "rerun": "2026-10-25 — 1 passed in 0.85s under MICHI_RUN_DOP_HARDWARE=1 with /tmp/michi-dop-gate-a-rc1",
+    "result": "operational carrier endpoint unchanged after recovery fixes",
+    "dac_dsd_mode": "NOT_CLAIMED",
+    "f14": "NOT_RUN"
   }
 }

@@ -4,19 +4,25 @@
   "title": "DOP PACKER, CARRIER, PLANNER Y RUNTIME",
   "state": "CLOSED",
   "activation_head": "3800af2",
-  "repo_head": "e46376e561da9e8691abbfdecef726efc2dfc99a",
+  "repo_head": "61e304be363cb2057b8786b50402bfccb70dcd76",
   "docs_head": "git log -1 -- docs/audio/phase2/F09_DOP_EVIDENCE.json",
   "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
   "certification": {
-    "status": "RECERTIFIED_CI_GREEN",
-    "sprint": "AP2-F09-RC1",
-    "baseline_head": "da1603c05361450310c7baaabc781c1a54215176",
-    "certified_head": "e46376e561da9e8691abbfdecef726efc2dfc99a",
-    "ci_run": 40246039532,
+    "status": "RECERTIFIED_RC2_LOCAL_PENDING_CI",
+    "sprint": "AP2-F09-RC2",
+    "baseline_head": "d548f956c5db357befd6b8907563fb28f1aa9de5",
+    "certified_head": "61e304be363cb2057b8786b50402bfccb70dcd76",
+    "ci_run": "PENDING_PUSH",
     "recertified_at": "2026-10-25",
-    "scope": "post-closure KILLCRITIC corrections; installed-wheel enforcement, ownership/cleanup, hotplug registry, playback lifecycle, QML gate",
+    "scope": "TRANSACTIONAL RECOVERY SEAL: device-loss logical convergence, exact cleanup receipt reconciliation, stale transport-state fencing, host-real recovery, production README and evidence",
     "f14": "NOT_RUN — physical DAC DSD/analog certification remains separate",
-    "f10_f15": "LOCKED"
+    "f10_f15": "LOCKED",
+    "previous_certification": {
+      "status": "RECERTIFIED_CI_GREEN",
+      "sprint": "AP2-F09-RC1",
+      "certified_head": "e46376e561da9e8691abbfdecef726efc2dfc99a",
+      "ci_run": 40246039532
+    }
   },
   "entry_gate": {
     "F07": "CLOSED",
@@ -26,7 +32,7 @@
     "toolchain": "Rust 1.96.0; GStreamer 1.28.8 development files present",
     "packaging_gate": "Gate A evaluation and Gate B production approved 2026-10-24; Gate B implemented",
     "alignment": "GO",
-    "verdict": "GO — productive DoP integrated; RC1 CI run 40246039532 all jobs success"
+    "verdict": "GO — RC2 local recertification complete; GitHub CI pending push"
   },
   "implementation": {
     "domain": "src/michi/domain/dop.py — exact offsets/coverage/endianness, bounded backlog, streaming reset, counters",
@@ -57,37 +63,36 @@
     "m13_gate_b": "APPROVED_AND_IMPLEMENTED — native wheel + manifest + installed discovery",
     "plugin_path_contract": "src/michi/infrastructure/audio_output/dop_plugin.py resolves either the installed wheel plugin directory or the Gate A root; invalid explicit prefixes fail closed",
     "installed_wheel_e2e": "scripts/verify_installed_dop_e2e.py runs from outside the checkout with package-only imports, installed plugin, real host, PlaybackService/OutputSession, EOS/release and machine-readable PASS",
-    "ownership_cleanup": "unconfirmed quiet/strict DoP/Native/Managed cleanup retains the exact receipt, blocks incompatible acquisition and can be retried; release is never published on uncertainty",
+    "ownership_cleanup": "device loss is logical LOST before fallible abort; unconfirmed quiet/strict DoP/Native/Managed cleanup retains the exact receipt, blocks incompatible acquisition and can be retried; exact-execution reconciliation retires only the owning session; release is never published on uncertainty",
     "cross_family": "DoP/Native/Managed/Direct/Shared transitions require confirmation of the previous owner before acquisition",
     "hotplug_registry": "AudioDeviceRegistry/UdevObserver generation drives DoP topology loss; canonical registry binding and supervised qualification preserve stable id/locator/generation",
     "executor_identity": "START/PAUSE/RESUME carry the prepared plan identity; the host child rejects stale generations",
-    "qml_gate": "check job pins PySide6 6.11.1, preflights --Quick.layout-positioning, keeps premium Library layout error gate and a negative control"
+    "qml_gate": "check job pins PySide6 6.11.1, preflights --Quick.layout-positioning, keeps premium Library layout error gate and a negative control",
+    "stale_transport": "queued DoP START/PAUSE/RESUME observations are published only when the exact execution and command generation still match; stale state cannot re-enter stop during device-loss convergence"
   },
   "tests": {
     "dop": "87 passed, 1 skipped (88 collected) — python -m pytest tests/dop -q",
-    "full_suite": "LOCAL 6227 passed, 13 skipped, 0 failed in 30:35 on code head 04c99cd; CI check 6200 passed, 41 skipped, 0 failed in 29:53 (runner Qt/GStreamer availability) — both no failures",
+    "full_suite": "6235 passed, 15 skipped, 0 failed in 1834.37s (30:34) on RC2 final code; host/plugin opt-in tests skip without an installed prefix and are certified separately (41 passed with the Gate A prefix)",
     "ci": {
-      "code_head": "e46376e561da9e8691abbfdecef726efc2dfc99a",
-      "run_id": 40246039532,
-      "dac": "SUCCESS",
-      "min_qt": "SUCCESS",
-      "dop_native": "SUCCESS — installed wheel e2e PASS; artifact SHA-256 ff3039feb4db80ce4e4c29c6d10535bf56c36220b6a0bf856b4b0fc8201d98ca",
-      "check": "SUCCESS — QML pin/preflight/negative control/Premium Library gate/pytest/build/wheel smoke/visual QA"
+      "code_head": "PENDING_PUSH",
+      "run_id": "PENDING_PUSH",
+      "status": "PENDING"
     },
     "corpus": "tests/dop/conformance: 9 vectors + schema + SHA-256 manifest; canonical 0x05/0xFA vector",
     "rust": "8 element/conformance + 1 corpus + 1 installed corpus",
     "installed_corpus": "1 passed with GST_PLUGIN_PATH private prefix and MICHI_DOP_INSTALLED=1",
-    "dop_host": "1 supervised host vertical",
+    "dop_host": "2 supervised host verticals including exact abort-after-confirmed-stop idempotence",
     "dop_eos": "7 EOS/cleanup/supersession tests",
     "dop_alsa_selected": "1 passed under MICHI_RUN_DOP_HARDWARE=1 on SMSL hw:3,0",
-    "dop_product_e2e": "1 passed — PlaybackService.load_and_play → resolver → planner → OutputSession → executor → real supervised host → installed michidop → EOS/release; includes Play→Stop→Play",
+    "dop_product_e2e": "2 passed — Play→EOS→Play→EOS and real-host device loss with one failed abort, exact receipt retry, LOST persistence, rebind refusal/success, no false RELEASED",
     "dop_product_alsa_e2e": "1 passed — PlaybackService → resolver → planner → OutputSession → executor → host → installed michidop → selected ALSA hw:3,0 → PLAYING/EOS/RELEASED",
-    "installed_wheel_e2e": "LOCAL PASS 2026-10-25 — native wheel installed into /tmp/michi-dop-wheel-rc1d; package imported from site-packages; real host/installed plugin; RUNNING/EOS/RELEASED; skipped=false; plugin SHA-256 89399d572ad80e4eeaeb9bc801cd74a68744290d11085659f8e7fe6f714d9418",
+    "installed_wheel_e2e": "LOCAL PASS 2026-10-25 — RC2 native wheel installed into /tmp/michi-dop-wheel-rc2b; package imported from site-packages; real host/installed plugin; RUNNING/EOS/RELEASED; skipped=false; plugin SHA-256 89399d572ad80e4eeaeb9bc801cd74a68744290d11085659f8e7fe6f714d9418",
     "installed_wheel_contract": "fail-closed on missing plugin/manifest/factory/PASS/skip; GitHub artifact installed-dop-e2e.json",
-    "ownership_tests": "20 DoP output-session tests incl. abort/stop failure, retry, pending cleanup sync/async, cross-family cleanup, no false RELEASED",
+    "ownership_tests": "27 DoP output-session tests incl. device-loss abort failure -> LOST, retry reconciliation, second pending receipt, stale abort/stop evidence rejection, cross-family cleanup",
     "hotplug_tests": "4 canonical registry/topology tests",
     "executor_tests": "6 runtime identity/lifecycle tests",
-    "qml": "LOCAL PASS under PySide6 6.11.1; CI check QML pin/preflight/negative control/Premium Library gate/PASS"
+    "qml": "LOCAL PASS under PySide6 6.11.1; CI check QML pin/preflight/negative control/Premium Library gate/PASS",
+    "rc2_focused": "41 passed in 1.74s — output session, hotplug registry, runtime, host runtime and product e2e with /tmp/michi-dop-gate-a-rc1"
   },
   "work_units": {
     "WU-F09-01_domain": "COMPLETE",
@@ -124,7 +129,9 @@
     "AppImage/Flatpak/deb remain outside the F09 Gate B scope",
     "The selected-ALSA product e2e uses a controlled AudioDeviceBinding fixture (generation 7) for endpoint selection; canonical AudioDeviceRegistry generation handling is covered separately by test_dop_hotplug_registry",
     "Native artifact SHA is environment-dependent across different linker/GCC environments (local 89399d57..., CI ff3039fe...); Cargo.lock, toolchain pin, path remap and metadata strip are enforced, but cross-environment byte identity is not claimed",
-    "Full-suite and installed-wheel results are executable evidence; CI run 40246039532 is green. No SKIP is treated as PASS"
+    "RC2 host-real recovery uses fakesink; the selected-ALSA hardware run certifies the carrier endpoint, not physical DAC DSD interpretation",
+    "No SKIP is treated as PASS",
+    "Full suite reports 15 skips: host/plugin product tests require an installed DoP prefix and were run separately (41 passed); no skip is counted as PASS"
   ],
   "next_work": [
     "F10 remains LOCKED; F14 physical certification remains separate"
@@ -193,5 +200,55 @@
     "WU-F09-RB06_cross_language": "COMPLETE — Python/Rust/installed",
     "WU-F09-RB07_installed_discovery": "COMPLETE — private prefix",
     "WU-F09-RB08_host_vertical": "COMPLETE — fakesink evaluation"
+  },
+  "rc2_recovery_seal": {
+    "sprint": "AP2-F09-RC2",
+    "baseline_head": "d548f956c5db357befd6b8907563fb28f1aa9de5",
+    "code_head": "61e304be363cb2057b8786b50402bfccb70dcd76",
+    "focus": "transactional recovery under uncertain physical cleanup",
+    "defects_closed": {
+      "RC2-P1-01_device_loss_left_running": {
+        "root_cause": "device_lost() returned after a failed _strict_dop_abort before applying the logical LOST transition",
+        "fix": "LOST, mode=lost, token media fencing and exact terminal receipt are applied before cleanup; failed abort retains the exact pending receipt and never emits RELEASED",
+        "tests": [
+          "test_device_lost_with_failed_abort_is_logically_lost",
+          "test_real_host_device_loss_retains_exact_receipt_then_recovers"
+        ]
+      },
+      "RC2-P1-02_retry_did_not_reconcile": {
+        "root_cause": "retry_pending_cleanup() cleared only the pending tuple; prepared handle, plan, token, playing/EOS/terminal fences, Truth lifecycle and session state could remain stale",
+        "fix": "_reconcile_confirmed_dop_cleanup() retires only the exact execution, refuses to touch a newer prepared/plan, clears exact executor receipt/token/fences, preserves LOST while the device is still lost, otherwise converges READY/RUNNING/PAUSED/RECONFIGURING to IDLE",
+        "tests": [
+          "test_cleanup_retry_reconciles_logical_session",
+          "test_cleanup_retry_stays_lost_and_blocks_rebind",
+          "test_second_pending_receipt_does_not_replace_first",
+          "test_stale_abort_evidence_is_not_release"
+        ]
+      },
+      "RC2-P1-03_stale_transport_state_reentry": {
+        "root_cause": "A START/PAUSE/RESUME state observation queued before a stop/abort was replayed by the owner queue during convergence; with intent cleared it re-entered transport stop and wedged the supervised host",
+        "fix": "_commit_dop_state_if_current() fences queued observations by exact execution and command generation; stale PLAYING/PAUSED cannot be published after stop/abort or device loss",
+        "tests": [
+          "test_real_host_device_loss_retains_exact_receipt_then_recovers"
+        ]
+      },
+      "RC2-P2-01_abort_after_confirmed_stop": {
+        "root_cause": "abort after a confirmed stop raised an identity error, resembling an unconfirmed physical cleanup",
+        "fix": "abort_dop is idempotent when no DoP execution is active and returns already=true with the exact expected execution_id; the session accepts it only with exact identity",
+        "tests": [
+          "test_abort_after_a_confirmed_stop_is_exact_not_identity_failure"
+        ]
+      }
+    },
+    "invariants": [
+      "LOST is logical truth independent of teardown success",
+      "No RELEASED Signal Truth event without exact confirmed release",
+      "A different/newer execution is never retired by an older receipt",
+      "Second cleanup uncertainty never overwrites the first receipt",
+      "New acquisition and rebind remain blocked while any exact receipt is uncertain",
+      "Stale transport state cannot re-enter stop during device-loss convergence"
+    ],
+    "f10_readiness": "READY_FOR_ACTIVATION_REVIEW only as a report; F10 remains LOCKED and is not activated by RC2",
+    "local_results": "full suite 6235 passed / 15 skipped / 0 failed; focused RC2 41 passed; DoP 87 passed + 1 skipped; selected ALSA hardware 1 passed; installed wheel e2e PASS (skipped=false); ruff/format/compile/alignment GO"
   }
 }

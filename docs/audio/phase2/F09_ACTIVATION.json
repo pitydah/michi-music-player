@@ -72,5 +72,20 @@
     "evidence": "RECONCILED — historical NO-GO records preserved separately",
     "f14": "NOT_RUN",
     "residual": "cross-environment byte-identical native artifact not claimed"
+  },
+  "rc2_recovery_seal": {
+    "sprint": "AP2-F09-RC2",
+    "baseline_head": "d548f956c5db357befd6b8907563fb28f1aa9de5",
+    "status": "RECERTIFIED_LOCAL_PENDING_CI",
+    "scope": "transactional recovery seal after RC1 closure",
+    "device_loss": "logical LOST independent of abort success; exact receipt retained; no false RELEASED",
+    "cleanup_retry": "exact execution reconciliation only; newer execution untouched; rebind blocked while uncertain",
+    "stale_state": "queued START/PAUSE/RESUME observations fenced by execution + command generation",
+    "host_real": "fakesink host + installed michidop recovery test; selected ALSA carrier rerun",
+    "f10": "READY_FOR_ACTIVATION_REVIEW report only; F10 remains LOCKED",
+    "f14": "NOT_RUN physical DAC DSD/analog",
+    "code_head": "61e304be363cb2057b8786b50402bfccb70dcd76",
+    "local_results": "full suite 6235 passed / 15 skipped / 0 failed; focused RC2 41 passed; DoP 87 passed + 1 skipped; selected ALSA hardware 1 passed",
+    "installed_wheel": "PASS local — RC2 wheel /tmp/michi-dop-wheel-rc2b, site-packages import, real host/plugin, skipped=false, plugin SHA-256 89399d57..."
   }
 }
