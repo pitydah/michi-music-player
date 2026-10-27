@@ -94,6 +94,7 @@ class GStreamerHostedAudioPort(AudioPort):
         self._native_eos_listeners: list[Callable[[str], None]] = []
         self._dop_active = False
         self._dsd_pcm_active = False
+        self._dsd_pcm_state = "RELEASED"
         self._dsd_pcm_expected: dict[str, Any] | None = None
         self._dsd_pcm_receipt: dict[str, Any] | None = None
         self._dsd_pcm_path: str | None = None
@@ -201,6 +202,7 @@ class GStreamerHostedAudioPort(AudioPort):
             self._dop_path = None
             self._dop_release_receipt = None
             self._dsd_pcm_active = False
+            self._dsd_pcm_state = "RELEASED"
             self._dsd_pcm_expected = None
             self._dsd_pcm_receipt = None
             self._dsd_pcm_path = None
@@ -950,6 +952,7 @@ class GStreamerHostedAudioPort(AudioPort):
         )
         with self._lock:
             self._dsd_pcm_active = True
+            self._dsd_pcm_state = "PREPARED"
             self._dsd_pcm_path = str(Path(str(payload.get("path") or "")).resolve())
             self._dsd_pcm_expected = {
                 "plan_id": str(identity.get("plan_id") or ""),
@@ -973,6 +976,8 @@ class GStreamerHostedAudioPort(AudioPort):
             raise OutputHostCommandError(
                 "OUTPUT_HOST_INVALID_RESULT", "DSD→PCM commit was not confirmed"
             )
+        with self._lock:
+            self._dsd_pcm_state = "COMMITTED"
         return result
 
     def start_dsd_pcm(self, expected: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -991,6 +996,8 @@ class GStreamerHostedAudioPort(AudioPort):
         with self._lock:
             command_generation = self._command_generation
         execution_id = str(expected.get("execution_id") or "")
+        with self._lock:
+            self._dsd_pcm_state = "RUNNING"
         self._enqueue(
             lambda: self._commit_dsd_pcm_state_if_current(
                 execution_id, PlaybackStatus.PLAYING, command_generation
@@ -1014,6 +1021,8 @@ class GStreamerHostedAudioPort(AudioPort):
         with self._lock:
             command_generation = self._command_generation
         execution_id = str(expected.get("execution_id") or "")
+        with self._lock:
+            self._dsd_pcm_state = "PAUSED"
         self._enqueue(
             lambda: self._commit_dsd_pcm_state_if_current(
                 execution_id, PlaybackStatus.PAUSED, command_generation
@@ -1077,6 +1086,7 @@ class GStreamerHostedAudioPort(AudioPort):
             )
         with self._lock:
             self._dsd_pcm_active = False
+            self._dsd_pcm_state = "RELEASED"
             self._dsd_pcm_expected = None
             self._dsd_pcm_receipt = dict(release)
             self._dsd_pcm_path = None
@@ -1893,6 +1903,37 @@ class GStreamerHostedAudioPort(AudioPort):
         with self._lock:
             closed = self._closed
             native_expected = dict(self._native_dsd_expected or {})
+        dsd_pcm_eos = kind == HostEvent.EOS.value and payload.get("dsd_pcm") is True
+        if dsd_pcm_eos:
+            with self._lock:
+                expected = dict(self._dsd_pcm_expected or {})
+                active = bool(self._dsd_pcm_active and self._dsd_pcm_expected)
+            execution_id = payload.get("execution_id")
+            plan_id = payload.get("plan_id")
+            host_generation = payload.get("host_generation")
+            if (
+                not closed
+                and active
+                and isinstance(execution_id, str)
+                and execution_id
+                and isinstance(plan_id, str)
+                and plan_id
+                and isinstance(host_generation, int)
+                and not isinstance(host_generation, bool)
+                and execution_id == expected.get("execution_id")
+                and plan_id == expected.get("plan_id")
+                and host_generation == int(expected.get("host_generation", -1))
+                and host_generation == int(self._supervisor.host_generation)
+            ):
+                self._enqueue(
+                    lambda: self._commit_dsd_pcm_eos(
+                        execution_id, plan_id, host_generation
+                    )
+                )
+            else:
+                with self._lock:
+                    self._stale_events += 1
+            return
         dop_eos = kind == HostEvent.EOS.value and payload.get("dop") is True
         if dop_eos:
             with self._lock:
@@ -2122,6 +2163,26 @@ class GStreamerHostedAudioPort(AudioPort):
         for listener in listeners:
             with contextlib.suppress(Exception):
                 listener(execution_id)
+        self._commit_eos()
+
+    def _commit_dsd_pcm_eos(
+        self, execution_id: str, plan_id: str, host_generation: int
+    ) -> None:
+        with self._lock:
+            expected = dict(self._dsd_pcm_expected or {})
+            if (
+                not self._dsd_pcm_active
+                or not expected
+                or str(expected.get("execution_id")) != execution_id
+                or str(expected.get("plan_id")) != plan_id
+                or int(expected.get("host_generation", -1)) != host_generation
+                or int(self._supervisor.host_generation) != host_generation
+            ):
+                self._stale_events += 1
+                return
+            if self._dsd_pcm_state == "EOS":
+                return
+            self._dsd_pcm_state = "EOS"
         self._commit_eos()
 
     def _commit_eos(self) -> None:
