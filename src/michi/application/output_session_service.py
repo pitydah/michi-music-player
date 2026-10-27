@@ -1533,6 +1533,12 @@ class OutputSessionService:
 
         def work():
             request = self._request_for(path)
+            dsd_pcm_plan = getattr(request, "dsd_pcm_plan", None)
+            if dsd_pcm_plan is not None:
+                prepared = self._run_dsd_pcm_prepare(
+                    path, dsd_pcm_plan, managed_instance_id
+                )
+                return request, None, prepared
             dop_plan = getattr(request, "dop_plan", None)
             if dop_plan is not None:
                 prepared = self._run_dop_prepare(path, dop_plan, managed_instance_id)
@@ -1566,7 +1572,12 @@ class OutputSessionService:
                 return None
             if isinstance(
                 value[2],
-                (ManagedOutputPrepared, NativeDsdSessionPrepared, DopSessionPrepared),
+                (
+                    ManagedOutputPrepared,
+                    NativeDsdSessionPrepared,
+                    DopSessionPrepared,
+                    DsdPcmSessionPrepared,
+                ),
             ):
                 return value[2]
             return None
@@ -1579,6 +1590,10 @@ class OutputSessionService:
                 prepared_value = _prepared_from(value)
                 if isinstance(prepared_value, DopSessionPrepared):
                     self._dop_abort_quietly(prepared_value, "superseded_before_commit")
+                elif isinstance(prepared_value, DsdPcmSessionPrepared):
+                    self._dsd_pcm_abort_quietly(
+                        prepared_value, "superseded_before_commit"
+                    )
                 elif isinstance(prepared_value, NativeDsdSessionPrepared):
                     self._native_dsd_abort_quietly(
                         prepared_value, "superseded_before_commit"
@@ -1608,6 +1623,10 @@ class OutputSessionService:
                     self._dop_abort_quietly(
                         prepared_value, "intent_changed_before_commit"
                     )
+                elif isinstance(prepared_value, DsdPcmSessionPrepared):
+                    self._dsd_pcm_abort_quietly(
+                        prepared_value, "intent_changed_before_commit"
+                    )
                 elif isinstance(prepared_value, NativeDsdSessionPrepared):
                     self._native_dsd_abort_quietly(
                         prepared_value, "intent_changed_before_commit"
@@ -1625,6 +1644,24 @@ class OutputSessionService:
                 return
             request, outcome, managed_prepared = value
             try:
+                if isinstance(managed_prepared, DsdPcmSessionPrepared):
+                    checker = self._dsd_pcm_plan_still_current
+                    if checker is not None and not bool(checker(managed_prepared.plan)):
+                        self._dsd_pcm_abort_quietly(
+                            managed_prepared, "binding_stale_before_ready"
+                        )
+                        raise OutputSessionError(
+                            "DSD_PCM_BINDING_STALE",
+                            "the DSD→PCM plan/binding changed before READY",
+                        )
+                    token = self._begin_dsd_pcm_session(
+                        path,
+                        request,
+                        managed_prepared,
+                        previous_direct=self._committed_direct_snapshot(),
+                    )
+                    on_prepared(token)
+                    return
                 if isinstance(managed_prepared, DopSessionPrepared):
                     checker = self._dop_plan_still_current
                     if checker is not None and not bool(checker(managed_prepared.plan)):
@@ -3329,7 +3366,6 @@ class OutputSessionService:
                 raise OutputSessionError(code, str(exc)) from exc
             self._previous_direct = None
             self._transition(OutputSessionState.RUNNING)
-            self._record_dsd_pcm_family(OutputFamilyState.RUNNING, prepared)
             return
         if self._mode == "dop":
             if self._state is not OutputSessionState.READY:
@@ -4092,6 +4128,13 @@ class OutputSessionService:
             and self._dop_plan is not None
             and self._state in _ACTIVE_STATES
             and self._dop_plan.stable_device_id == stable_device_id
+        ):
+            return True
+        if (
+            self._mode == "dsd_pcm"
+            and self._dsd_pcm_prepared is not None
+            and self._state in _ACTIVE_STATES
+            and self._dsd_pcm_prepared.stable_device_id == stable_device_id
         ):
             return True
         previous = self._previous_direct

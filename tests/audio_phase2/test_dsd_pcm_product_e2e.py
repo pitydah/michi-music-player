@@ -151,6 +151,8 @@ def test_playback_service_dsd64_to_pcm_eos_release(tmp_path, monkeypatch):
         assert accepted == [source]
         assert session.mode == "dsd_pcm"
         assert session.state is OutputSessionState.RUNNING
+        assert session.topology_loss_applies("dev:dac") is True
+        assert session.topology_loss_applies("dev:other") is False
         assert dispatch_eventually(port, session)
         playback.stop()
         assert session.state is OutputSessionState.IDLE

@@ -1969,7 +1969,14 @@ class GStreamerHostedAudioPort(AudioPort):
                     self._stale_events += 1
             return
         with self._lock:
+            dsd_pcm_owns_output = bool(self._dsd_pcm_active and self._dsd_pcm_expected)
             dop_owns_output = bool(self._dop_active and self._dop_expected)
+        if kind == HostEvent.EOS.value and dsd_pcm_owns_output:
+            # A DSD→PCM execution must never be finalized by an identity-less
+            # or non-DSD EOS through the generic PCM path.
+            with self._lock:
+                self._stale_events += 1
+            return
         if kind == HostEvent.EOS.value and dop_owns_output:
             # DoP owns the transport: an identity-less/ambiguous EOS must never
             # fall through to the generic PCM end-of-media path.
