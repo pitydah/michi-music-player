@@ -103,6 +103,7 @@ class GStreamerHostedAudioPort(AudioPort):
         self._dop_path: str | None = None
         self._dop_release_receipt: dict[str, Any] | None = None
         self._dop_eos_listeners: list[Callable[[str], None]] = []
+        self._dsd_pcm_eos_listeners: list[Callable[[str], None]] = []
         self._pcm_active = False
         self._last_state: PlaybackStatus | None = None
         self._termination_kind: str | None = None
@@ -772,6 +773,10 @@ class GStreamerHostedAudioPort(AudioPort):
     def add_dop_eos_listener(self, callback: Callable[[str], None]) -> None:
         if callback not in self._dop_eos_listeners:
             self._dop_eos_listeners.append(callback)
+
+    def add_dsd_pcm_eos_listener(self, callback: Callable[[str], None]) -> None:
+        if callback not in self._dsd_pcm_eos_listeners:
+            self._dsd_pcm_eos_listeners.append(callback)
 
     @property
     def native_dsd_active(self) -> bool:
@@ -2183,6 +2188,10 @@ class GStreamerHostedAudioPort(AudioPort):
             if self._dsd_pcm_state == "EOS":
                 return
             self._dsd_pcm_state = "EOS"
+            listeners = list(self._dsd_pcm_eos_listeners)
+        for listener in listeners:
+            with contextlib.suppress(Exception):
+                listener(execution_id)
         self._commit_eos()
 
     def _commit_eos(self) -> None:

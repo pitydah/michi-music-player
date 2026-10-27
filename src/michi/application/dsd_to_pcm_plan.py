@@ -76,6 +76,9 @@ class DsdToPcmPlan:
     binding_generation: int
     processing_graph_revision: int | None
     evidence_refs: tuple[str, ...]
+    stable_device_id: str = ""
+    binding_locator: str = ""
+    host_generation: int = 0
 
 
 class DsdToPcmPlanner:
@@ -98,6 +101,9 @@ class DsdToPcmPlanner:
         backend_version: str = "",
         target_rate_hz: int | None = None,
         evidence_refs: tuple[str, ...] = (),
+        stable_device_id: str = "",
+        binding_locator: str = "",
+        host_generation: int = 0,
     ) -> DsdToPcmPlan:
         if quality_profile not in QUALITY_RATE_LADDERS:
             raise DsdToPcmPlanError("DSD_PCM_QUALITY_PROFILE_UNKNOWN", quality_profile)
@@ -183,4 +189,7 @@ class DsdToPcmPlanner:
             binding_generation=binding_generation,
             processing_graph_revision=processing_graph_revision,
             evidence_refs=evidence_refs,
+            stable_device_id=stable_device_id,
+            binding_locator=binding_locator,
+            host_generation=host_generation,
         )

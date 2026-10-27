@@ -618,6 +618,7 @@ def _build_services(
     from michi.application.dsd_source_characterizer import DsdSourceCharacterizer
     from michi.application.output_session_service import (
         DopSessionPrepared,
+        DsdPcmSessionPrepared,
         NativeDsdSessionPrepared,
     )
     from michi.infrastructure.audio_devices.alsa_dop_probe import (
@@ -1162,6 +1163,91 @@ def _build_services(
             for binding in audio_devices.bindings_for(plan.stable_device_id)
         )
 
+    def _dsd_pcm_sink(plan) -> str:
+        import os
+
+        lab = os.environ.get("MICHI_GST_LAB_SINK", "").strip()
+        return lab or "alsasink"
+
+    def _dsd_pcm_prepare(plan, path, instance_id):
+        port = gstreamer_provider.current_port
+        if port is None or not hasattr(port, "prepare_dsd_pcm"):
+            raise OutputSessionError(
+                "DSD_PCM_HOST_UNAVAILABLE", "no hosted GStreamer port is open"
+            )
+        source_family = Path(path).suffix.lower().lstrip(".")
+        if source_family != "dsf":
+            raise OutputSessionError(
+                "DSD_PCM_SOURCE_UNSUPPORTED",
+                f"unsupported DSD container {source_family!r}",
+            )
+        sink_factory = _dsd_pcm_sink(plan)
+        identity = port.prepare_dsd_pcm(
+            {
+                "path": str(path),
+                "plan_id": plan.plan_id,
+                "execution_id": instance_id,
+                "binding_generation": plan.binding_generation,
+                "stable_device_id": plan.stable_device_id,
+                "locator": plan.binding_locator,
+                "source_family": source_family,
+                "source_rate_hz": plan.source_format.bit_rate_hz,
+                "source_bits": plan.source_format.bit_rate_hz,
+                "bit_order": plan.source_format.bit_order.value,
+                "channels": plan.channels,
+                "decoder_factory": plan.decoder_factory,
+                "target_rate_hz": plan.target_rate_hz,
+                "output_format": plan.output_format,
+                "quality_profile": plan.quality_profile,
+                "resampler_policy": [list(item) for item in plan.resampler_policy],
+                "sink_factory": sink_factory,
+            }
+        )
+        if hasattr(port, "add_dsd_pcm_eos_listener"):
+            port.add_dsd_pcm_eos_listener(output_session.notify_dsd_pcm_eos)
+        expected = {
+            "plan_id": str(identity.get("plan_id") or ""),
+            "execution_id": str(identity.get("execution_id") or ""),
+            "stable_device_id": str(identity.get("stable_device_id") or ""),
+            "device": str(identity.get("device") or ""),
+            "binding_generation": int(identity.get("binding_generation") or 0),
+            "host_generation": int(identity.get("host_generation") or 0),
+        }
+        return DsdPcmSessionPrepared(
+            plan=plan,
+            execution_id=expected["execution_id"],
+            stable_device_id=expected["stable_device_id"],
+            binding_locator=expected["device"],
+            host_generation=expected["host_generation"],
+            runtime_identity=dict(identity),
+            evidence_refs=tuple(plan.evidence_refs),
+            handle=expected,
+        )
+
+    def _dsd_pcm_commit(prepared: DsdPcmSessionPrepared) -> None:
+        if prepared.handle is None:
+            raise OutputSessionError("DSD_PCM_OUTPUT_MISSING", "no prepared handle")
+        gstreamer_provider.current_port.commit_dsd_pcm(prepared.handle)
+
+    def _dsd_pcm_abort(prepared: DsdPcmSessionPrepared, reason: str) -> dict:
+        if prepared.handle is None:
+            return {"aborted": True, "already": True}
+        return gstreamer_provider.current_port.abort_dsd_pcm(prepared.handle)
+
+    def _dsd_pcm_stop(prepared: DsdPcmSessionPrepared, reason: str) -> dict:
+        if prepared.handle is None:
+            return {"stopped": True, "already": True}
+        return gstreamer_provider.current_port.stop_dsd_pcm(prepared.handle)
+
+    def _dsd_pcm_plan_still_current(plan) -> bool:
+        return any(
+            binding.kind is BindingKind.ALSA_PCM
+            and binding.currently_available
+            and binding.generation == plan.binding_generation
+            and binding.locator == plan.binding_locator
+            for binding in audio_devices.bindings_for(plan.stable_device_id)
+        )
+
     output_session = OutputSessionService(
         OutputPlanner(),
         request_provider=output_resolver,
@@ -1190,6 +1276,11 @@ def _build_services(
         dop_abort=_dop_abort,
         dop_stop=_dop_stop,
         dop_plan_still_current=_dop_plan_still_current,
+        dsd_pcm_prepare=_dsd_pcm_prepare,
+        dsd_pcm_commit=_dsd_pcm_commit,
+        dsd_pcm_abort=_dsd_pcm_abort,
+        dsd_pcm_stop=_dsd_pcm_stop,
+        dsd_pcm_plan_still_current=_dsd_pcm_plan_still_current,
         truth_recorder=signal_truth,
     )
     from michi.application.volume_policy_service import VolumePolicyService

@@ -46,6 +46,7 @@ from michi.application.dsd_output_planner import (
     NativeDsdQualification,
 )
 from michi.application.dsd_source_characterizer import DsdSourceStatus
+from michi.application.dsd_to_pcm_plan import DsdToPcmPlan
 from michi.application.ports import SharedOutputTransaction
 from michi.domain.audio_device import BindingKind
 from michi.domain.audio_engine import AudioEngineId
@@ -230,6 +231,7 @@ class OutputRequest:
     selected_profile_id: str | None = None
     native_dsd_plan: NativeDsdOutputPlan | None = None
     dop_plan: DopExecutionPlanV2 | None = None
+    dsd_pcm_plan: DsdToPcmPlan | None = None
 
     def __post_init__(self) -> None:
         if self.native_dsd_plan is not None and self.dop_plan is not None:
@@ -237,6 +239,27 @@ class OutputRequest:
                 "OUTPUT_REQUEST_EXCLUSIVE",
                 "Native DSD and DoP cannot share one output request",
             )
+        families = [
+            self.native_dsd_plan,
+            self.dop_plan,
+            self.dsd_pcm_plan,
+        ]
+        if sum(item is not None for item in families) > 1:
+            raise OutputSessionError(
+                "OUTPUT_REQUEST_EXCLUSIVE",
+                "DSD output families cannot share one request",
+            )
+        if self.dsd_pcm_plan is not None:
+            if self.facts is not None:
+                raise OutputSessionError(
+                    "OUTPUT_REQUEST_DSD_PCM_PCM_CONFLICT",
+                    "DSD→PCM cannot carry a PCM planning request",
+                )
+            if not self.selected_device_id:
+                raise OutputSessionError(
+                    "OUTPUT_REQUEST_DSD_PCM_DEVICE_MISSING",
+                    "DSD→PCM requires a device",
+                )
         if self.dop_plan is not None:
             if self.facts is not None:
                 raise OutputSessionError(
@@ -280,6 +303,15 @@ class OutputRequest:
             None,
             plan,
         )
+
+    @classmethod
+    def dsd_to_pcm(
+        cls,
+        plan: DsdToPcmPlan,
+        selected_device_id: str,
+        selected_profile_id: str | None,
+    ) -> OutputRequest:
+        return cls(None, selected_device_id, selected_profile_id, None, None, plan)
 
     @classmethod
     def shared(cls) -> OutputRequest:
@@ -327,6 +359,20 @@ class DopSessionPrepared:
     plan: DopExecutionPlanV2
     execution_id: str
     stable_device_id: str
+    runtime_identity: dict
+    evidence_refs: tuple[str, ...]
+    handle: object | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class DsdPcmSessionPrepared:
+    """Worker-phase DSD→PCM execution committed by the owner."""
+
+    plan: DsdToPcmPlan
+    execution_id: str
+    stable_device_id: str
+    binding_locator: str
+    host_generation: int
     runtime_identity: dict
     evidence_refs: tuple[str, ...]
     handle: object | None = None
@@ -802,6 +848,13 @@ class OutputSessionService:
         dop_abort: (Callable[[DopSessionPrepared, str], dict] | None) = None,
         dop_stop: (Callable[[DopSessionPrepared, str], dict] | None) = None,
         dop_plan_still_current: (Callable[[DopExecutionPlanV2], bool] | None) = None,
+        dsd_pcm_prepare: (
+            Callable[[DsdToPcmPlan, Path, str], DsdPcmSessionPrepared] | None
+        ) = None,
+        dsd_pcm_commit: (Callable[[DsdPcmSessionPrepared], None] | None) = None,
+        dsd_pcm_abort: (Callable[[DsdPcmSessionPrepared, str], dict] | None) = None,
+        dsd_pcm_stop: (Callable[[DsdPcmSessionPrepared, str], dict] | None) = None,
+        dsd_pcm_plan_still_current: Callable[[DsdToPcmPlan], bool] | None = None,
         truth_recorder=None,
     ) -> None:
         self._planner = planner
@@ -825,6 +878,11 @@ class OutputSessionService:
         self._dop_abort = dop_abort
         self._dop_stop = dop_stop
         self._dop_plan_still_current = dop_plan_still_current
+        self._dsd_pcm_prepare = dsd_pcm_prepare
+        self._dsd_pcm_commit = dsd_pcm_commit
+        self._dsd_pcm_abort = dsd_pcm_abort
+        self._dsd_pcm_stop = dsd_pcm_stop
+        self._dsd_pcm_plan_still_current = dsd_pcm_plan_still_current
         # ADDITIVE: the ONE canonical recorder (never a second one).
         self._truth_recorder = truth_recorder
         self._execution_instance_epoch = next(_EXECUTION_INSTANCE_SEQ)
@@ -845,6 +903,11 @@ class OutputSessionService:
         self._dop_playing_execution: str | None = None
         self._dop_eos_execution: str | None = None
         self._dop_terminal_execution: str | None = None
+        self._dsd_pcm_plan: DsdToPcmPlan | None = None
+        self._dsd_pcm_prepared: DsdPcmSessionPrepared | None = None
+        self._dsd_pcm_playing_execution: str | None = None
+        self._dsd_pcm_eos_execution: str | None = None
+        self._dsd_pcm_terminal_execution: str | None = None
         self._selected_device_id: str | None = None
         self._selected_profile_id: str | None = None
         self._error_code: str | None = None
@@ -888,6 +951,12 @@ class OutputSessionService:
             and self._dop_plan is not None
         ):
             return self._dop_plan.stable_device_id
+        if (
+            self._mode == "dsd_pcm"
+            and self._state in _ACTIVE_STATES
+            and self._dsd_pcm_prepared is not None
+        ):
+            return self._dsd_pcm_prepared.stable_device_id
         if (
             self._mode == "native_dsd"
             and self._state in _ACTIVE_STATES
@@ -941,6 +1010,10 @@ class OutputSessionService:
             self._native_dsd_abort_quietly(prepared, "cleanup_retry")
         elif family == "managed" and isinstance(prepared, ManagedOutputPrepared):
             self._managed_abort_quietly(prepared, "cleanup_retry")
+        elif family == "dsd_pcm" and isinstance(prepared, DsdPcmSessionPrepared):
+            if not self._dsd_pcm_abort_quietly(prepared, "cleanup_retry"):
+                return False
+            self._reconcile_confirmed_dsd_pcm_cleanup(prepared)
         return self._unconfirmed_cleanup is None
 
     @property
@@ -959,6 +1032,13 @@ class OutputSessionService:
         if self._mode == "dop" and dop is not None:
             return (
                 dop.execution_id
+                if self._state in (OutputSessionState.READY, OutputSessionState.RUNNING)
+                else None
+            )
+        dsd_pcm = self._dsd_pcm_prepared
+        if self._mode == "dsd_pcm" and dsd_pcm is not None:
+            return (
+                dsd_pcm.execution_id
                 if self._state in (OutputSessionState.READY, OutputSessionState.RUNNING)
                 else None
             )
@@ -1069,6 +1149,41 @@ class OutputSessionService:
         self._record_dop_family(OutputFamilyState.UNAVAILABLE, prepared, detail="eos")
         return True
 
+    def notify_dsd_pcm_playing(self, execution_id: str) -> bool:
+        prepared = self._dsd_pcm_prepared
+        if (
+            not isinstance(execution_id, str)
+            or not execution_id.strip()
+            or self._mode != "dsd_pcm"
+            or self._state is not OutputSessionState.RUNNING
+            or prepared is None
+            or self._dsd_pcm_terminal_execution == prepared.execution_id
+            or self._dsd_pcm_playing_execution == execution_id
+            or execution_id != prepared.execution_id
+        ):
+            return False
+        self._dsd_pcm_playing_execution = execution_id
+        self._record_dsd_pcm_family(OutputFamilyState.RUNNING, prepared)
+        return True
+
+    def notify_dsd_pcm_eos(self, execution_id: str) -> bool:
+        prepared = self._dsd_pcm_prepared
+        if (
+            not isinstance(execution_id, str)
+            or not execution_id.strip()
+            or self._mode != "dsd_pcm"
+            or prepared is None
+            or execution_id != prepared.execution_id
+            or self._dsd_pcm_terminal_execution == execution_id
+        ):
+            return False
+        self._dsd_pcm_eos_execution = execution_id
+        self._dsd_pcm_terminal_execution = execution_id
+        self._record_dsd_pcm_family(
+            OutputFamilyState.UNAVAILABLE, prepared, detail="eos"
+        )
+        return True
+
     def notify_native_dsd_eos(self, execution_id: str) -> bool:
         if (
             self._mode == "native_dsd"
@@ -1109,6 +1224,14 @@ class OutputSessionService:
             self._mode == "dop"
             and self._state in _ACTIVE_STATES
             and self._dop_prepared is not None
+        )
+
+    @property
+    def dsd_pcm_active(self) -> bool:
+        return (
+            self._mode == "dsd_pcm"
+            and self._state in _ACTIVE_STATES
+            and self._dsd_pcm_prepared is not None
         )
 
     @property
@@ -1498,6 +1621,9 @@ class OutputSessionService:
                 f"unconfirmed {pending[0]} cleanup retains the output device; "
                 "reconcile it before acquiring another execution",
             )
+        dsd_pcm_plan = getattr(request, "dsd_pcm_plan", None)
+        if dsd_pcm_plan is not None:
+            return self._prepare_dsd_pcm_request(path, request)
         dop_plan = getattr(request, "dop_plan", None)
         if dop_plan is not None:
             return self._prepare_dop_request(path, request)
@@ -2140,6 +2266,209 @@ class OutputSessionService:
         self._managed_plan = None
         self._clear_pending_cleanup("managed", prepared)
 
+    @staticmethod
+    def _dsd_pcm_release_evidence(
+        result: object,
+        prepared: DsdPcmSessionPrepared,
+        operations: tuple[str, ...],
+    ) -> bool:
+        if not isinstance(result, dict):
+            return False
+        if result.get("execution_id") != prepared.execution_id:
+            return False
+        if result.get("stale") is True:
+            return False
+        receipt = result.get("release")
+        if not isinstance(receipt, dict):
+            return False
+        if (
+            receipt.get("confirmed") is not True
+            or receipt.get("terminal_state") != "RELEASED"
+            or receipt.get("provenance") != "SUPERVISED_HOST"
+            or receipt.get("operation") not in operations
+        ):
+            return False
+        expected = {
+            "plan_id": prepared.plan.plan_id,
+            "execution_id": prepared.execution_id,
+            "stable_device_id": prepared.stable_device_id,
+            "device": prepared.binding_locator,
+            "binding_generation": prepared.plan.binding_generation,
+            "host_generation": prepared.host_generation,
+        }
+        return all(
+            str(receipt.get(field) or "") == str(wanted)
+            for field, wanted in expected.items()
+        )
+
+    @classmethod
+    def _dsd_pcm_cleanup_confirmed(
+        cls, result: object, prepared: DsdPcmSessionPrepared
+    ) -> bool:
+        if not isinstance(result, dict):
+            return False
+        if result.get("aborted") is not True and result.get("already") is not True:
+            return False
+        return cls._dsd_pcm_release_evidence(result, prepared, ("abort", "stop"))
+
+    @classmethod
+    def _dsd_pcm_stop_confirmed(
+        cls, result: object, prepared: DsdPcmSessionPrepared
+    ) -> bool:
+        if not isinstance(result, dict):
+            return False
+        if (
+            result.get("stopped") is not True
+            and result.get("released") is not True
+            and result.get("already") is not True
+        ):
+            return False
+        return cls._dsd_pcm_release_evidence(result, prepared, ("stop", "abort"))
+
+    def _dsd_pcm_abort_quietly(
+        self,
+        prepared: DsdPcmSessionPrepared,
+        reason: str,
+        *,
+        record_failure: bool = True,
+    ) -> bool:
+        if self._dsd_pcm_abort is None:
+            if record_failure:
+                self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                    reason="dsd_pcm_abort",
+                    code="DSD_PCM_ABORT_UNCONFIRMED",
+                    detail="no DSD→PCM abort authority is composed",
+                )
+            self._retain_pending_cleanup("dsd_pcm", prepared)
+            return False
+        try:
+            result = self._dsd_pcm_abort(prepared, reason)
+        except Exception as exc:  # noqa: BLE001 - preserve exact receipt
+            if record_failure:
+                self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                    reason="dsd_pcm_abort",
+                    code=getattr(exc, "code", "DSD_PCM_ABORT_UNCONFIRMED"),
+                    detail=str(exc),
+                )
+            self._retain_pending_cleanup("dsd_pcm", prepared)
+            return False
+        if not self._dsd_pcm_cleanup_confirmed(result, prepared):
+            if record_failure:
+                self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                    reason="dsd_pcm_abort",
+                    code="DSD_PCM_ABORT_UNCONFIRMED",
+                    detail="host did not confirm this exact DSD→PCM release",
+                )
+            self._retain_pending_cleanup("dsd_pcm", prepared)
+            return False
+        self._clear_pending_cleanup("dsd_pcm", prepared)
+        return True
+
+    def _strict_dsd_pcm_abort(
+        self,
+        prepared: DsdPcmSessionPrepared,
+        reason: str,
+        *,
+        code: str = "DSD_PCM_RELEASE_UNCONFIRMED",
+    ) -> None:
+        if not self._dsd_pcm_abort_quietly(prepared, reason):
+            raise OutputSessionError(
+                "OUTPUT_OWNERSHIP_UNCONFIRMED",
+                f"DSD→PCM cleanup was not confirmed ({code})",
+            )
+
+    def _reconcile_confirmed_dsd_pcm_cleanup(
+        self, prepared: DsdPcmSessionPrepared
+    ) -> None:
+        current = self._dsd_pcm_prepared
+        owned = False
+        if current is not None:
+            if (
+                current.execution_id != prepared.execution_id
+                or current.plan.plan_id != prepared.plan.plan_id
+            ):
+                return
+            self._dsd_pcm_prepared = None
+            owned = True
+        if (
+            self._dsd_pcm_plan is not None
+            and self._dsd_pcm_plan.plan_id == prepared.plan.plan_id
+        ):
+            self._dsd_pcm_plan = None
+            owned = True
+        if not owned and (
+            self._dsd_pcm_prepared is not None or self._dsd_pcm_plan is not None
+        ):
+            return
+        if self._dsd_pcm_playing_execution == prepared.execution_id:
+            self._dsd_pcm_playing_execution = None
+        if self._dsd_pcm_eos_execution == prepared.execution_id:
+            self._dsd_pcm_eos_execution = None
+        if self._dsd_pcm_terminal_execution == prepared.execution_id:
+            self._dsd_pcm_terminal_execution = None
+        if self._executor_receipt == prepared.execution_id:
+            self._executor_receipt = None
+        self._token_value = None
+        lost = (
+            self._lost_device_id is not None
+            and self._lost_device_id == prepared.stable_device_id
+        )
+        if lost:
+            self._mode = "lost"
+            return
+        self._mode = "shared"
+        self._path = None
+        self._error_code = None
+        if self._state in (
+            OutputSessionState.READY,
+            OutputSessionState.RUNNING,
+            OutputSessionState.PAUSED,
+        ):
+            self._transition(OutputSessionState.RELEASING)
+            self._transition(OutputSessionState.IDLE)
+        elif self._state is OutputSessionState.RECONFIGURING:
+            self._transition(OutputSessionState.READY)
+            self._transition(OutputSessionState.RELEASING)
+            self._transition(OutputSessionState.IDLE)
+        self._notify()
+
+    def _record_dsd_pcm_family(
+        self,
+        state: OutputFamilyState,
+        prepared: DsdPcmSessionPrepared | None = None,
+        *,
+        detail: str | None = None,
+    ) -> None:
+        recorder = self._truth_recorder
+        if recorder is None:
+            return
+        current = prepared or self._dsd_pcm_prepared
+        plan = current.plan if current is not None else self._dsd_pcm_plan
+        if plan is None:
+            return
+        with suppress(Exception):
+            recorder.record_output_family_event(
+                OutputFamilyEvent(
+                    family="dsd_pcm",
+                    state=state,
+                    device_id=(
+                        current.stable_device_id
+                        if current is not None
+                        else self._selected_device_id
+                    ),
+                    execution_id=(
+                        current.execution_id if current is not None else None
+                    ),
+                    processing_plan_id=None,
+                    transform_policy=("dsd_to_pcm",),
+                    runtime_identity=(
+                        dict(current.runtime_identity) if current is not None else {}
+                    ),
+                    bit_perfect=False,
+                    detail=detail,
+                )
+            )
+
     def _record_dop_family(
         self,
         state: OutputFamilyState,
@@ -2170,6 +2499,168 @@ class OutputSessionService:
                     detail=detail,
                 )
             )
+
+    def _prepare_dsd_pcm_request(self, path: Path, request: OutputRequest) -> str:
+        plan = request.dsd_pcm_plan
+        if plan is None:
+            raise OutputSessionError("DSD_PCM_PLAN_MISSING", "no plan")
+        if self._dsd_pcm_prepare is None:
+            raise OutputSessionError(
+                "DSD_PCM_OUTPUT_UNAVAILABLE",
+                "no DSD→PCM preparation is composed for this session",
+            )
+        if request.selected_device_id is None:
+            raise OutputSessionError(
+                "DSD_PCM_DEVICE_MISSING", "DSD→PCM requires a selected device"
+            )
+        if not plan.stable_device_id or not plan.binding_locator:
+            raise OutputSessionError(
+                "DSD_PCM_PLAN_IDENTITY_MISSING",
+                "DSD→PCM plan lacks stable device/locator identity",
+            )
+        if request.selected_device_id != plan.stable_device_id:
+            raise OutputSessionError(
+                "DSD_PCM_DEVICE_MISMATCH",
+                "selected device does not match the DSD→PCM plan",
+            )
+        checker = self._dsd_pcm_plan_still_current
+        if checker is not None and not bool(checker(plan)):
+            raise OutputSessionError(
+                "DSD_PCM_BINDING_STALE", "the DSD→PCM plan is stale"
+            )
+        prepared = self._run_dsd_pcm_prepare(path, plan, self._new_managed_instance())
+        return self._begin_dsd_pcm_session(
+            path,
+            request,
+            prepared,
+            previous_direct=self._committed_direct_snapshot(),
+        )
+
+    def _run_dsd_pcm_prepare(
+        self, path: Path, plan: DsdToPcmPlan, instance_id: str
+    ) -> DsdPcmSessionPrepared:
+        if self._dsd_pcm_prepare is None:
+            raise OutputSessionError(
+                "DSD_PCM_OUTPUT_UNAVAILABLE",
+                "no DSD→PCM preparation is composed for this session",
+            )
+        try:
+            prepared = self._dsd_pcm_prepare(plan, path, instance_id)
+        except OutputSessionError:
+            raise
+        except Exception as exc:  # noqa: BLE001 - typed owner boundary
+            code = getattr(exc, "code", "DSD_PCM_OUTPUT_PREPARE_FAILED")
+            raise OutputSessionError(code, str(exc)) from exc
+        if not isinstance(prepared, DsdPcmSessionPrepared):
+            raise OutputSessionError(
+                "DSD_PCM_OUTPUT_PREPARE_FAILED",
+                "DSD→PCM preparation returned an invalid value",
+            )
+        if (
+            prepared.plan != plan
+            or prepared.execution_id != instance_id
+            or not prepared.stable_device_id
+            or not prepared.binding_locator
+            or prepared.plan.binding_generation != plan.binding_generation
+        ):
+            self._dsd_pcm_abort_quietly(prepared, "identity_mismatch")
+            raise OutputSessionError(
+                "DSD_PCM_OUTPUT_PREPARE_FAILED",
+                "DSD→PCM preparation does not match the plan identity",
+            )
+        return prepared
+
+    def _begin_dsd_pcm_session(
+        self,
+        path: Path,
+        request: OutputRequest,
+        prepared: DsdPcmSessionPrepared,
+        *,
+        previous_direct: _DirectSessionSnapshot | None,
+    ) -> str:
+        if request.dsd_pcm_plan is None or request.dsd_pcm_plan != prepared.plan:
+            self._dsd_pcm_abort_quietly(prepared, "plan_mismatch")
+            raise OutputSessionError(
+                "DSD_PCM_OUTPUT_PREPARE_FAILED",
+                "DSD→PCM request plan does not match the prepared plan",
+            )
+        current = self._dsd_pcm_prepared
+        if current is not None and current is not prepared:
+            self._strict_dsd_pcm_abort(
+                current,
+                "superseded",
+                code="DSD_PCM_SUPERSESSION_UNCONFIRMED",
+            )
+        if self._dop_prepared is not None:
+            self._strict_dop_abort(self._dop_prepared, "superseded_by_dsd_pcm")
+        if self._native_dsd_prepared is not None:
+            self._strict_native_abort(
+                self._native_dsd_prepared, "superseded_by_dsd_pcm"
+            )
+        if self._managed_prepared is not None:
+            self._strict_managed_abort(self._managed_prepared, "superseded_by_dsd_pcm")
+        if self._mode == "shared" and self._shared_receipt is not None:
+            try:
+                self._shared.abort_media(self._shared_receipt, "superseded_by_dsd_pcm")
+            except Exception as exc:  # noqa: BLE001 - preserve owner
+                raise OutputSessionError(
+                    "OUTPUT_OWNERSHIP_UNCONFIRMED",
+                    f"Shared cleanup failed before DSD→PCM: {exc}",
+                ) from exc
+        if previous_direct is not None:
+            try:
+                previous_direct.executor.release("switch_to_dsd_pcm")
+            except Exception as exc:  # noqa: BLE001 - preserve owner
+                raise OutputSessionError(
+                    "OUTPUT_OWNERSHIP_UNCONFIRMED",
+                    f"Direct cleanup failed before DSD→PCM: {exc}",
+                ) from exc
+        if self._state is not OutputSessionState.IDLE:
+            if self._state in (
+                OutputSessionState.READY,
+                OutputSessionState.RUNNING,
+            ):
+                self._transition(OutputSessionState.RECONFIGURING)
+            elif self._state is OutputSessionState.PAUSED:
+                self._transition(OutputSessionState.RELEASING)
+                self._transition(OutputSessionState.IDLE)
+            else:
+                raise OutputSessionError(
+                    "illegal_transition", f"prepare desde {self._state.value}"
+                )
+        if self._state is OutputSessionState.IDLE:
+            self._transition(OutputSessionState.ACQUIRING)
+        self._generation += 1
+        self._mode = "dsd_pcm"
+        self._selected_device_id = prepared.stable_device_id
+        self._selected_profile_id = request.selected_profile_id
+        self._dsd_pcm_plan = prepared.plan
+        self._dsd_pcm_prepared = prepared
+        self._dsd_pcm_playing_execution = None
+        self._dsd_pcm_eos_execution = None
+        self._dsd_pcm_terminal_execution = None
+        self._plan = None
+        self._managed_plan = None
+        self._managed_prepared = None
+        self._path = Path(path)
+        self._executor = None
+        self._executor_receipt = prepared.execution_id
+        self._shared_receipt = None
+        self._previous_direct = None
+        self._session_id = f"session:{self._generation}"
+        self._error_code = None
+        self._last_transition_kind = None
+        self._last_release_invalidated_media = False
+        if self._state is OutputSessionState.ACQUIRING:
+            self._transition(OutputSessionState.CONFIGURING)
+        self._transition(OutputSessionState.READY)
+        self._token_value = f"output-tx:dsd-pcm:{self._generation}"
+        activate = getattr(self._truth_recorder, "activate_execution", None)
+        if callable(activate):
+            with suppress(Exception):
+                activate(prepared.execution_id, plan_id=prepared.plan.plan_id)
+        self._record_dsd_pcm_family(OutputFamilyState.READY, prepared)
+        return self._token_value
 
     def _prepare_dop_request(self, path: Path, request: OutputRequest) -> str:
         plan = request.dop_plan
@@ -2733,6 +3224,29 @@ class OutputSessionService:
             return  # callback de generation vieja: descartado (§21)
         if self._path != Path(path):
             raise OutputSessionError("stale_path", "commit path does not own token")
+        if self._mode == "dsd_pcm":
+            if self._state is not OutputSessionState.READY:
+                raise OutputSessionError(
+                    "illegal_transition", f"commit desde {self._state.value}"
+                )
+            prepared = self._dsd_pcm_prepared
+            if prepared is None:
+                raise OutputSessionError(
+                    "DSD_PCM_OUTPUT_MISSING", "no DSD→PCM preparation"
+                )
+            if self._dsd_pcm_commit is None:
+                raise OutputSessionError(
+                    "DSD_PCM_OUTPUT_UNAVAILABLE", "no DSD→PCM commit is composed"
+                )
+            try:
+                self._dsd_pcm_commit(prepared)
+            except Exception as exc:  # noqa: BLE001 - owner commit boundary
+                code = getattr(exc, "code", "DSD_PCM_OUTPUT_COMMIT_FAILED")
+                raise OutputSessionError(code, str(exc)) from exc
+            self._previous_direct = None
+            self._transition(OutputSessionState.RUNNING)
+            self._record_dsd_pcm_family(OutputFamilyState.RUNNING, prepared)
+            return
         if self._mode == "dop":
             if self._state is not OutputSessionState.READY:
                 raise OutputSessionError(
@@ -2806,6 +3320,59 @@ class OutputSessionService:
 
     def abort_media(self, token: str, reason: str) -> None:
         if self._is_stale(token):
+            return
+        if self._mode == "dsd_pcm":
+            self._error_code = reason
+            prepared = self._dsd_pcm_prepared
+            if prepared is None:
+                self._clear_execution(keep_error=True)
+                if self._state is not OutputSessionState.IDLE:
+                    self._transition(OutputSessionState.IDLE)
+                self._notify()
+                return
+            if self._dsd_pcm_abort is None:
+                self._retain_pending_cleanup("dsd_pcm", prepared)
+                self._record_dsd_pcm_family(
+                    OutputFamilyState.UNAVAILABLE, prepared, detail=reason
+                )
+                self._notify()
+                raise OutputSessionError(
+                    "DSD_PCM_ABORT_UNCONFIRMED",
+                    "no DSD→PCM abort authority is composed",
+                )
+            try:
+                result = self._dsd_pcm_abort(prepared, reason)
+            except Exception as exc:  # noqa: BLE001 - preserve exact receipt
+                self._retain_pending_cleanup("dsd_pcm", prepared)
+                self._record_dsd_pcm_family(
+                    OutputFamilyState.UNAVAILABLE, prepared, detail=reason
+                )
+                self._notify()
+                raise OutputSessionError("DSD_PCM_ABORT_UNCONFIRMED", str(exc)) from exc
+            if not self._dsd_pcm_cleanup_confirmed(result, prepared):
+                self._retain_pending_cleanup("dsd_pcm", prepared)
+                self._record_dsd_pcm_family(
+                    OutputFamilyState.UNAVAILABLE, prepared, detail=reason
+                )
+                self._notify()
+                raise OutputSessionError(
+                    "DSD_PCM_ABORT_UNCONFIRMED",
+                    "host did not confirm this exact DSD→PCM release",
+                )
+            self._clear_pending_cleanup("dsd_pcm", prepared)
+            self._record_dsd_pcm_family(
+                OutputFamilyState.UNAVAILABLE, prepared, detail=reason
+            )
+            self._clear_execution(keep_error=True)
+            if self._state is not OutputSessionState.IDLE:
+                if self._state in (
+                    OutputSessionState.READY,
+                    OutputSessionState.RUNNING,
+                    OutputSessionState.PAUSED,
+                ):
+                    self._transition(OutputSessionState.RELEASING)
+                self._transition(OutputSessionState.IDLE)
+            self._notify()
             return
         if self._mode == "dop":
             self._error_code = reason
@@ -2964,8 +3531,68 @@ class OutputSessionService:
             and self._native_dsd_prepared is not None
             or self._mode == "dop"
             and self._dop_prepared is not None
+            or self._mode == "dsd_pcm"
+            and self._dsd_pcm_prepared is not None
         )
         self._last_release_invalidated_media = was_specific
+        if self._mode == "dsd_pcm":
+            prepared = self._dsd_pcm_prepared
+            if self._state not in (
+                OutputSessionState.IDLE,
+                OutputSessionState.RELEASING,
+            ):
+                self._transition(OutputSessionState.RELEASING)
+            result: dict = {"stopped": True, "already": True}
+            if prepared is not None and self._dsd_pcm_stop is None:
+                self._retain_pending_cleanup("dsd_pcm", prepared)
+                self._error_code = "DSD_PCM_RELEASE_UNAVAILABLE"
+                self._record_dsd_pcm_family(
+                    OutputFamilyState.UNAVAILABLE,
+                    prepared,
+                    detail=self._error_code,
+                )
+                self._notify()
+                raise OutputSessionError(
+                    self._error_code, "no DSD→PCM release authority is composed"
+                )
+            if prepared is not None and self._dsd_pcm_stop is not None:
+                try:
+                    result = self._dsd_pcm_stop(prepared, reason)
+                except Exception as exc:  # noqa: BLE001 - preserve receipt
+                    self._retain_pending_cleanup("dsd_pcm", prepared)
+                    self._error_code = "DSD_PCM_RELEASE_FAILED"
+                    self._record_dsd_pcm_family(
+                        OutputFamilyState.UNAVAILABLE,
+                        prepared,
+                        detail=self._error_code,
+                    )
+                    self._notify()
+                    raise OutputSessionError(self._error_code, str(exc)) from exc
+            if prepared is not None and not self._dsd_pcm_stop_confirmed(
+                result, prepared
+            ):
+                self._retain_pending_cleanup("dsd_pcm", prepared)
+                self._error_code = "DSD_PCM_RELEASE_UNCONFIRMED"
+                self._record_dsd_pcm_family(
+                    OutputFamilyState.UNAVAILABLE,
+                    prepared,
+                    detail=self._error_code,
+                )
+                self._notify()
+                raise OutputSessionError(
+                    self._error_code, "host did not confirm release"
+                )
+            if prepared is not None:
+                self._clear_pending_cleanup("dsd_pcm", prepared)
+                self._record_dsd_pcm_family(
+                    OutputFamilyState.RELEASED, prepared, detail=str(reason)
+                )
+            self._error_code = None
+            self._clear_execution(keep_error=True)
+            if self._state is not OutputSessionState.IDLE:
+                self._transition(OutputSessionState.IDLE)
+            self._notify()
+            return
         if self._mode == "dop":
             prepared = self._dop_prepared
             if self._state not in (
@@ -3139,6 +3766,39 @@ class OutputSessionService:
         generation: int | None = None,
     ) -> None:
         """Invalidate topology-dependent authority, then attempt cleanup."""
+        if self._mode == "dsd_pcm" and self._dsd_pcm_prepared is not None:
+            prepared = self._dsd_pcm_prepared
+            if (
+                stable_device_id is not None
+                and prepared.stable_device_id != stable_device_id
+            ):
+                return
+            self._lost_device_id = stable_device_id or prepared.stable_device_id
+            self._lost_binding_generation = (
+                generation
+                if generation is not None
+                else prepared.plan.binding_generation
+            )
+            self._record_dsd_pcm_family(
+                OutputFamilyState.UNAVAILABLE, prepared, detail="device_lost"
+            )
+            if self._state is not OutputSessionState.LOST:
+                self._transition(OutputSessionState.LOST)
+            self._mode = "lost"
+            self._error_code = "device_lost"
+            self._token_value = None
+            self._dsd_pcm_prepared = None
+            self._dsd_pcm_plan = None
+            self._dsd_pcm_playing_execution = None
+            self._dsd_pcm_eos_execution = None
+            self._dsd_pcm_terminal_execution = prepared.execution_id
+            self._executor_receipt = None
+            self._path = None
+            self._last_release_invalidated_media = True
+            self._notify()
+            self._dsd_pcm_abort_quietly(prepared, "device_lost", record_failure=False)
+            self._notify()
+            return
         if self._mode == "dop" and self._dop_prepared is not None:
             plan = self._dop_plan
             if (
@@ -3436,6 +4096,11 @@ class OutputSessionService:
         self._dop_playing_execution = None
         self._dop_eos_execution = None
         self._dop_terminal_execution = None
+        self._dsd_pcm_plan = None
+        self._dsd_pcm_prepared = None
+        self._dsd_pcm_playing_execution = None
+        self._dsd_pcm_eos_execution = None
+        self._dsd_pcm_terminal_execution = None
         self._path = None
         self._token_value = None
         self._executor = None
