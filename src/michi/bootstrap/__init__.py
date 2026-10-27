@@ -10,6 +10,8 @@ shutdown lifecycle.
 import contextlib
 import logging
 import os
+import shutil
+import subprocess
 import sys
 from dataclasses import dataclass
 from enum import Enum
@@ -757,26 +759,25 @@ def _build_services(
         return tuple(qualifications)
 
     def _dsd_pcm_decoder_available() -> bool:
-        try:
-            import gi
-
-            gi.require_version("Gst", "1.0")
-            from gi.repository import Gst
-
-            if not Gst.is_initialized():
-                Gst.init(None)
-            return all(
-                Gst.ElementFactory.find(name) is not None
-                for name in (
-                    "avdec_dsd_lsbf",
-                    "avdec_dsd_msbf",
-                    "avdec_dsd_lsbf_planar",
-                    "avdec_dsd_msbf_planar",
-                    "audioresample",
-                )
-            )
-        except Exception:
+        inspector = shutil.which("gst-inspect-1.0")
+        if inspector is None:
             return False
+        return all(
+            subprocess.run(
+                [inspector, name],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            ).returncode
+            == 0
+            for name in (
+                "avdec_dsd_lsbf",
+                "avdec_dsd_msbf",
+                "avdec_dsd_lsbf_planar",
+                "avdec_dsd_msbf_planar",
+                "audioresample",
+            )
+        )
 
     def _dsd_pcm_target_rates(stable_device_id, _binding):
         return tuple(
