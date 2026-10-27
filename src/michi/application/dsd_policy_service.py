@@ -15,6 +15,8 @@ class SourceKind(StrEnum):
 
 
 class DsdIntent(StrEnum):
+    PCM_DIRECT = "PCM_DIRECT"
+    PCM_PROCESSED = "PCM_PROCESSED"
     NATIVE_DSD = "NATIVE_DSD"
     DOP = "DOP"
     PRESERVE_DSD = "PRESERVE_DSD"
@@ -42,9 +44,12 @@ class DsdPolicyRequest:
     intent: DsdIntent | str
     dsp_requested: bool
     conversion_consent: bool
-    decoder_available: bool = True
-    target_qualified: bool = True
-    dsp_available: bool = True
+    source_truth_verified: bool = False
+    decoder_available: bool = False
+    target_qualified: bool = False
+    dsp_available: bool = False
+    native_available: bool = False
+    dop_available: bool = False
     quality_profile: str = "HIGH"
     request_epoch: int = 0
     current_epoch: int | None = None
@@ -75,11 +80,17 @@ class DsdPolicyService:
         if stale:
             return self._unavailable(stale, request)
         if request.source_kind is SourceKind.PCM:
-            if request.dsp_requested:
+            if intent is DsdIntent.PCM_PROCESSED:
                 if not request.dsp_available:
                     return self._unavailable("DSP_UNAVAILABLE", request)
                 return self._decision(OutputFamily.PCM_PROCESSED, "PCM_DSP", request)
-            return self._decision(OutputFamily.PCM_DIRECT, "PCM_DIRECT", request)
+            if intent is DsdIntent.PCM_DIRECT:
+                if request.dsp_requested:
+                    return self._refused("PCM_DSP_INTENT_REQUIRED", request)
+                return self._decision(OutputFamily.PCM_DIRECT, "PCM_DIRECT", request)
+            return self._refused("PCM_INTENT_INCOMPATIBLE", request)
+        if not request.source_truth_verified:
+            return self._unavailable("DSD_SOURCE_TRUTH_REQUIRED", request)
         if request.source_format is None:
             return self._unavailable("DSD_SOURCE_FORMAT_REQUIRED", request)
         if request.quality_profile not in QUALITY_RATE_LADDERS:
@@ -87,24 +98,31 @@ class DsdPolicyService:
         if intent is DsdIntent.PRESERVE_DSD:
             if request.dsp_requested:
                 return self._refused("DSP_ON_PRESERVE_DSD", request)
+            if not request.native_available:
+                return self._unavailable("NATIVE_DSD_UNAVAILABLE", request)
             return self._decision(
                 OutputFamily.NATIVE_DSD, "PRESERVE_DSD_BYPASS", request
             )
         if intent is DsdIntent.NATIVE_DSD:
             if request.dsp_requested:
                 return self._refused("DSP_ON_NATIVE_DSD", request)
+            if not request.native_available:
+                return self._unavailable("NATIVE_DSD_UNAVAILABLE", request)
             return self._decision(OutputFamily.NATIVE_DSD, "NATIVE_DSD", request)
         if intent is DsdIntent.DOP:
             if request.dsp_requested:
                 return self._refused("DSP_ON_DOP_CARRIER", request)
+            if not request.dop_available:
+                return self._unavailable("DOP_UNAVAILABLE", request)
             return self._decision(OutputFamily.DOP, "DOP_EXPLICIT", request)
         if intent is DsdIntent.AUTO:
-            if not request.conversion_consent:
-                return self._decision(
-                    OutputFamily.NATIVE_DSD, "AUTO_PRESERVES_DSD", request
-                )
-            if not request.decoder_available or not request.target_qualified:
+            if request.conversion_consent:
                 return self._unavailable("AUTO_CANNOT_DECIDE", request)
+            if not request.native_available:
+                return self._unavailable("NATIVE_DSD_UNAVAILABLE", request)
+            return self._decision(
+                OutputFamily.NATIVE_DSD, "AUTO_PRESERVES_DSD", request
+            )
         if intent not in (
             DsdIntent.CONVERT_TO_PCM,
             DsdIntent.PROCESS_AS_PCM,
@@ -113,6 +131,8 @@ class DsdPolicyService:
             return self._refused("INTENT_UNKNOWN", request)
         if not request.conversion_consent:
             return self._refused("CONVERSION_CONSENT_REQUIRED", request)
+        if not request.source_truth_verified:
+            return self._unavailable("DSD_SOURCE_TRUTH_REQUIRED", request)
         if not request.decoder_available:
             return self._unavailable("DSD_PCM_DECODER_UNAVAILABLE", request)
         if not request.target_qualified:

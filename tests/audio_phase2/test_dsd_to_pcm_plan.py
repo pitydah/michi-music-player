@@ -22,15 +22,20 @@ from michi.domain.dsd_signal import (
 
 
 def _format(
-    *, bits=2_822_400, order=DsdBitOrder.LSBF, organization=DsdOrganization.PLANAR
+    *,
+    bits=2_822_400,
+    order=DsdBitOrder.LSBF,
+    organization=DsdOrganization.PLANAR,
+    channels=2,
 ):
+    layouts = {1: ("FC",), 2: ("FL", "FR")}
     return DsdSignalFormat(
         bit_rate_hz=bits,
-        channels=2,
+        channels=channels,
         packing=DsdPacking.DSD_U8,
         bit_order=order,
         organization=organization,
-        layout=("FL", "FR"),
+        layout=layouts[channels],
     )
 
 
@@ -165,3 +170,31 @@ def test_decoder_missing_and_unqualified():
 
 def test_default_profile_is_high():
     assert DEFAULT_QUALITY_PROFILE == "HIGH"
+
+
+def _plan(**kw):
+    base = dict(
+        source_identity="track:1",
+        source_format=_format(),
+        quality_profile="HIGH",
+        binding_generation=1,
+        available_output_rates=(88_200,),
+        decoder_available=True,
+        target_qualified=True,
+        backend_version="1.28.8",
+    )
+    base.update(kw)
+    return DsdToPcmPlanner().plan(**base)
+
+
+def test_plan_id_changes_with_semantic_inputs():
+    base = _plan()
+    assert _plan(source_format=_format(channels=1)).plan_id != base.plan_id
+    assert _plan(backend_version="1.29.0").plan_id != base.plan_id
+    assert _plan(processing_graph_revision=1).plan_id != base.plan_id
+    assert _plan(evidence_refs=("ev:1",)).plan_id != base.plan_id
+    assert _plan(binding_generation=2).plan_id != base.plan_id
+
+
+def test_plan_id_is_deterministic_for_equal_semantics():
+    assert _plan().plan_id == _plan().plan_id

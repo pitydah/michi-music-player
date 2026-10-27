@@ -34,6 +34,12 @@ def _request(**kw):
         intent=DsdIntent.NATIVE_DSD,
         dsp_requested=False,
         conversion_consent=False,
+        decoder_available=True,
+        target_qualified=True,
+        dsp_available=True,
+        native_available=True,
+        dop_available=True,
+        source_truth_verified=True,
         request_epoch=2,
         current_epoch=1,
         processing_graph_revision=4,
@@ -80,7 +86,9 @@ def test_pcm_matrix():
     service = DsdPolicyService()
     direct = service.decide(
         _request(
-            source_kind=SourceKind.PCM, source_format=None, intent=DsdIntent.NATIVE_DSD
+            source_kind=SourceKind.PCM,
+            source_format=None,
+            intent=DsdIntent.PCM_DIRECT,
         )
     )
     assert direct.decision is OutputFamily.PCM_DIRECT
@@ -88,7 +96,7 @@ def test_pcm_matrix():
         _request(
             source_kind=SourceKind.PCM,
             source_format=None,
-            intent=DsdIntent.NATIVE_DSD,
+            intent=DsdIntent.PCM_PROCESSED,
             dsp_requested=True,
         )
     )
@@ -138,3 +146,43 @@ def test_auto_without_consent_preserves_dsd_and_without_decoder_is_unavailable()
         )
     )
     assert unavailable.reason == "AUTO_CANNOT_DECIDE"
+
+
+def test_pcm_incompatible_intent_is_refused_not_pcm_direct():
+    result = DsdPolicyService().decide(
+        _request(
+            source_kind=SourceKind.PCM,
+            source_format=None,
+            intent=DsdIntent.NATIVE_DSD,
+        )
+    )
+    assert result.decision is OutputFamily.REFUSED
+    assert result.reason == "PCM_INTENT_INCOMPATIBLE"
+
+
+def test_auto_with_consent_never_converts_implicitly():
+    result = DsdPolicyService().decide(
+        _request(intent=DsdIntent.AUTO, conversion_consent=True)
+    )
+    assert result.decision is OutputFamily.UNAVAILABLE
+    assert result.reason == "AUTO_CANNOT_DECIDE"
+
+
+def test_preserve_requires_available_native_route():
+    result = DsdPolicyService().decide(
+        _request(intent=DsdIntent.PRESERVE_DSD, native_available=False)
+    )
+    assert result.decision is OutputFamily.UNAVAILABLE
+    assert result.reason == "NATIVE_DSD_UNAVAILABLE"
+
+
+def test_conversion_requires_verified_source_truth():
+    result = DsdPolicyService().decide(
+        _request(
+            intent=DsdIntent.CONVERT_TO_PCM,
+            conversion_consent=True,
+            source_truth_verified=False,
+        )
+    )
+    assert result.decision is OutputFamily.UNAVAILABLE
+    assert result.reason == "DSD_SOURCE_TRUTH_REQUIRED"

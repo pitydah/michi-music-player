@@ -51,7 +51,8 @@ def decoder_factory_for(source_format: DsdSignalFormat) -> str:
             "DSD_PCM_DECODER_UNAVAILABLE",
             f"unsupported elementary packing {source_format.packing.value}",
         )
-    # dsdconvert normalizes channel organization; bit order stays explicit.
+    # dsdconvert is an explicit node that normalizes channel organization to
+    # interleaved before the decoder; bit order remains factory-selected.
     return {
         DsdBitOrder.LSBF: "avdec_dsd_lsbf",
         DsdBitOrder.MSBF: "avdec_dsd_msbf",
@@ -149,11 +150,20 @@ class DsdToPcmPlanner:
                     str(source_format.bit_rate_hz),
                     source_format.bit_order.value,
                     source_format.organization.value,
+                    source_format.packing.value,
+                    ",".join(source_format.layout),
+                    str(source_format.channels),
                     factory,
+                    "F32LE",
+                    str(native),
                     str(target),
                     quality_profile,
-                    str(binding_generation),
+                    "|".join(f"{k}={v}" for k, v in resampler),
+                    "gst-libav",
+                    backend_version,
                     str(processing_graph_revision),
+                    str(binding_generation),
+                    "|".join(evidence_refs),
                 )
             ).encode()
         ).hexdigest()
