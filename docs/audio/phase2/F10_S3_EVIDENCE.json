@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "phase": "AP2-F10",
+  "sprint": "AP2-F10-S3",
+  "state": "ACTIVE",
+  "recorded_at": "2026-10-27",
+  "base_head": "a3b887a86eebf3c0b478927485acbf9d8ffa595f",
+  "code_head": "0b4fb4e",
+  "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
+  "commits": [
+    "35c9a9e fix(audio): route canonical transport through DSD PCM owner",
+    "14ad0e8 fix(audio): fence stale DSD PCM transport callbacks",
+    "0b4fb4e feat(audio): enable canonical DSD PCM playback lifecycle"
+  ],
+  "implemented": {
+    "port_dispatch": "play/pause/resume/stop route to the exact DSD→PCM execution; generic PCM commands are rejected",
+    "port_fencing": "stale PLAYING/PAUSED/EOS callbacks are fenced by execution, plan and host generation",
+    "port_unsupported": "seek/volume/mute rejected while DSD→PCM owns output; position/duration report 0",
+    "output_session": "DSD→PCM request, prepare, commit, abort, release, device loss, active identity and pending cleanup",
+    "playback_e2e": "PlaybackService.load_and_play(DSF) → OutputSession → supervised host → avdec_dsd_* → F32LE → fakesink; RUNNING/EOS/STOP/IDLE; replay",
+    "bootstrap": "canonical callbacks wired to GStreamerHostedAudioPort",
+    "release_evidence": "exact plan/execution/device/binding/host generation; caller echo is not proof"
+  },
+  "not_implemented": [
+    "DSP graph on converted PCM",
+    "Signal Truth visual publication / UI",
+    "numeric conformance corpus and quality profile certification",
+    "full adversarial family-transition matrix",
+    "installed-wheel DSD→PCM E2E",
+    "physical DAC DSD-mode certification (F14)"
+  ],
+  "tests": {
+    "focused": "70 passed — policy, plan, runtime, host, port, output session, product E2E",
+    "product_e2e": "1 passed — real supervised host + installed runtime, EOS and replay",
+    "full_suite": "6286 passed, 22 skipped, 0 failed in 1856.49s (30:56)",
+    "ruff": "PASS",
+    "alignment": "GO",
+    "ci": "NOT_RUN for F10-S3 commits"
+  },
+  "acceptance": {
+    "S3-01_port_dispatch": "PASS",
+    "S3-02_wrong_family": "PASS",
+    "S3-03_stale_callbacks": "PASS",
+    "S3-04_output_session_ownership": "PASS",
+    "S3-05_pending_cleanup": "IMPLEMENTED; dedicated adversarial test pending",
+    "S3-06_release_reconcile": "PASS",
+    "S3-07_host_restart": "PARTIAL — port generation fencing; DSD-specific restart test pending",
+    "S3-08_device_loss": "IMPLEMENTED; dedicated DSD test pending",
+    "S3-09_playback_e2e": "PASS",
+    "S3-10_stop_pause_resume_eos": "PASS for start/stop/EOS; pause/resume unit coverage",
+    "S3-11_queue_family_transitions": "PARTIAL — no full cross-family queue test",
+    "S3-12_no_autoplay": "PASS in transition model; product matrix pending",
+    "S3-13_consent": "PASS in policy",
+    "S3-14_dsp_only_on_pcm": "PASS by prohibition; DSP route not connected",
+    "S3-15_dsp_certified": "NOT_IMPLEMENTED",
+    "S3-16_signal_truth": "PARTIAL — OutputFamilyEvent dsd_pcm recorded; UI/path publication pending",
+    "S3-17_fakesink_not_dac": "PASS — lab identity remains explicit",
+    "S3-18_bit_perfect": "PASS — bit_perfect=False for converted DSD",
+    "S3-19_numeric_conformance": "NOT_IMPLEMENTED",
+    "S3-20_host_e2e": "PASS",
+    "S3-21_adversarial_ownership": "PARTIAL",
+    "S3-22_native_dsd": "PASS — full suite",
+    "S3-23_dop": "PASS — full suite",
+    "S3-24_pcm_dsp": "PASS — full suite",
+    "S3-25_installed_wheel": "NOT_RUN for DSD→PCM",
+    "S3-26_ci": "NOT_RUN",
+    "S3-27_evidence": "PASS",
+    "S3-28_F14": "NOT_RUN",
+    "S3-29_F11-F15": "LOCKED",
+    "S3-30_formal_state": "ACTIVE"
+  },
+  "progress": {
+    "functional_implementation_percent": 85,
+    "productive_integration_percent": 80,
+    "contractual_certification_percent": 65,
+    "closed": false
+  },
+  "risks": [
+    "DSP route on converted PCM is not connected",
+    "Signal Truth has family events but no verified visual/path publication",
+    "Numeric conformance and profile certification are not executed",
+    "Installed-wheel DSD→PCM E2E and CI are pending",
+    "F14 physical DAC interpretation remains NOT_RUN"
+  ],
+  "constraints": {
+    "native_dsd_dsp": "PROHIBITED",
+    "dop_dsp": "PROHIBITED",
+    "silent_conversion": "PROHIBITED",
+    "bit_perfect_converted_dsd": "NOT_APPLICABLE",
+    "F14": "NOT_RUN",
+    "F11-F15": "LOCKED"
+  }
+}
