@@ -152,19 +152,32 @@ def test_port_executes_dsd_pcm_with_exact_release_receipt(tmp_path, monkeypatch)
             "binding_generation": identity["binding_generation"],
             "host_generation": identity["host_generation"],
         }
+        for call, code in (
+            (lambda: port.seek(1000), "DSD_PCM_SEEK_UNSUPPORTED"),
+            (lambda: port.set_volume(10), "DSD_PCM_VOLUME_UNSUPPORTED"),
+            (lambda: port.set_muted(True), "DSD_PCM_MUTE_UNSUPPORTED"),
+        ):
+            with pytest.raises(Exception, match=code):
+                call()
         port.commit_dsd_pcm(expected)
-        port.start_dsd_pcm(expected)
+        port.play()
+        port.pause()
+        port.resume()
         deadline = time.monotonic() + 30.0
         while time.monotonic() < deadline:
             if port.query_dsd_pcm_identity().get("eos"):
                 break
             time.sleep(0.02)
         assert port.query_dsd_pcm_identity()["eos"] is True
+        port.stop()
+        assert port.dsd_pcm_active is False
+        receipt = port._dsd_pcm_receipt
+        assert receipt["execution_id"] == expected["execution_id"]
+        assert receipt["confirmed"] is True
         stopped = port.stop_dsd_pcm(expected)
         assert stopped["stopped"] is True
         assert stopped["release"]["execution_id"] == expected["execution_id"]
         assert stopped["release"]["confirmed"] is True
-        assert port.dsd_pcm_active is False
         again = port.stop_dsd_pcm(expected)
         assert again["already"] is True
         assert again["release"]["execution_id"] == expected["execution_id"]

@@ -408,11 +408,15 @@ class GStreamerHostedAudioPort(AudioPort):
         with self._lock:
             native = self._native_dsd_active
             dop = self._dop_active
+            dsd_pcm = self._dsd_pcm_active
         if dop:
             self.start_dop()
             return
         if native:
             self.start_native_dsd()
+            return
+        if dsd_pcm:
+            self.start_dsd_pcm()
             return
         self._command(HostOperation.PLAY)
 
@@ -420,11 +424,15 @@ class GStreamerHostedAudioPort(AudioPort):
         with self._lock:
             native = self._native_dsd_active
             dop = self._dop_active
+            dsd_pcm = self._dsd_pcm_active
         if dop:
             self.pause_dop()
             return
         if native:
             self.pause_native_dsd()
+            return
+        if dsd_pcm:
+            self.pause_dsd_pcm()
             return
         self._command(HostOperation.PAUSE)
 
@@ -432,11 +440,15 @@ class GStreamerHostedAudioPort(AudioPort):
         with self._lock:
             native = self._native_dsd_active
             dop = self._dop_active
+            dsd_pcm = self._dsd_pcm_active
         if dop:
             self.resume_dop()
             return
         if native:
             self.resume_native_dsd()
+            return
+        if dsd_pcm:
+            self.resume_dsd_pcm()
             return
         self._command(HostOperation.RESUME)
 
@@ -446,12 +458,17 @@ class GStreamerHostedAudioPort(AudioPort):
             dop = self._dop_active
             native_expected = dict(self._native_dsd_expected or {})
             dop_expected = dict(self._dop_expected or {})
+            dsd_pcm = self._dsd_pcm_active
+            dsd_pcm_expected = dict(self._dsd_pcm_expected or {})
             self._command_generation += 1
         if dop and dop_expected:
             self.stop_dop(dop_expected)
             return
         if native and native_expected:
             self.stop_native_dsd(native_expected)
+            return
+        if dsd_pcm and dsd_pcm_expected:
+            self.stop_dsd_pcm(dsd_pcm_expected)
             return
         self._command(HostOperation.STOP)
         with self._lock:
@@ -461,6 +478,7 @@ class GStreamerHostedAudioPort(AudioPort):
         with self._lock:
             native = self._native_dsd_active
             dop = self._dop_active
+            dsd_pcm = self._dsd_pcm_active
         if dop:
             raise AudioTransportCommandError(
                 "DOP_SEEK_UNSUPPORTED: DoP seek is not demonstrated"
@@ -469,41 +487,47 @@ class GStreamerHostedAudioPort(AudioPort):
             raise AudioTransportCommandError(
                 "NATIVE_DSD_SEEK_UNSUPPORTED: Native DSD seek is not demonstrated"
             )
+        if dsd_pcm:
+            raise AudioTransportCommandError(
+                "DSD_PCM_SEEK_UNSUPPORTED: DSD→PCM seek is not demonstrated"
+            )
         self._command(HostOperation.SEEK, {"position_ms": int(position_ms)})
 
     def set_volume(self, value: int) -> None:
         with self._lock:
             native = self._native_dsd_active
             dop = self._dop_active
+            dsd_pcm = self._dsd_pcm_active
         if dop:
             raise AudioTransportCommandError(
                 "DOP_VOLUME_UNSUPPORTED: no software volume on the DoP carrier"
             )
-        if native:
+        if native or dsd_pcm:
             raise AudioTransportCommandError(
-                "NATIVE_DSD_VOLUME_UNSUPPORTED: no PCM volume on a Native DSD route"
+                "DSD_PCM_VOLUME_UNSUPPORTED: no PCM volume on a DSD route"
             )
         self._command(HostOperation.SET_VOLUME, {"value": int(value)})
 
     def set_muted(self, muted: bool) -> None:
         with self._lock:
             native = self._native_dsd_active
-        if native:
+            dsd_pcm = self._dsd_pcm_active
+        if native or dsd_pcm:
             raise AudioTransportCommandError(
-                "NATIVE_DSD_MUTE_UNSUPPORTED: no PCM mute on a Native DSD route"
+                "DSD_PCM_MUTE_UNSUPPORTED: no PCM mute on a DSD route"
             )
         self._command(HostOperation.SET_MUTED, {"muted": bool(muted)})
 
     def position(self) -> int:
         with self._lock:
-            if self._native_dsd_active:
+            if self._native_dsd_active or self._dsd_pcm_active:
                 return 0
         payload = self._command(HostOperation.QUERY_POSITION)
         return int(payload.get("value") or 0)
 
     def duration(self) -> int:
         with self._lock:
-            if self._native_dsd_active:
+            if self._native_dsd_active or self._dsd_pcm_active:
                 return 0
         payload = self._command(HostOperation.QUERY_DURATION)
         return int(payload.get("value") or 0)
@@ -964,7 +988,14 @@ class GStreamerHostedAudioPort(AudioPort):
             raise OutputHostCommandError(
                 "OUTPUT_HOST_INVALID_RESULT", "DSD→PCM PLAYING was not confirmed"
             )
-        self._enqueue(lambda: self._commit_state(PlaybackStatus.PLAYING))
+        with self._lock:
+            command_generation = self._command_generation
+        execution_id = str(expected.get("execution_id") or "")
+        self._enqueue(
+            lambda: self._commit_dsd_pcm_state_if_current(
+                execution_id, PlaybackStatus.PLAYING, command_generation
+            )
+        )
         return result
 
     def pause_dsd_pcm(self, expected: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -980,7 +1011,14 @@ class GStreamerHostedAudioPort(AudioPort):
             raise OutputHostCommandError(
                 "OUTPUT_HOST_INVALID_RESULT", "DSD→PCM PAUSED was not confirmed"
             )
-        self._enqueue(lambda: self._commit_state(PlaybackStatus.PAUSED))
+        with self._lock:
+            command_generation = self._command_generation
+        execution_id = str(expected.get("execution_id") or "")
+        self._enqueue(
+            lambda: self._commit_dsd_pcm_state_if_current(
+                execution_id, PlaybackStatus.PAUSED, command_generation
+            )
+        )
         return result
 
     def resume_dsd_pcm(self, expected: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -996,7 +1034,14 @@ class GStreamerHostedAudioPort(AudioPort):
             raise OutputHostCommandError(
                 "OUTPUT_HOST_INVALID_RESULT", "DSD→PCM PLAYING was not confirmed"
             )
-        self._enqueue(lambda: self._commit_state(PlaybackStatus.PLAYING))
+        with self._lock:
+            command_generation = self._command_generation
+        execution_id = str(expected.get("execution_id") or "")
+        self._enqueue(
+            lambda: self._commit_dsd_pcm_state_if_current(
+                execution_id, PlaybackStatus.PLAYING, command_generation
+            )
+        )
         return result
 
     def _release_dsd_pcm(
@@ -1992,6 +2037,21 @@ class GStreamerHostedAudioPort(AudioPort):
             expected = dict(self._dop_expected or {})
             current = bool(
                 self._dop_active
+                and execution_id
+                and expected.get("execution_id") == execution_id
+                and self._command_generation == command_generation
+            )
+        if not current:
+            return
+        self._commit_state(status)
+
+    def _commit_dsd_pcm_state_if_current(
+        self, execution_id: str, status: PlaybackStatus, command_generation: int
+    ) -> None:
+        with self._lock:
+            expected = dict(self._dsd_pcm_expected or {})
+            current = bool(
+                self._dsd_pcm_active
                 and execution_id
                 and expected.get("execution_id") == execution_id
                 and self._command_generation == command_generation
