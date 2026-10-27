@@ -96,6 +96,7 @@ class GStreamerHostedAudioPort(AudioPort):
         self._dsd_pcm_active = False
         self._dsd_pcm_expected: dict[str, Any] | None = None
         self._dsd_pcm_receipt: dict[str, Any] | None = None
+        self._dsd_pcm_path: str | None = None
         self._dop_state = "NONE"
         self._dop_expected: dict[str, Any] | None = None
         self._dop_path: str | None = None
@@ -202,6 +203,7 @@ class GStreamerHostedAudioPort(AudioPort):
             self._dsd_pcm_active = False
             self._dsd_pcm_expected = None
             self._dsd_pcm_receipt = None
+            self._dsd_pcm_path = None
             self._pcm_active = False
         if cleanup_error is not None:
             # Truth was invalidated; keep the port retryable for the provider.
@@ -352,6 +354,15 @@ class GStreamerHostedAudioPort(AudioPort):
                     )
                 self._commit_accepted(Path(path))
                 return {"dop": True, "accepted": True}
+            if self._dsd_pcm_active:
+                expected_path = self._dsd_pcm_path
+                if expected_path is None or Path(path).resolve() != Path(expected_path):
+                    raise AudioTransportCommandError(
+                        "DSD_PCM_LOAD_CONFLICT: a different DSD→PCM execution "
+                        "owns the output"
+                    )
+                self._commit_accepted(Path(path))
+                return {"dsd_pcm": True, "accepted": True}
             if self._native_dsd_active:
                 expected_path = self._native_dsd_path
                 if expected_path is None or Path(path).resolve() != Path(expected_path):
@@ -915,6 +926,7 @@ class GStreamerHostedAudioPort(AudioPort):
         )
         with self._lock:
             self._dsd_pcm_active = True
+            self._dsd_pcm_path = str(Path(str(payload.get("path") or "")).resolve())
             self._dsd_pcm_expected = {
                 "plan_id": str(identity.get("plan_id") or ""),
                 "execution_id": str(identity.get("execution_id") or ""),
@@ -1022,6 +1034,7 @@ class GStreamerHostedAudioPort(AudioPort):
             self._dsd_pcm_active = False
             self._dsd_pcm_expected = None
             self._dsd_pcm_receipt = dict(release)
+            self._dsd_pcm_path = None
         self._enqueue(lambda: self._commit_state(PlaybackStatus.STOPPED))
         return {
             **result,

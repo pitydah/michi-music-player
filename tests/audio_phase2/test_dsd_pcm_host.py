@@ -143,6 +143,7 @@ def test_port_executes_dsd_pcm_with_exact_release_receipt(tmp_path, monkeypatch)
     try:
         port.activate()
         identity = port.prepare_dsd_pcm(_payload(plan, source))
+        port.load(source)  # acceptance, not a PCM load
         expected = {
             "plan_id": identity["plan_id"],
             "execution_id": identity["execution_id"],
