@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "phase": "AP2-F10",
+  "sprint": "AP2-F10-S4-R2",
+  "state": "ACTIVE",
+  "recorded_at": "2026-10-27",
+  "base_head": "23fc8820fff7effc3dc9ab39bfc7fa824f9c5a74",
+  "code_head": "acb758f",
+  "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
+  "commits": [
+    "d37a08b fix(audio): route DSD PCM through productive output resolver",
+    "35e8b45 fix(audio): isolate GStreamer laboratory sinks",
+    "e5acc97 test(audio): publish DSD PCM truth in product E2E",
+    "acb758f fix(audio): keep DSD decoder discovery out of the parent process"
+  ],
+  "productive_resolver": {
+    "status": "COMPLETE",
+    "source": "ProductiveOutputRequestResolver",
+    "policy": "explicit DSD→PCM decision/provider; no conversion without policy",
+    "plan": "DsdToPcmPlan with stable device, binding locator/generation, host generation",
+    "request": "OutputRequest.dsd_to_pcm returned by the canonical resolver",
+    "e2e": "PlaybackService.load_and_play uses the real resolver, not an injected request"
+  },
+  "host_e2e": {
+    "status": "PASS — laboratory fakesink",
+    "path": "PlaybackService → resolver → planner → OutputSession → supervised host → avdec_dsd_* → F32LE → fakesink",
+    "verified": "PLAYING confirmed, EOS, STOP, IDLE, replay, Signal Truth dsd_pcm RUNNING/RELEASED",
+    "physical_output": "NOT_CLAIMED"
+  },
+  "lab_isolation": {
+    "status": "COMPLETE",
+    "rule": "MICHI_GST_LAB_SINK accepts only fakesink; other values rejected"
+  },
+  "firewall": {
+    "status": "COMPLETE",
+    "rule": "parent bootstrap does not import gi or touch GStreamer lifecycle",
+    "test": "tests/audio_phase2/test_gstreamer_host_firewall.py 6 passed"
+  },
+  "tests": {
+    "focused": "71 passed",
+    "product_e2e": "1 passed",
+    "resolver": "1 passed",
+    "firewall": "6 passed",
+    "full_suite": "6287 passed, 22 skipped, 0 failed in 1911.40s (31:51)",
+    "ruff": "PASS",
+    "alignment": "GO"
+  },
+  "not_completed": [
+    "DSP F06 actually processing converted PCM buffers",
+    "Signal Truth UI publication beyond output-family events",
+    "numeric conformance corpus and measured thresholds",
+    "installed-wheel DSD→PCM E2E",
+    "expanded adversarial host/device transition matrix",
+    "F10 CI run at final SHA",
+    "F14 physical certification"
+  ],
+  "progress": {
+    "functional_implementation_percent": 90,
+    "productive_integration_percent": 88,
+    "contractual_certification_percent": 70,
+    "closed": false
+  },
+  "constraints": {
+    "native_dsd_dsp": "PROHIBITED",
+    "dop_dsp": "PROHIBITED",
+    "silent_conversion": "PROHIBITED",
+    "fakesink_as_physical_dac": "PROHIBITED",
+    "F14": "NOT_RUN",
+    "F11-F15": "LOCKED"
+  }
+}
