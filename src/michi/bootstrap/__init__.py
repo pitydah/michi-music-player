@@ -1242,7 +1242,14 @@ def _build_services(
         import os
 
         lab = os.environ.get("MICHI_GST_LAB_SINK", "").strip()
-        return lab or "alsasink"
+        if not lab:
+            return "alsasink"
+        if lab != "fakesink":
+            raise OutputSessionError(
+                "DSD_PCM_LAB_SINK_UNAUTHORIZED",
+                "only the explicit fakesink laboratory sink is allowed",
+            )
+        return lab
 
     def _dsd_pcm_prepare(plan, path, instance_id):
         port = gstreamer_provider.current_port
