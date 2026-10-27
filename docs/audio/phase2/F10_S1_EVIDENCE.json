@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "phase": "AP2-F10",
+  "title": "DSD→PCM, DSD×DSP POLICY AND CROSS-FAMILY FOUNDATION",
+  "state": "ACTIVE",
+  "sprint": "AP2-F10-S1",
+  "recorded_at": "2026-10-26",
+  "activation_head": "3d43341a9a3537e9eff8ce8f2031a12f259fcada",
+  "code_head": "0997d37",
+  "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
+  "entry_gate": {
+    "F06": "CLOSED — PCM DSP authority present",
+    "F08": "CLOSED — Native DSD authority present",
+    "F09": "CLOSED — RC3 CI green; DoP packed runtime unchanged",
+    "policy_owner": "DsdPolicyService defined; no second output authority created",
+    "signal_path": "Conversion evidence model exists; visual/read-model wiring remains pending",
+    "verdict": "GO — F10 activated; implementation is partial"
+  },
+  "implementation": {
+    "activation": {
+      "status": "COMPLETE",
+      "commit": "8b46e37"
+    },
+    "dsd_policy_service": {
+      "status": "COMPLETE",
+      "path": "src/michi/application/dsd_policy_service.py",
+      "commit": "19f7f63",
+      "tests": "tests/audio_phase2/test_dsd_dsp_matrix.py"
+    },
+    "dsd_to_pcm_plan": {
+      "status": "COMPLETE",
+      "path": "src/michi/application/dsd_to_pcm_plan.py",
+      "commit": "b62d6e4",
+      "tests": "tests/audio_phase2/test_dsd_to_pcm_plan.py",
+      "profile_manifest": "docs/audio/phase2/dsd2pcm_profiles_v1.json"
+    },
+    "gst_libav_runtime": {
+      "status": "COMPLETE — controlled fakesink vertical",
+      "path": "src/michi/infrastructure/dsd/dsd_to_pcm.py",
+      "commit": "95d2808",
+      "tests": "tests/audio_phase2/test_dsd_to_pcm_runtime.py",
+      "verified": "DSF DSD64 stereo → explicit avdec_dsd_* → F32LE 88200 → fakesink; EOS and negotiated caps observed",
+      "not_verified": "PlaybackService/bootstrap composition and selected hardware sink"
+    },
+    "family_transition": {
+      "status": "FOUNDATION ONLY — planning model, not integrated with OutputSession",
+      "path": "src/michi/application/audio_family_transition.py",
+      "commit": "bba7f16",
+      "tests": "tests/audio_phase2/test_family_transitions.py"
+    },
+    "conversion_evidence": {
+      "status": "MODEL ONLY — not wired into SignalTruthRecorder/SignalPathService",
+      "path": "src/michi/application/dsd_conversion_evidence.py",
+      "commit": "0997d37",
+      "tests": "tests/audio_phase2/test_dsd_conversion_evidence.py"
+    },
+    "playback_integration": {
+      "status": "NOT_IMPLEMENTED",
+      "reason": "No canonical PlaybackService → OutputSession → DSD→PCM executor path yet; runtime is a direct host process vertical",
+      "acceptance": "F10-S1-18 NOT_MET"
+    },
+    "signal_truth_path_integration": {
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Conversion evidence model exists, but no recorder/path publication wiring",
+      "acceptance": "F10-S1-15 PARTIAL"
+    }
+  },
+  "tests": {
+    "new_foundation": "42 passed — policy, plan, runtime, family transition and evidence model",
+    "runtime_vertical": "1 real GStreamer DSD64 → F32LE 88200 fakesink test passed",
+    "regression_combined": "148 passed, 1 skipped — F10 foundation plus DoP output session",
+    "full_suite": "6269 passed, 22 skipped, 0 failed in 1815.70s (30:15)",
+    "ruff": "PASS — check and format",
+    "alignment": "GO — phase ACTIVE",
+    "ci": "NOT_RUN for F10 commits"
+  },
+  "acceptance": {
+    "F10-S1-01": "PASS — F09 CI certified",
+    "F10-S1-02": "PASS — entry gate GO",
+    "F10-S1-03": "PASS — AP2-F10 ACTIVE",
+    "F10-S1-04": "PASS — DsdPolicyService implemented",
+    "F10-S1-05": "PASS — decision matrix covered",
+    "F10-S1-06": "PASS — conversion requires explicit consent",
+    "F10-S1-07": "PASS — deterministic rate ladders",
+    "F10-S1-08": "PASS — real gst-libav discovery",
+    "F10-S1-09": "PASS — explicit decoder factories, no autoplug",
+    "F10-S1-10": "PARTIAL — productive runtime exists but only to controlled fakesink",
+    "F10-S1-11": "PASS — explicit resampler properties/readback path",
+    "F10-S1-12": "PARTIAL — transition model exists; not integrated",
+    "F10-S1-13": "PASS — request epoch/generation validation in policy and plan",
+    "F10-S1-14": "PASS — transition model forbids autoplay/unsafe rollback",
+    "F10-S1-15": "PARTIAL — conversion evidence model, no Signal Path publication",
+    "F10-S1-16": "PASS — bit-perfect NOT_APPLICABLE for converted DSD",
+    "F10-S1-17": "PARTIAL — runtime harness exists; full numeric conformance corpus NOT_RUN",
+    "F10-S1-18": "NOT_MET — no PlaybackService end-to-end conversion",
+    "F10-S1-19": "PASS — full suite and DoP regression combined green",
+    "F10-S1-20": "PASS — evidence recorded honestly"
+  },
+  "progress": {
+    "functional_implementation_percent": 70,
+    "contractual_certification_percent": 55,
+    "closed": false,
+    "blocking_gaps": [
+      "PlaybackService/OutputSession/bootstrap DSD→PCM composition",
+      "family transition integration with canonical output authority",
+      "Signal Truth and Signal Path publication",
+      "numeric conformance corpus for FAST/BALANCED/HIGH/REFERENCE",
+      "selected hardware/PCM sink qualification"
+    ]
+  },
+  "constraints": {
+    "native_dsd_dsp": "PROHIBITED — unchanged",
+    "dop_dsp": "PROHIBITED — unchanged",
+    "silent_conversion": "PROHIBITED — explicit consent enforced",
+    "bit_perfect": "NOT_APPLICABLE when DSD is converted",
+    "F14": "NOT_RUN — physical certification independent",
+    "F11-F15": "LOCKED"
+  }
+}
