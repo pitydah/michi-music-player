@@ -17,6 +17,7 @@ from michi.application.output_session_service import (
 )
 from michi.application.playback_service import PlaybackService
 from michi.domain.audio_output import OutputSessionState
+from michi.domain.signal_truth import OutputFamilyState, SignalTruthRecorder
 from tests.audio_phase2.test_dop_resolver import _resolver
 from tests.audio_phase2.test_dsd_source_truth import build_dsf
 
@@ -129,6 +130,7 @@ def test_playback_service_dsd64_to_pcm_eos_release(tmp_path, monkeypatch):
     def stop(prepared, reason):
         return port.stop_dsd_pcm(prepared.handle)
 
+    truth = SignalTruthRecorder()
     session = OutputSessionService(
         OutputPlanner(),
         request_provider=resolver,
@@ -138,6 +140,7 @@ def test_playback_service_dsd64_to_pcm_eos_release(tmp_path, monkeypatch):
         dsd_pcm_abort=abort,
         dsd_pcm_stop=stop,
         dsd_pcm_plan_still_current=lambda _plan: True,
+        truth_recorder=truth,
     )
     session_holder["s"] = session
     playback = PlaybackService(port, volume_port=_Volume(), output_tx=session)
@@ -152,6 +155,11 @@ def test_playback_service_dsd64_to_pcm_eos_release(tmp_path, monkeypatch):
         playback.stop()
         assert session.state is OutputSessionState.IDLE
         assert port.dsd_pcm_active is False
+        families = [event.family for event in truth.output_family_events]
+        states = [event.state for event in truth.output_family_events]
+        assert "dsd_pcm" in families
+        assert OutputFamilyState.RUNNING in states
+        assert OutputFamilyState.RELEASED in states
 
         accepted.clear()
         playback.load_and_play(source, on_accepted=accepted.append)
