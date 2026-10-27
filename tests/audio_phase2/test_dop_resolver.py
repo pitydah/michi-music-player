@@ -49,7 +49,16 @@ def _dop_interp(_device, _source):
 
 
 def _resolver(
-    policy, *, qualification=_dop_carrier, native_qualification=_dsd_qualification
+    policy,
+    *,
+    qualification=_dop_carrier,
+    native_qualification=_dsd_qualification,
+    dsd_pcm_policy_provider=None,
+    dsd_pcm_planner=None,
+    dsd_pcm_target_rates=None,
+    dsd_pcm_host_generation=None,
+    dsd_pcm_decoder_available=False,
+    dsd_pcm_dsp_available=False,
 ):
     return ProductiveOutputRequestResolver(
         profiles=_Profiles(
@@ -72,6 +81,12 @@ def _resolver(
         dop_host_generation=lambda: 1,
         dop_environment_fingerprint=lambda: "env:1",
         dop_device_revision=lambda _device: "rev:1",
+        dsd_pcm_policy_provider=dsd_pcm_policy_provider,
+        dsd_pcm_planner=dsd_pcm_planner,
+        dsd_pcm_target_rates=dsd_pcm_target_rates,
+        dsd_pcm_host_generation=dsd_pcm_host_generation,
+        dsd_pcm_decoder_available=dsd_pcm_decoder_available,
+        dsd_pcm_dsp_available=dsd_pcm_dsp_available,
     )
 
 

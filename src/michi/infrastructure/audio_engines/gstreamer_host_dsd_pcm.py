@@ -189,10 +189,11 @@ class DsdPcmHostRuntime:
                 "DSD_PCM_HOST_FACTORY_UNAVAILABLE", f"missing {missing}"
             )
         filesrc.set_property("location", request.path)
+        reversed_bytes = request.bit_order.upper() == "LSBF"
         dsd_caps_obj = gst.Caps.from_string(
             "audio/x-dsd,format=DSDU8,layout=interleaved,"
             f"rate={request.source_rate_hz // 8},channels={request.channels},"
-            "reversed-bytes=true"
+            f"reversed-bytes={'true' if reversed_bytes else 'false'}"
         )
         pcm_caps_obj = gst.Caps.from_string(
             "audio/x-raw,layout=interleaved,"

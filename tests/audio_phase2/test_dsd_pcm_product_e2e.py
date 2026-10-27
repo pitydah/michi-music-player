@@ -7,20 +7,17 @@ from pathlib import Path
 import pytest
 
 from michi.application.audio_output_planner import OutputPlanner
-from michi.application.dsd_to_pcm_plan import DsdToPcmPlanner
+from michi.application.dsd_policy_service import (
+    DsdPolicyDecision,
+    OutputFamily,
+)
 from michi.application.output_session_service import (
     DsdPcmSessionPrepared,
-    OutputRequest,
     OutputSessionService,
 )
 from michi.application.playback_service import PlaybackService
 from michi.domain.audio_output import OutputSessionState
-from michi.domain.dsd_signal import (
-    DsdBitOrder,
-    DsdOrganization,
-    DsdPacking,
-    DsdSignalFormat,
-)
+from tests.audio_phase2.test_dop_resolver import _resolver
 from tests.audio_phase2.test_dsd_source_truth import build_dsf
 
 _HAS_GI = importlib.util.find_spec("gi") is not None
@@ -38,17 +35,6 @@ class _Volume:
         return None
 
 
-def _format() -> DsdSignalFormat:
-    return DsdSignalFormat(
-        bit_rate_hz=2_822_400,
-        channels=2,
-        packing=DsdPacking.DSD_U8,
-        bit_order=DsdBitOrder.LSBF,
-        organization=DsdOrganization.PLANAR,
-        layout=("FL", "FR"),
-    )
-
-
 def test_playback_service_dsd64_to_pcm_eos_release(tmp_path, monkeypatch):
     from michi.infrastructure.audio_engines.gstreamer_host_client import (
         GStreamerHostSupervisor,
@@ -60,18 +46,23 @@ def test_playback_service_dsd64_to_pcm_eos_release(tmp_path, monkeypatch):
     monkeypatch.setenv("MICHI_GST_LAB_SINK", "fakesink")
     source = tmp_path / "product.dsf"
     source.write_bytes(build_dsf(sample_count=88_200, payload=bytes([0x69]) * 176_400))
-    plan = DsdToPcmPlanner().plan(
-        source_identity="track:product",
-        source_format=_format(),
+    decision = DsdPolicyDecision(
+        decision=OutputFamily.DSD_TO_PCM,
+        reason="DSD_TO_PCM",
+        reasons=("DSD_TO_PCM",),
+        conversion_consent_required=False,
         quality_profile="FAST",
-        binding_generation=1,
-        available_output_rates=(88_200,),
-        decoder_available=True,
-        target_qualified=True,
-        backend_version="gst-libav",
-        stable_device_id="dev:dac",
-        binding_locator="hw:0,0",
-        host_generation=1,
+    )
+    resolver = _resolver(
+        None,
+        dsd_pcm_policy_provider=lambda _source: decision,
+        dsd_pcm_planner=__import__(
+            "michi.application.dsd_to_pcm_plan",
+            fromlist=["DsdToPcmPlanner"],
+        ).DsdToPcmPlanner(),
+        dsd_pcm_target_rates=lambda _device, _binding: (88_200,),
+        dsd_pcm_host_generation=lambda: 1,
+        dsd_pcm_decoder_available=True,
     )
     supervisor = GStreamerHostSupervisor(
         start_timeout_s=45.0,
@@ -140,7 +131,7 @@ def test_playback_service_dsd64_to_pcm_eos_release(tmp_path, monkeypatch):
 
     session = OutputSessionService(
         OutputPlanner(),
-        request_provider=lambda _path: OutputRequest.dsd_to_pcm(plan, "dev:dac", None),
+        request_provider=resolver,
         async_submit=None,
         dsd_pcm_prepare=prepare,
         dsd_pcm_commit=commit,

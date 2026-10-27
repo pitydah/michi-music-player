@@ -45,8 +45,14 @@ from michi.application.dsd_output_planner import (
     NativeDsdPlannerError,
     NativeDsdQualification,
 )
+from michi.application.dsd_policy_service import (
+    DsdPolicyDecision,
+)
+from michi.application.dsd_policy_service import (
+    OutputFamily as DsdOutputFamily,
+)
 from michi.application.dsd_source_characterizer import DsdSourceStatus
-from michi.application.dsd_to_pcm_plan import DsdToPcmPlan
+from michi.application.dsd_to_pcm_plan import DsdToPcmPlan, DsdToPcmPlanner
 from michi.application.ports import SharedOutputTransaction
 from michi.domain.audio_device import BindingKind
 from michi.domain.audio_engine import AudioEngineId
@@ -440,6 +446,15 @@ class ProductiveOutputRequestResolver:
         dop_environment_fingerprint: Callable[[], str] | None = None,
         dop_device_revision: Callable[[str], str | None] | None = None,
         dop_layout_preference: tuple[DopCarrierLayout, ...] | None = None,
+        dsd_pcm_policy_provider: (
+            Callable[[DsdSignalFormat], DsdPolicyDecision | None] | None
+        ) = None,
+        dsd_pcm_planner: DsdToPcmPlanner | None = None,
+        dsd_pcm_target_rates: (Callable[[str, object], tuple[int, ...]] | None) = None,
+        dsd_pcm_host_generation: Callable[[], int] | None = None,
+        dsd_pcm_decoder_available: bool = False,
+        dsd_pcm_dsp_available: bool = False,
+        dsd_pcm_quality_profile: str = "HIGH",
     ) -> None:
         self._profiles = profiles
         self._devices = devices
@@ -458,6 +473,13 @@ class ProductiveOutputRequestResolver:
         self._dop_environment_fingerprint = dop_environment_fingerprint
         self._dop_device_revision = dop_device_revision
         self._dop_layout_preference = dop_layout_preference
+        self._dsd_pcm_policy_provider = dsd_pcm_policy_provider
+        self._dsd_pcm_planner = dsd_pcm_planner
+        self._dsd_pcm_target_rates = dsd_pcm_target_rates
+        self._dsd_pcm_host_generation = dsd_pcm_host_generation
+        self._dsd_pcm_decoder_available = dsd_pcm_decoder_available
+        self._dsd_pcm_dsp_available = dsd_pcm_dsp_available
+        self._dsd_pcm_quality_profile = dsd_pcm_quality_profile
 
     def snapshot_output_intent(self):
         """Immutable output-intent snapshot (monotonic revision + ids).
@@ -555,6 +577,68 @@ class ProductiveOutputRequestResolver:
                 if not binding.currently_available:
                     raise OutputSessionError(
                         "DSD_BINDING_UNAVAILABLE", "the selected DAC is unavailable"
+                    )
+                dsd_decision = (
+                    self._dsd_pcm_policy_provider(dsd.signal)
+                    if self._dsd_pcm_policy_provider is not None
+                    else None
+                )
+                if dsd_decision is not None and dsd_decision.decision in (
+                    DsdOutputFamily.DSD_TO_PCM,
+                    DsdOutputFamily.DSD_TO_PCM_DSP,
+                ):
+                    if self._dsd_pcm_planner is None:
+                        raise OutputSessionError(
+                            "DSD_PCM_AUTHORITIES_UNAVAILABLE",
+                            "conversion selected but no DSD→PCM planner is composed",
+                        )
+                    if self._dsd_pcm_target_rates is not None:
+                        rates = self._dsd_pcm_target_rates(selected_device_id, binding)
+                    else:
+                        rates = tuple(
+                            sorted(
+                                {
+                                    int(item.tuple.rate_hz)
+                                    for item in (
+                                        self._qualification.cached_evidence_current(
+                                            selected_device_id
+                                        )
+                                    )
+                                    if item.tuple.channels == dsd.signal.channels
+                                },
+                                reverse=True,
+                            )
+                        )
+                    try:
+                        plan = self._dsd_pcm_planner.plan(
+                            source_identity=str(path),
+                            source_format=dsd.signal,
+                            quality_profile=(
+                                dsd_decision.quality_profile
+                                or self._dsd_pcm_quality_profile
+                            ),
+                            binding_generation=binding.generation,
+                            available_output_rates=rates,
+                            decoder_available=self._dsd_pcm_decoder_available,
+                            target_qualified=bool(rates),
+                            dsp_active=(
+                                dsd_decision.decision is DsdOutputFamily.DSD_TO_PCM_DSP
+                            ),
+                            dsp_available=self._dsd_pcm_dsp_available,
+                            backend_version="gst-libav",
+                            stable_device_id=selected_device_id,
+                            binding_locator=binding.locator,
+                            host_generation=(
+                                self._dsd_pcm_host_generation()
+                                if self._dsd_pcm_host_generation is not None
+                                else 0
+                            ),
+                        )
+                    except Exception as exc:  # noqa: BLE001 - typed planner boundary
+                        code = getattr(exc, "code", "DSD_PCM_PLAN_FAILED")
+                        raise OutputSessionError(code, str(exc)) from exc
+                    return OutputRequest.dsd_to_pcm(
+                        plan, selected_device_id, selection.selected_profile_id
                     )
                 dop_policy = (
                     self._dop_policy_provider(dsd.signal)

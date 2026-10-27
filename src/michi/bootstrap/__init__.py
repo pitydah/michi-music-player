@@ -51,6 +51,16 @@ from michi.application.dac_qualification_service import (
 from michi.application.direct_output_lifecycle_coordinator import (
     DirectOutputLifecycleCoordinator,
 )
+from michi.application.dsd_policy_service import (
+    DsdIntent,
+    DsdPolicyRequest,
+    DsdPolicyService,
+    SourceKind,
+)
+from michi.application.dsd_policy_service import (
+    OutputFamily as DsdOutputFamily,
+)
+from michi.application.dsd_to_pcm_plan import DsdToPcmPlanner
 from michi.application.enrichment_coordinator import EnrichmentCoordinator
 from michi.application.enrichment_evidence import LibraryEnrichmentEvidenceBuilder
 from michi.application.enrichment_executor import ThreadPoolEnrichmentExecutor
@@ -746,6 +756,63 @@ def _build_services(
             )
         return tuple(qualifications)
 
+    def _dsd_pcm_decoder_available() -> bool:
+        try:
+            import gi
+
+            gi.require_version("Gst", "1.0")
+            from gi.repository import Gst
+
+            if not Gst.is_initialized():
+                Gst.init(None)
+            return all(
+                Gst.ElementFactory.find(name) is not None
+                for name in (
+                    "avdec_dsd_lsbf",
+                    "avdec_dsd_msbf",
+                    "avdec_dsd_lsbf_planar",
+                    "avdec_dsd_msbf_planar",
+                    "audioresample",
+                )
+            )
+        except Exception:
+            return False
+
+    def _dsd_pcm_target_rates(stable_device_id, _binding):
+        return tuple(
+            sorted(
+                {
+                    int(item.tuple.rate_hz)
+                    for item in qualification.cached_evidence_current(stable_device_id)
+                },
+                reverse=True,
+            )
+        )
+
+    def _dsd_pcm_policy(source):
+        if os.environ.get("MICHI_DSD_PCM_CONVERT", "").strip() != "1":
+            return None
+        decision = DsdPolicyService().decide(
+            DsdPolicyRequest(
+                source_kind=SourceKind.DSD,
+                source_identity="resolver",
+                source_format=source,
+                intent=DsdIntent.CONVERT_TO_PCM,
+                dsp_requested=False,
+                conversion_consent=True,
+                source_truth_verified=True,
+                decoder_available=_dsd_pcm_decoder_available(),
+                target_qualified=True,
+                quality_profile="HIGH",
+            )
+        )
+        if decision.decision not in (
+            DsdOutputFamily.DSD_TO_PCM,
+            DsdOutputFamily.DSD_TO_PCM_DSP,
+        ):
+            raise OutputSessionError(decision.reason, decision.reason)
+        return decision
+
     output_resolver = ProductiveOutputRequestResolver(
         profiles=output_profiles,
         devices=audio_devices,
@@ -764,6 +831,14 @@ def _build_services(
         ),
         dop_environment_fingerprint=lambda: dsd_environment,
         dop_device_revision=lambda _device: None,
+        dsd_pcm_policy_provider=_dsd_pcm_policy,
+        dsd_pcm_planner=DsdToPcmPlanner(),
+        dsd_pcm_target_rates=_dsd_pcm_target_rates,
+        dsd_pcm_host_generation=lambda: int(
+            gstreamer_provider.current_supervisor.host_generation
+        ),
+        dsd_pcm_decoder_available=_dsd_pcm_decoder_available(),
+        dsd_pcm_dsp_available=False,
     )
     preparation_executor = output_preparation_executor or QtAsyncCallExecutor()
     # AP2-F05 Package A: ONE processing authority over the SAME hosted host.
