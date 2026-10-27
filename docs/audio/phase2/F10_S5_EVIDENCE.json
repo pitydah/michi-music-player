@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "phase": "AP2-F10",
+  "sprint": "AP2-F10-S5",
+  "state": "ACTIVE",
+  "base_head": "e652f7f8401660f5262be58fb730f4f92c7d8434",
+  "code_head": "220947c",
+  "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
+  "commits": [
+    "220947c fix(audio): seal DSD PCM topology and truth lifecycle"
+  ],
+  "closed_findings": {
+    "K01_hotplug": {
+      "status": "FIXED",
+      "detail": "topology_loss_applies now includes the active DSD\u2192PCM owner; exact device match",
+      "test": "test_dsd_pcm_product_e2e topology assertions"
+    },
+    "K02_async_prepare": {
+      "status": "FIXED \u2014 worker phase",
+      "detail": "DSD\u2192PCM plan is prepared in the async worker; owner commits the prepared identity; stale/intent/supersession cleanup paths abort the exact receipt",
+      "test": "focused DSD/DoP suite"
+    },
+    "K03_running": {
+      "status": "FIXED",
+      "detail": "COMMIT no longer publishes RUNNING; only host-confirmed PLAYING does",
+      "test": "test_dsd_pcm_product_e2e"
+    },
+    "K07_ambiguous_eos": {
+      "status": "FIXED",
+      "detail": "identity-less/non-DSD EOS is rejected while DSD\u2192PCM owns output",
+      "test": "host port fencing tests"
+    }
+  },
+  "pending": {
+    "K04_productive_consent": "PARTIAL \u2014 explicit diagnostic env consent; Settings-backed product consent not implemented",
+    "K05_exact_qualification": "PARTIAL \u2014 target rates from cached qualification; policy target_qualified remains permissive",
+    "K06_dsp": "NOT_IMPLEMENTED \u2014 no F06 graph on converted PCM buffers",
+    "family_transitions": "PARTIAL \u2014 OutputSession branches exist; full R11-F10 transaction matrix not certified",
+    "signal_truth_path": "PARTIAL \u2014 dsd_pcm family events with runtime identity; full observed node projection not published",
+    "numeric_conformance": "NOT_RUN \u2014 no appsink capture corpus",
+    "installed_wheel_dsd_pcm": "NOT_RUN",
+    "adversarial_matrix": "PARTIAL"
+  },
+  "tests": {
+    "focused_dsd_dop": "75 passed, 8 skipped (host tests without private prefix skipped)",
+    "product_e2e": "1 passed \u2014 real productive resolver, supervised host, fakesink, topology assertions",
+    "full_suite": "6287 passed, 22 skipped, 0 failed in 1873.71s (31:13)",
+    "ruff": "PASS",
+    "alignment": "GO"
+  },
+  "constraints": {
+    "f09": "CLOSED",
+    "f14": "NOT_RUN",
+    "f11_f15": "LOCKED",
+    "fake_physical_dac": false,
+    "fakesink": "laboratory only"
+  }
+}
