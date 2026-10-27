@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "phase": "AP2-F10",
+  "sprint": "AP2-F10-S2",
+  "state": "ACTIVE",
+  "recorded_at": "2026-10-26",
+  "base_head": "09ef8abfcb4d2f6ad0c5c16e1f97ce6bc087dc03",
+  "code_head": "6753ce0",
+  "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
+  "commits": [
+    "5a49fae fix(audio): seal explicit DSD conversion policy and qualified planning",
+    "c1ba8b6 fix(audio): normalize DSD caps and decoder selection",
+    "7b44da1 feat(audio): add supervised host DSD-to-PCM pipeline",
+    "6753ce0 feat(audio): route DSD-to-PCM acceptance through host port"
+  ],
+  "implemented": {
+    "policy": "explicit consent, fail-closed defaults, PCM/DSD matrix",
+    "plan": "immutable plan, deterministic plan_id, quality ladders, decoder selection",
+    "runtime": "real DSF DSD64 -> avdec_dsd_* -> F32LE -> fakesink; caps validation",
+    "supervised_host": "gstreamer_host_dsd_pcm child runtime + protocol operations",
+    "host_port": "prepare/commit/start/pause/resume/stop/abort/query with exact release receipts",
+    "host_acceptance": "port.load accepts only the exact prepared DSD->PCM path"
+  },
+  "not_implemented": [
+    "OutputSessionService DSD->PCM family",
+    "PlaybackService.load_and_play canonical E2E",
+    "DSP on converted PCM",
+    "family transition integration with output authority",
+    "Signal Truth / Signal Path publication",
+    "numeric conformance corpus and quality profile certification",
+    "selected hardware PCM sink qualification"
+  ],
+  "tests": {
+    "policy": "22 passed",
+    "plan": "17 passed",
+    "standalone_runtime": "1 passed",
+    "supervised_host_and_port": "2 passed",
+    "full_suite": "6285 passed, 22 skipped, 0 failed in 1806.68s (30:06)",
+    "ruff": "PASS",
+    "alignment": "GO"
+  },
+  "acceptance": {
+    "F10-S1-18_playback_e2e": "NOT_MET",
+    "F10-S2_host_runtime": "PASS",
+    "F10-S2_host_identity_release": "PASS",
+    "F10-S2_output_session": "NOT_IMPLEMENTED",
+    "F10-S2_dsp": "NOT_IMPLEMENTED",
+    "F10-S2_signal_truth_path": "NOT_IMPLEMENTED",
+    "F10-S2_numeric_conformance": "PARTIAL"
+  },
+  "progress": {
+    "functional_implementation_percent": 80,
+    "contractual_certification_percent": 60,
+    "closed": false
+  },
+  "constraints": {
+    "native_dsd_dsp": "PROHIBITED",
+    "dop_dsp": "PROHIBITED",
+    "silent_conversion": "PROHIBITED",
+    "bit_perfect_converted_dsd": "NOT_APPLICABLE",
+    "F14": "NOT_RUN",
+    "F11-F15": "LOCKED"
+  }
+}
