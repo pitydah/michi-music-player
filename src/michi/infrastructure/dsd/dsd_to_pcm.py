@@ -131,7 +131,8 @@ class DsdToPcmRuntime:
                 )
             source_caps = Gst.Caps.from_string(
                 "audio/x-dsd,format=DSDU8,layout=interleaved,"
-                "reversed-bytes=true,channels=2,"
+                "reversed-bytes=true,"
+                f"channels={plan.channels},"
                 f"rate={plan.source_format.bit_rate_hz // 8}"
             )
             source_filter = Gst.ElementFactory.make("capsfilter", "dsd-caps")
@@ -208,6 +209,25 @@ class DsdToPcmRuntime:
                     "DSD_PCM_TIMEOUT", f"no EOS within {timeout_s:.1f}s"
                 )
             pad = sink.get_static_pad("sink")
+            decoder_pad = decoder.get_static_pad("sink")
+            decoder_caps = (
+                decoder_pad.get_current_caps() if decoder_pad is not None else None
+            )
+            if decoder_caps is None or decoder_caps.get_size() < 1:
+                raise DsdPcmRuntimeError(
+                    "DSD_PCM_CAPS_MISMATCH", "decoder sink caps were not negotiated"
+                )
+            structure = decoder_caps.get_structure(0)
+            if (
+                structure.get_string("format") != "DSDU8"
+                or structure.get_string("layout") != "interleaved"
+                or structure.get_boolean("reversed-bytes")[1] is not True
+                or structure.get_int("channels")[1] != plan.channels
+            ):
+                raise DsdPcmRuntimeError(
+                    "DSD_PCM_CAPS_MISMATCH",
+                    f"decoder sink caps contradict plan: {decoder_caps.to_string()}",
+                )
             negotiated = pad.get_current_caps() if pad is not None else None
             caps_text = negotiated.to_string() if negotiated is not None else ""
             pipeline.set_state(Gst.State.NULL)
