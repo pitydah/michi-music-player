@@ -25,6 +25,10 @@ from michi.infrastructure.audio_engines.gstreamer_host_dop import (
     DopHostError,
     DopHostRuntime,
 )
+from michi.infrastructure.audio_engines.gstreamer_host_dsd_pcm import (
+    DsdPcmHostError,
+    DsdPcmHostRuntime,
+)
 from michi.infrastructure.audio_engines.gstreamer_host_native_dsd import (
     NativeDsdHostError,
     NativeDsdHostRuntime,
@@ -105,6 +109,11 @@ class HostEngineSession:
         self._dop_eos_emitted = False
         self._dop_timer_source = None
         self._dop_timer_bindings = None
+        self._dsd_pcm = DsdPcmHostRuntime()
+        self._dsd_pcm_active = False
+        self._dsd_pcm_eos_emitted = False
+        self._dsd_pcm_timer_source = None
+        self._dsd_pcm_timer_bindings = None
         self._processing_generation: int | None = None
         self._processing_host_generation: int = 0
         self._coordinator = HostDirectCoordinator(request_callback)
@@ -176,6 +185,49 @@ class HostEngineSession:
         bindings.attach_source(source, context)
         self._dop_timer_source = source
         self._dop_timer_bindings = bindings
+
+    def _install_dsd_pcm_eos_timer(self) -> None:
+        port = self._port
+        bindings = getattr(port, "_bindings", None)
+        context = getattr(port, "_context", None)
+        if bindings is None or context is None:
+            return
+        self._clear_dsd_pcm_eos_timer()
+
+        def _tick():
+            if not self._dsd_pcm_active:
+                return False
+            identity = self._dsd_pcm.query_identity()
+            if identity.get("eos") and not self._dsd_pcm_eos_emitted:
+                self._dsd_pcm_eos_emitted = True
+                self._emit(
+                    HostEvent.EOS,
+                    {
+                        "dsd_pcm": True,
+                        "execution_id": identity.get("execution_id"),
+                        "plan_id": identity.get("plan_id"),
+                        "host_generation": identity.get("host_generation"),
+                    },
+                )
+                self._dsd_pcm_timer_source = None
+                return False
+            return True
+
+        source = bindings.create_timeout_source(50, _tick)
+        bindings.attach_source(source, context)
+        self._dsd_pcm_timer_source = source
+        self._dsd_pcm_timer_bindings = bindings
+
+    def _clear_dsd_pcm_eos_timer(self) -> None:
+        source = self._dsd_pcm_timer_source
+        bindings = self._dsd_pcm_timer_bindings
+        self._dsd_pcm_timer_source = None
+        self._dsd_pcm_timer_bindings = None
+        if source is not None and bindings is not None:
+            import contextlib
+
+            with contextlib.suppress(Exception):
+                bindings.destroy_source(source)
 
     def _clear_dop_eos_timer(self) -> None:
         source = self._dop_timer_source
@@ -599,7 +651,7 @@ class HostEngineSession:
                 or getattr(port, "_pending_path", None) is not None
             )
         )
-        if owns_pcm or self._dop_active:
+        if owns_pcm or self._dop_active or self._dsd_pcm_active:
             return False, {
                 "code": "NATIVE_DSD_PCM_CONFLICT",
                 "detail": "a PCM/DoP pipeline still owns the output; release it first",
@@ -699,9 +751,9 @@ class HostEngineSession:
         return True, {"evidence": self._native_dsd.query_evidence()}
 
     def _op_prepare_dop(self, payload: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
-        if self._native_dsd_active:
+        if self._native_dsd_active or self._dsd_pcm_active:
             return False, {
-                "code": "DOP_NATIVE_DSD_CONFLICT",
+                "code": "DOP_ENGINE_CONFLICT",
                 "detail": "release Native DSD before preparing DoP",
             }
         port = self._port
@@ -789,6 +841,107 @@ class HostEngineSession:
             self._dop_active = False
             self._clear_dop_eos_timer()
         return True, result
+
+    def _op_prepare_dsd_pcm(
+        self, payload: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
+        if self._native_dsd_active or self._dop_active:
+            return False, {
+                "code": "DSD_PCM_ENGINE_CONFLICT",
+                "detail": "release Native DSD/DoP before DSD→PCM",
+            }
+        port = self._port
+        has_source = getattr(port, "has_active_source", None)
+        owns_pcm = bool(has_source()) if callable(has_source) else False
+        if owns_pcm:
+            return False, {
+                "code": "DSD_PCM_PCM_CONFLICT",
+                "detail": "release the PCM pipeline before DSD→PCM",
+            }
+        try:
+            identity = self._dsd_pcm.prepare(payload)
+        except DsdPcmHostError as exc:
+            return False, {"code": exc.code, "detail": exc.detail}
+        self._dsd_pcm_active = True
+        self._dsd_pcm_eos_emitted = False
+        self._install_dsd_pcm_eos_timer()
+        return True, identity
+
+    def _op_commit_dsd_pcm(
+        self, payload: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
+        expected = payload.get("expected")
+        if not isinstance(expected, dict):
+            return False, {
+                "code": "HOST_PROTOCOL_INVALID_FIELD",
+                "detail": "expected must be object",
+            }
+        try:
+            return True, self._dsd_pcm.commit(expected)
+        except DsdPcmHostError as exc:
+            return False, {"code": exc.code, "detail": exc.detail}
+
+    def _op_abort_dsd_pcm(self, payload: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+        expected = payload.get("expected")
+        if not isinstance(expected, dict) or not expected:
+            return False, {
+                "code": "DSD_PCM_HOST_IDENTITY_REQUIRED",
+                "detail": "identity required",
+            }
+        try:
+            result = self._dsd_pcm.abort(expected)
+        except DsdPcmHostError as exc:
+            return False, {"code": exc.code, "detail": exc.detail}
+        if result.get("aborted") is True and result.get("stale") is False:
+            self._dsd_pcm_active = False
+            self._clear_dsd_pcm_eos_timer()
+        return True, result
+
+    def _op_start_dsd_pcm(self, payload: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+        try:
+            return True, self._dsd_pcm.start(payload.get("expected"))
+        except DsdPcmHostError as exc:
+            return False, {"code": exc.code, "detail": exc.detail}
+
+    def _op_pause_dsd_pcm(self, payload: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+        try:
+            return True, self._dsd_pcm.pause(payload.get("expected"))
+        except DsdPcmHostError as exc:
+            return False, {"code": exc.code, "detail": exc.detail}
+
+    def _op_resume_dsd_pcm(
+        self, payload: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
+        try:
+            return True, self._dsd_pcm.resume(payload.get("expected"))
+        except DsdPcmHostError as exc:
+            return False, {"code": exc.code, "detail": exc.detail}
+
+    def _op_stop_dsd_pcm(self, payload: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+        expected = payload.get("expected")
+        if not isinstance(expected, dict) or not expected:
+            return False, {
+                "code": "DSD_PCM_HOST_IDENTITY_REQUIRED",
+                "detail": "identity required",
+            }
+        try:
+            result = self._dsd_pcm.stop(expected)
+        except DsdPcmHostError as exc:
+            return False, {"code": exc.code, "detail": exc.detail}
+        if result.get("stopped") is True and result.get("stale") is False:
+            self._dsd_pcm_active = False
+            self._clear_dsd_pcm_eos_timer()
+        return True, result
+
+    def _op_query_dsd_pcm_identity(
+        self, payload: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
+        return True, {"identity": self._dsd_pcm.query_identity()}
+
+    def _op_query_dsd_pcm_evidence(
+        self, payload: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
+        return True, {"evidence": self._dsd_pcm.query_evidence()}
 
     def _op_query_dop_identity(
         self, payload: dict[str, Any]
@@ -934,10 +1087,13 @@ class HostEngineSession:
         """Best-effort port teardown before host exit."""
         self._clear_native_eos_timer()
         self._clear_dop_eos_timer()
+        self._clear_dsd_pcm_eos_timer()
         self._native_dsd.close()
         self._dop.close()
+        self._dsd_pcm.close()
         self._native_dsd_active = False
         self._dop_active = False
+        self._dsd_pcm_active = False
         port = self._port
         self._port = None
         self._opened = False
@@ -1004,6 +1160,19 @@ _HANDLERS: dict[str, Callable[[HostEngineSession, dict], tuple[bool, dict]]] = {
     HostOperation.STOP_DOP.value: HostEngineSession._op_stop_dop,
     HostOperation.QUERY_DOP_IDENTITY.value: HostEngineSession._op_query_dop_identity,
     HostOperation.QUERY_DOP_EVIDENCE.value: HostEngineSession._op_query_dop_evidence,
+    HostOperation.PREPARE_DSD_PCM.value: HostEngineSession._op_prepare_dsd_pcm,
+    HostOperation.COMMIT_DSD_PCM.value: HostEngineSession._op_commit_dsd_pcm,
+    HostOperation.ABORT_DSD_PCM.value: HostEngineSession._op_abort_dsd_pcm,
+    HostOperation.START_DSD_PCM.value: HostEngineSession._op_start_dsd_pcm,
+    HostOperation.PAUSE_DSD_PCM.value: HostEngineSession._op_pause_dsd_pcm,
+    HostOperation.RESUME_DSD_PCM.value: HostEngineSession._op_resume_dsd_pcm,
+    HostOperation.STOP_DSD_PCM.value: HostEngineSession._op_stop_dsd_pcm,
+    HostOperation.QUERY_DSD_PCM_IDENTITY.value: (
+        HostEngineSession._op_query_dsd_pcm_identity
+    ),
+    HostOperation.QUERY_DSD_PCM_EVIDENCE.value: (
+        HostEngineSession._op_query_dsd_pcm_evidence
+    ),
     HostOperation.STAGE_DIRECT.value: HostEngineSession._op_stage_direct,
     HostOperation.DISCARD_DIRECT.value: HostEngineSession._op_discard_direct,
     HostOperation.STAGE_MANAGED.value: HostEngineSession._op_stage_managed,

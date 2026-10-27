@@ -1,0 +1,171 @@
+from __future__ import annotations
+
+import importlib.util
+import time
+
+import pytest
+
+from michi.application.dsd_to_pcm_plan import DsdToPcmPlanner
+from michi.domain.dsd_signal import (
+    DsdBitOrder,
+    DsdOrganization,
+    DsdPacking,
+    DsdSignalFormat,
+)
+from tests.audio_phase2.test_dsd_source_truth import build_dsf
+
+_HAS_GI = importlib.util.find_spec("gi") is not None
+
+pytestmark = pytest.mark.skipif(
+    not _HAS_GI, reason="GStreamer Python bindings unavailable"
+)
+
+
+def _format() -> DsdSignalFormat:
+    return DsdSignalFormat(
+        bit_rate_hz=2_822_400,
+        channels=2,
+        packing=DsdPacking.DSD_U8,
+        bit_order=DsdBitOrder.LSBF,
+        organization=DsdOrganization.PLANAR,
+        layout=("FL", "FR"),
+    )
+
+
+def _payload(plan, source) -> dict:
+    return {
+        "path": str(source),
+        "plan_id": plan.plan_id,
+        "execution_id": "exec:dsd-pcm:1",
+        "host_generation": 1,
+        "binding_generation": plan.binding_generation,
+        "stable_device_id": "dev:dac",
+        "locator": "hw:0,0",
+        "source_family": "dsf",
+        "source_rate_hz": plan.source_format.bit_rate_hz,
+        "source_bits": plan.source_format.bit_rate_hz,
+        "bit_order": plan.source_format.bit_order.value,
+        "channels": plan.channels,
+        "decoder_factory": plan.decoder_factory,
+        "target_rate_hz": plan.target_rate_hz,
+        "output_format": plan.output_format,
+        "quality_profile": plan.quality_profile,
+        "resampler_policy": [list(item) for item in plan.resampler_policy],
+        "sink_factory": "fakesink",
+    }
+
+
+def test_host_dsd_pcm_pipeline_is_explicit_and_releasable(tmp_path):
+    from michi.infrastructure.audio_engines.gstreamer_host_dsd_pcm import (
+        DsdPcmHostRuntime,
+    )
+
+    source = tmp_path / "host.dsf"
+    source.write_bytes(build_dsf(sample_count=88_200, payload=bytes([0x69]) * 176_400))
+    plan = DsdToPcmPlanner().plan(
+        source_identity="track:host",
+        source_format=_format(),
+        quality_profile="FAST",
+        binding_generation=1,
+        available_output_rates=(88_200,),
+        decoder_available=True,
+        target_qualified=True,
+        backend_version="gst-libav",
+    )
+    runtime = DsdPcmHostRuntime()
+    try:
+        identity = runtime.prepare(_payload(plan, source))
+        assert identity["decoder_factory"] == "avdec_dsd_lsbf"
+        assert identity["target_rate_hz"] == 88_200
+        assert identity["dsd_pcm"] is True
+        assert identity["decoder_caps"]
+        assert identity["output_caps"]
+        expected = {
+            "plan_id": identity["plan_id"],
+            "execution_id": identity["execution_id"],
+            "stable_device_id": identity["stable_device_id"],
+            "device": identity["device"],
+            "binding_generation": identity["binding_generation"],
+            "host_generation": identity["host_generation"],
+        }
+        committed = runtime.commit(expected)
+        assert committed["committed"] is True
+        started = runtime.start(expected)
+        assert started["confirmed"] is True
+        deadline = time.monotonic() + 30.0
+        while time.monotonic() < deadline:
+            if runtime.query_identity().get("eos"):
+                break
+            time.sleep(0.02)
+        assert runtime.query_identity()["eos"] is True
+        result = runtime.stop(expected)
+        assert result["stopped"] is True
+        receipt = result["release"]
+        assert receipt["confirmed"] is True
+        assert receipt["execution_id"] == "exec:dsd-pcm:1"
+        assert receipt["terminal_state"] == "RELEASED"
+        assert runtime.query_identity()["dsd_pcm"] is False
+    finally:
+        runtime.close()
+
+
+def test_port_executes_dsd_pcm_with_exact_release_receipt(tmp_path, monkeypatch):
+    from michi.infrastructure.audio_engines.gstreamer_host_client import (
+        GStreamerHostSupervisor,
+    )
+    from michi.infrastructure.audio_engines.gstreamer_host_port import (
+        GStreamerHostedAudioPort,
+    )
+
+    monkeypatch.setenv("MICHI_GST_LAB_SINK", "fakesink")
+    source = tmp_path / "port.dsf"
+    source.write_bytes(build_dsf(sample_count=88_200, payload=bytes([0x69]) * 176_400))
+    plan = DsdToPcmPlanner().plan(
+        source_identity="track:port",
+        source_format=_format(),
+        quality_profile="FAST",
+        binding_generation=1,
+        available_output_rates=(88_200,),
+        decoder_available=True,
+        target_qualified=True,
+        backend_version="gst-libav",
+    )
+    supervisor = GStreamerHostSupervisor(
+        start_timeout_s=45.0,
+        command_timeout_s=30.0,
+        terminate_grace_s=8.0,
+        term_grace_s=5.0,
+        kill_grace_s=5.0,
+    )
+    port = GStreamerHostedAudioPort(
+        supervisor, command_deadline_s=30.0, load_deadline_s=30.0
+    )
+    try:
+        port.activate()
+        identity = port.prepare_dsd_pcm(_payload(plan, source))
+        expected = {
+            "plan_id": identity["plan_id"],
+            "execution_id": identity["execution_id"],
+            "stable_device_id": identity["stable_device_id"],
+            "device": identity["device"],
+            "binding_generation": identity["binding_generation"],
+            "host_generation": identity["host_generation"],
+        }
+        port.commit_dsd_pcm(expected)
+        port.start_dsd_pcm(expected)
+        deadline = time.monotonic() + 30.0
+        while time.monotonic() < deadline:
+            if port.query_dsd_pcm_identity().get("eos"):
+                break
+            time.sleep(0.02)
+        assert port.query_dsd_pcm_identity()["eos"] is True
+        stopped = port.stop_dsd_pcm(expected)
+        assert stopped["stopped"] is True
+        assert stopped["release"]["execution_id"] == expected["execution_id"]
+        assert stopped["release"]["confirmed"] is True
+        assert port.dsd_pcm_active is False
+        again = port.stop_dsd_pcm(expected)
+        assert again["already"] is True
+        assert again["release"]["execution_id"] == expected["execution_id"]
+    finally:
+        supervisor.close()

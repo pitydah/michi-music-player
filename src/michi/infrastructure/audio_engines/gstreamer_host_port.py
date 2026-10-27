@@ -93,6 +93,9 @@ class GStreamerHostedAudioPort(AudioPort):
         self._native_dsd_path: str | None = None
         self._native_eos_listeners: list[Callable[[str], None]] = []
         self._dop_active = False
+        self._dsd_pcm_active = False
+        self._dsd_pcm_expected: dict[str, Any] | None = None
+        self._dsd_pcm_receipt: dict[str, Any] | None = None
         self._dop_state = "NONE"
         self._dop_expected: dict[str, Any] | None = None
         self._dop_path: str | None = None
@@ -196,6 +199,9 @@ class GStreamerHostedAudioPort(AudioPort):
             self._dop_expected = None
             self._dop_path = None
             self._dop_release_receipt = None
+            self._dsd_pcm_active = False
+            self._dsd_pcm_expected = None
+            self._dsd_pcm_receipt = None
             self._pcm_active = False
         if cleanup_error is not None:
             # Truth was invalidated; keep the port retryable for the provider.
@@ -880,6 +886,197 @@ class GStreamerHostedAudioPort(AudioPort):
             self._dop_path = None
         self._enqueue(lambda: self._commit_state(PlaybackStatus.STOPPED))
         return result
+
+    @property
+    def dsd_pcm_active(self) -> bool:
+        with self._lock:
+            return self._dsd_pcm_active
+
+    def prepare_dsd_pcm(self, payload: dict[str, Any]) -> dict[str, Any]:
+        with self._lock:
+            if self._dsd_pcm_active:
+                raise AudioTransportCommandError(
+                    "DSD_PCM_SUPERSESSION_UNAUTHORIZED: release the active execution"
+                )
+            if self._dop_active or self._native_dsd_active:
+                raise AudioTransportCommandError(
+                    "DSD_PCM_ENGINE_CONFLICT: release Native/DoP first"
+                )
+            if self._pcm_active:
+                raise AudioTransportCommandError(
+                    "DSD_PCM_PCM_CONFLICT: release the PCM output first"
+                )
+        actual = dict(payload)
+        actual["host_generation"] = int(self._supervisor.host_generation)
+        identity = self._submit(
+            HostOperation.PREPARE_DSD_PCM,
+            actual,
+            deadline_s=self._load_deadline_s,
+        )
+        with self._lock:
+            self._dsd_pcm_active = True
+            self._dsd_pcm_expected = {
+                "plan_id": str(identity.get("plan_id") or ""),
+                "execution_id": str(identity.get("execution_id") or ""),
+                "stable_device_id": str(identity.get("stable_device_id") or ""),
+                "device": str(identity.get("device") or ""),
+                "binding_generation": int(identity.get("binding_generation") or 0),
+                "host_generation": int(self._supervisor.host_generation),
+            }
+            self._dsd_pcm_receipt = None
+        return identity
+
+    def commit_dsd_pcm(self, expected: dict[str, Any]) -> dict[str, Any]:
+        self._require_dsd_pcm_expected(expected)
+        result = self._submit(
+            HostOperation.COMMIT_DSD_PCM,
+            {"expected": dict(expected)},
+            deadline_s=self._command_deadline_s,
+        )
+        if result.get("committed") is not True:
+            raise OutputHostCommandError(
+                "OUTPUT_HOST_INVALID_RESULT", "DSD→PCM commit was not confirmed"
+            )
+        return result
+
+    def start_dsd_pcm(self, expected: dict[str, Any] | None = None) -> dict[str, Any]:
+        if expected is None:
+            expected = dict(self._dsd_pcm_expected or {})
+        self._require_dsd_pcm_expected(expected)
+        result = self._submit(
+            HostOperation.START_DSD_PCM,
+            {"expected": dict(expected)},
+            deadline_s=self._command_deadline_s,
+        )
+        if result.get("confirmed") is not True:
+            raise OutputHostCommandError(
+                "OUTPUT_HOST_INVALID_RESULT", "DSD→PCM PLAYING was not confirmed"
+            )
+        self._enqueue(lambda: self._commit_state(PlaybackStatus.PLAYING))
+        return result
+
+    def pause_dsd_pcm(self, expected: dict[str, Any] | None = None) -> dict[str, Any]:
+        if expected is None:
+            expected = dict(self._dsd_pcm_expected or {})
+        self._require_dsd_pcm_expected(expected)
+        result = self._submit(
+            HostOperation.PAUSE_DSD_PCM,
+            {"expected": dict(expected)},
+            deadline_s=self._command_deadline_s,
+        )
+        if result.get("confirmed") is not True:
+            raise OutputHostCommandError(
+                "OUTPUT_HOST_INVALID_RESULT", "DSD→PCM PAUSED was not confirmed"
+            )
+        self._enqueue(lambda: self._commit_state(PlaybackStatus.PAUSED))
+        return result
+
+    def resume_dsd_pcm(self, expected: dict[str, Any] | None = None) -> dict[str, Any]:
+        if expected is None:
+            expected = dict(self._dsd_pcm_expected or {})
+        self._require_dsd_pcm_expected(expected)
+        result = self._submit(
+            HostOperation.RESUME_DSD_PCM,
+            {"expected": dict(expected)},
+            deadline_s=self._command_deadline_s,
+        )
+        if result.get("confirmed") is not True:
+            raise OutputHostCommandError(
+                "OUTPUT_HOST_INVALID_RESULT", "DSD→PCM PLAYING was not confirmed"
+            )
+        self._enqueue(lambda: self._commit_state(PlaybackStatus.PLAYING))
+        return result
+
+    def _release_dsd_pcm(
+        self, operation: HostOperation, expected: dict[str, Any], key: str
+    ) -> dict[str, Any]:
+        with self._lock:
+            already = not self._dsd_pcm_active
+            receipt = dict(self._dsd_pcm_receipt or {})
+        if already:
+            if not self._release_receipt_matches(receipt, expected):
+                raise AudioTransportCommandError(
+                    "DSD_PCM_RELEASE_UNCONFIRMED: no proven release receipt"
+                )
+            return {
+                key: True,
+                "already": True,
+                "stale": False,
+                "execution_id": str(expected.get("execution_id") or ""),
+                "release": receipt,
+            }
+        self._require_dsd_pcm_expected(expected)
+        result = self._submit(
+            operation, {"expected": dict(expected)}, deadline_s=self._command_deadline_s
+        )
+        if result.get(key) is not True or result.get("stale") is not False:
+            raise OutputHostCommandError(
+                "OUTPUT_HOST_INVALID_RESULT", f"DSD→PCM {key} was not confirmed"
+            )
+        release = result.get("release")
+        if not self._release_receipt_matches(release, expected):
+            raise OutputHostCommandError(
+                "DSD_PCM_RELEASE_UNCONFIRMED", "release receipt identity mismatch"
+            )
+        with self._lock:
+            self._dsd_pcm_active = False
+            self._dsd_pcm_expected = None
+            self._dsd_pcm_receipt = dict(release)
+        self._enqueue(lambda: self._commit_state(PlaybackStatus.STOPPED))
+        return {
+            **result,
+            "execution_id": str(expected.get("execution_id") or ""),
+            "release": release,
+        }
+
+    def stop_dsd_pcm(self, expected: dict[str, Any]) -> dict[str, Any]:
+        return self._release_dsd_pcm(HostOperation.STOP_DSD_PCM, expected, "stopped")
+
+    def abort_dsd_pcm(self, expected: dict[str, Any]) -> dict[str, Any]:
+        return self._release_dsd_pcm(HostOperation.ABORT_DSD_PCM, expected, "aborted")
+
+    def query_dsd_pcm_identity(self) -> dict[str, Any]:
+        payload = self._submit(
+            HostOperation.QUERY_DSD_PCM_IDENTITY,
+            {},
+            deadline_s=self._command_deadline_s,
+        )
+        identity = payload.get("identity")
+        if not isinstance(identity, dict):
+            raise OutputHostCommandError(
+                "OUTPUT_HOST_INVALID_RESULT", "DSD→PCM identity is not an object"
+            )
+        return identity
+
+    def query_dsd_pcm_evidence(self) -> dict[str, Any]:
+        payload = self._submit(
+            HostOperation.QUERY_DSD_PCM_EVIDENCE,
+            {},
+            deadline_s=self._command_deadline_s,
+        )
+        evidence = payload.get("evidence")
+        if not isinstance(evidence, dict):
+            raise OutputHostCommandError(
+                "OUTPUT_HOST_INVALID_RESULT", "DSD→PCM evidence is not an object"
+            )
+        return evidence
+
+    def _require_dsd_pcm_expected(self, expected: dict[str, Any] | None) -> None:
+        if not isinstance(expected, dict) or not expected:
+            raise AudioTransportCommandError(
+                "DSD_PCM_IDENTITY_REQUIRED: execution identity required"
+            )
+        with self._lock:
+            current = dict(self._dsd_pcm_expected or {})
+        if not current:
+            raise AudioTransportCommandError(
+                "DSD_PCM_NOT_PREPARED: no DSD→PCM execution"
+            )
+        for field in self._DOP_RELEASE_FIELDS:
+            if str(expected.get(field)) != str(current.get(field)):
+                raise AudioTransportCommandError(
+                    f"DSD_PCM_IDENTITY_MISMATCH: {field} does not match"
+                )
 
     @property
     def dop_active(self) -> bool:
