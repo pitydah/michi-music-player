@@ -53,16 +53,16 @@ def main() -> int:
     from michi.application.effective_processing_graph import (
         EffectiveProcessingGraphResolver,
     )
-    from michi.application.processing_graph_compiler import (
-        ProcessingGraphCompiler,
-        ProcessingSamplePolicy,
-    )
     from michi.application.output_session_service import (
         DsdPcmSessionPrepared,
         OutputRequest,
         OutputSessionService,
     )
     from michi.application.playback_service import PlaybackService
+    from michi.application.processing_graph_compiler import (
+        ProcessingGraphCompiler,
+        ProcessingSamplePolicy,
+    )
     from michi.domain.audio_output import OutputSessionState
     from michi.domain.audio_processing import (
         BiquadType,
@@ -148,9 +148,7 @@ def main() -> int:
             nodes=(
                 ParametricEqNode(
                     node_id="peq",
-                    bands=(
-                        PeqBand("b1", BiquadType.PEAK, 1000.0, 1.4, 12.0, True),
-                    ),
+                    bands=(PeqBand("b1", BiquadType.PEAK, 1000.0, 1.4, 12.0, True),),
                 ),
             ),
         ),
@@ -201,9 +199,9 @@ def main() -> int:
                     list(item) for item in plan_value.resampler_policy
                 ],
                 "sink_factory": "fakesink",
-        "dsp_active": True,
-        "dsp_plan_id": compiled.plan_id,
-        "dsp_graph_revision": compiled.graph_revision,
+                "dsp_active": True,
+                "dsp_plan_id": compiled.plan_id,
+                "dsp_graph_revision": compiled.graph_revision,
             }
         )
         port.add_dsd_pcm_eos_listener(holder["session"].notify_dsd_pcm_eos)
@@ -242,10 +240,16 @@ def main() -> int:
         observed = None
         while time.monotonic() < deadline:
             observed = port.query_dsd_pcm_identity().get("processing")
-            if isinstance(observed, dict) and observed.get("caps_source") == "negotiated":
+            if (
+                isinstance(observed, dict)
+                and observed.get("caps_source") == "negotiated"
+            ):
                 break
             time.sleep(0.01)
-        if not isinstance(observed, dict) or observed.get("caps_source") != "negotiated":
+        if (
+            not isinstance(observed, dict)
+            or observed.get("caps_source") != "negotiated"
+        ):
             raise SystemExit("DSP_CAPS_NOT_NEGOTIATED")
         processing.publish_effective(prepared.processing_receipt)
 
