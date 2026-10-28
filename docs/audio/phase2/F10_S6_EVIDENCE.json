@@ -132,7 +132,7 @@
     "installed_wheel_dsd_pcm": "LOCAL PASS — wheel aeeee25c37c3611d1754eca6debec34feba7b94a81adefd9ba209f1ed70fd5b1; site-packages import; RUNNING/EOS/RELEASED; cleanup confirmed",
     "focused_s6": "9 passed in 15.89s (transactional rollback, metrics, resolver, Settings surface)",
     "full_suite": "6298 passed, 22 skipped, 0 failed in 1858.50s (30:58)",
-    "ci": "PASS at 8413ff0 — run 40625079781; check 6267 passed, 50 skipped, 0 failed; follow-up code 9bbdc74 CI pending"
+    "ci": "PASS at 9aeace7 — run 40681351056; check 6270 passed, 50 skipped, 0 failed"
   },
   "constraints": {
     "f09": "CLOSED",
@@ -156,7 +156,8 @@
     "focused": "9 passed in 15.89s",
     "ruff": "PASS",
     "alignment": "GO at ef4e162",
-    "installed_wheel": "PASS"
+    "installed_wheel": "PASS",
+    "ci": "PASS run 40681351056 (4/4 jobs)"
   },
   "ci": {
     "run_id": "40621715071",
@@ -212,6 +213,18 @@
       "full_suite": "6298 passed, 22 skipped, 0 failed",
       "qml": "SettingsView qmllint EXIT 0"
     },
-    "ci": "PENDING_PUSH"
+    "ci": {
+      "run_id": "40681351056",
+      "head_sha": "9aeace7",
+      "status": "success",
+      "jobs": {
+        "check": "success",
+        "dop-native-gate-a": "success",
+        "dac-v35-software-closure": "success",
+        "min-qt": "success"
+      },
+      "check_tests": "6270 passed, 50 skipped, 0 failed in 1837.84s (30:37)",
+      "note": "Production code 9bbdc74; evidence commit 9aeace7. Later evidence-only commit does not change code."
+    }
   }
 }
