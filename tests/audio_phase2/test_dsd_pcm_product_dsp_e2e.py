@@ -76,6 +76,7 @@ def test_selected_profile_is_effective_on_product_dsd_playback(tmp_path, monkeyp
     from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository
 
     monkeypatch.setenv("MICHI_GST_LAB_SINK", "fakesink")
+    monkeypatch.setenv("MICHI_DSD_PCM_CAPTURE", "400000")
     from michi.domain.library import TrackMetadata
     from tests.audio_phase2.test_managed_productive_flow import _Metadata
 
@@ -139,6 +140,9 @@ def test_selected_profile_is_effective_on_product_dsd_playback(tmp_path, monkeyp
                 break
             time.sleep(0.02)
         assert graph.output_session._dsd_pcm_terminal_execution == execution
+        evidence = port.query_dsd_pcm_evidence()
+        assert evidence["capture"]["byte_count"] > 0
+        assert evidence["capture"]["sha256"]
         assert graph.audio_processing.effective_state.value != "effective"
         graph.playback.stop()
         assert graph.output_session.state.value == "idle"

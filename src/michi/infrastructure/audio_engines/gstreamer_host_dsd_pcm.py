@@ -15,7 +15,9 @@ one immutable request and reports identity/caps evidence.
 
 from __future__ import annotations
 
+import base64
 import contextlib
+import hashlib
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -48,6 +50,7 @@ class _DsdPcmRequest:
     quality_profile: str
     resampler_policy: tuple[tuple[str, Any], ...]
     sink_factory: str
+    capture_max_frames: int = 0
 
 
 def _str(payload: dict[str, Any], name: str) -> str:
@@ -106,6 +109,7 @@ def parse_request(payload: dict[str, Any]) -> _DsdPcmRequest:
         quality_profile=_str(payload, "quality_profile"),
         resampler_policy=tuple(policy),
         sink_factory=_str(payload, "sink_factory"),
+        capture_max_frames=max(0, int(payload.get("capture_max_frames") or 0)),
     )
 
 
@@ -295,6 +299,8 @@ class DsdPcmHostRuntime:
                     f"{upper.get_name()} -> {lower.get_name()}",
                 )
         self._pipeline = pipeline
+        if request.capture_max_frames:
+            self.enable_capture(request.capture_max_frames)
         pipeline.set_state(gst.State.PAUSED)
         ret, state, _pending = pipeline.get_state(10 * gst.SECOND)
         if ret == gst.StateChangeReturn.FAILURE or state != gst.State.PAUSED:
@@ -682,7 +688,15 @@ class DsdPcmHostRuntime:
         return payload
 
     def query_evidence(self) -> dict[str, Any]:
-        return self.query_identity()
+        payload = self.query_identity()
+        if self._captured:
+            raw = bytes(self._captured)
+            payload["capture"] = {
+                "bytes": base64.b64encode(raw).decode("ascii"),
+                "byte_count": len(raw),
+                "sha256": hashlib.sha256(raw).hexdigest(),
+            }
+        return payload
 
     def _drain_bus(self) -> None:
         if self._pipeline is None:

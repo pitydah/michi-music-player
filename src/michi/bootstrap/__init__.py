@@ -1436,6 +1436,9 @@ def _build_services(
                 "quality_profile": plan.quality_profile,
                 "resampler_policy": [list(item) for item in plan.resampler_policy],
                 "sink_factory": sink_factory,
+                "capture_max_frames": int(
+                    os.environ.get("MICHI_DSD_PCM_CAPTURE", "0") or 0
+                ),
             }
         )
         if hasattr(port, "add_dsd_pcm_eos_listener"):
