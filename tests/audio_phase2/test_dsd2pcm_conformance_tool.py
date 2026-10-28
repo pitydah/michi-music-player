@@ -11,6 +11,30 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+def test_metrics_survive_all_invalid_and_mixed_samples():
+    import math
+    import struct
+
+    from tools.audio_phase2.dsd2pcm_conformance import _metrics
+
+    all_invalid = struct.pack("<4f", math.nan, math.inf, -math.inf, math.nan)
+    result = _metrics(all_invalid, 2, 88_200)
+    assert result["sample_count"] == 2
+    assert result["nan_inf"] == 4
+    assert result["peak"] is None
+    assert result["rms"] is None
+    assert result["dc"] is None
+    assert result["channel_balance_db"] is None
+
+    mixed = struct.pack("<4f", 0.0, 1.0, math.nan, 0.0)
+    result = _metrics(mixed, 2, 88_200)
+    assert result["sample_count"] == 2
+    assert result["nan_inf"] == 1
+    assert result["peak"] == 1.0
+    assert math.isfinite(result["rms"])
+    assert math.isfinite(result["dc"])
+
+
 def test_conformance_harness_captures_real_f32le_and_releases():
     from tools.audio_phase2.dsd2pcm_conformance import run
 

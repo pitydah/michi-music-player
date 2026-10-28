@@ -279,6 +279,106 @@ Item {
                             onToggled: settingsBridge.set_online_enrichment(checked)
                         }
                     }
+
+                    // ── DSD → PCM conversion (AP2-F10) ─────────────
+                    MichiDivider {
+                        Layout.fillWidth: true
+                        Layout.topMargin: MichiTheme.space8
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.topMargin: MichiTheme.space8
+                        spacing: MichiTheme.space12
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: MichiTheme.space4
+
+                            Text {
+                                text: qsTr("Convert DSD to PCM")
+                                font.pixelSize: MichiTheme.fontSizeBody
+                                color: MichiTheme.textPrimary
+                            }
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: qsTr("Explicitly allows DSD sources to be "
+                                    + "decoded to PCM when Native DSD or DoP is not "
+                                    + "selected. Disabled by default. This is not a "
+                                    + "bit-perfect DSD path.")
+                                font.pixelSize: MichiTheme.fontSizeCaption
+                                color: MichiTheme.textMuted
+                                wrapMode: Text.WordWrap
+                            }
+                        }
+
+                        Controls.MichiSwitch {
+                            objectName: "dsdPcmConversionSwitch"
+                            checked: settingsBridge.dsdPcmConversionConsent
+                            Accessible.name: qsTr("Convert DSD to PCM")
+                            onToggled: settingsBridge.set_dsd_pcm_conversion_consent(
+                                checked)
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: MichiTheme.space12
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: MichiTheme.space4
+
+                            Text {
+                                text: qsTr("Apply DSP after DSD conversion")
+                                font.pixelSize: MichiTheme.fontSizeBody
+                                color: MichiTheme.textPrimary
+                            }
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: qsTr("Uses the productive PEQ graph only on "
+                                    + "converted PCM. Native DSD and DoP never receive "
+                                    + "PCM DSP.")
+                                font.pixelSize: MichiTheme.fontSizeCaption
+                                color: MichiTheme.textMuted
+                                wrapMode: Text.WordWrap
+                            }
+                        }
+
+                        Controls.MichiSwitch {
+                            objectName: "dsdPcmDspSwitch"
+                            enabled: settingsBridge.dsdPcmConversionConsent
+                            checked: settingsBridge.dsdPcmDspConsent
+                            Accessible.name: qsTr("Apply DSP after DSD conversion")
+                            onToggled: settingsBridge.set_dsd_pcm_dsp_consent(
+                                checked)
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: MichiTheme.space12
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: qsTr("DSD conversion quality")
+                            font.pixelSize: MichiTheme.fontSizeBody
+                            color: MichiTheme.textSecondary
+                        }
+
+                        Controls.MichiComboBox {
+                            objectName: "dsdPcmQualityCombo"
+                            model: ["FAST", "BALANCED", "HIGH", "REFERENCE"]
+                            currentIndex: Math.max(0,
+                                model.indexOf(settingsBridge.dsdPcmQualityProfile))
+                            Accessible.name: qsTr("DSD conversion quality")
+                            onActivated: index =>
+                                settingsBridge.set_dsd_pcm_quality_profile(
+                                    model[index])
+                        }
+                    }
                 }
             }
         }

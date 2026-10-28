@@ -61,7 +61,7 @@ def test_playback_service_dsd64_to_pcm_eos_release(tmp_path, monkeypatch):
             "michi.application.dsd_to_pcm_plan",
             fromlist=["DsdToPcmPlanner"],
         ).DsdToPcmPlanner(),
-        dsd_pcm_target_rates=lambda _device, _binding: (88_200,),
+        dsd_pcm_target_rates=lambda _device, _binding, _channels: (88_200,),
         dsd_pcm_host_generation=lambda: 1,
         dsd_pcm_decoder_available=True,
     )

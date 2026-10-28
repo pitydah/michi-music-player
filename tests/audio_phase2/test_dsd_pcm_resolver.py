@@ -22,7 +22,7 @@ def test_productive_resolver_selects_explicit_dsd_to_pcm():
         None,
         dsd_pcm_policy_provider=lambda _source: decision,
         dsd_pcm_planner=DsdToPcmPlanner(),
-        dsd_pcm_target_rates=lambda _device, _binding: (88_200,),
+        dsd_pcm_target_rates=lambda _device, _binding, _channels: (88_200,),
         dsd_pcm_host_generation=lambda: 1,
         dsd_pcm_decoder_available=True,
     )

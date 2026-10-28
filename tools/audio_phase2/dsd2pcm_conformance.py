@@ -69,27 +69,30 @@ def _metrics(raw: bytes, channels: int, rate: int) -> dict[str, Any]:
     if count == 0 or channels <= 0:
         return {"sample_count": 0}
     frame_count = count // channels
-    finite = [math.isfinite(value) for value in samples]
-    nan_inf = sum(1 for value in finite if not value)
-    peak = (
-        max(abs(value) for value in samples if math.isfinite(value)) if finite else None
-    )
+    finite = [value for value in samples if math.isfinite(value)]
+    nan_inf = len(samples) - len(finite)
+    peak = max((abs(value) for value in finite), default=None)
     rms = (
-        math.sqrt(sum(value * value for value in samples) / len(samples))
-        if samples
+        math.sqrt(sum(value * value for value in finite) / len(finite))
+        if finite
         else None
     )
-    dc = sum(samples) / len(samples)
+    dc = sum(finite) / len(finite) if finite else None
     channel_rms = []
     for channel in range(channels):
-        values = samples[channel::channels]
+        values = [value for value in samples[channel::channels] if math.isfinite(value)]
         channel_rms.append(
             math.sqrt(sum(value * value for value in values) / len(values))
             if values
-            else 0.0
+            else None
         )
     balance = None
-    if len(channel_rms) >= 2 and max(channel_rms) > 0:
+    if (
+        len(channel_rms) >= 2
+        and channel_rms[0] is not None
+        and channel_rms[1] is not None
+        and max(channel_rms[0], channel_rms[1]) > 0
+    ):
         balance = 20 * math.log10(
             max(channel_rms[0], 1e-12) / max(channel_rms[1], 1e-12)
         )
@@ -97,6 +100,9 @@ def _metrics(raw: bytes, channels: int, rate: int) -> dict[str, Any]:
     for channel in range(channels):
         previous = None
         for value in samples[channel::channels]:
+            if not math.isfinite(value):
+                previous = None
+                continue
             if previous is not None:
                 max_step = max(max_step, abs(value - previous))
             previous = value

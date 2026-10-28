@@ -450,7 +450,9 @@ class ProductiveOutputRequestResolver:
             Callable[[DsdSignalFormat], DsdPolicyDecision | None] | None
         ) = None,
         dsd_pcm_planner: DsdToPcmPlanner | None = None,
-        dsd_pcm_target_rates: (Callable[[str, object], tuple[int, ...]] | None) = None,
+        dsd_pcm_target_rates: (
+            Callable[[str, object, int], tuple[int, ...]] | None
+        ) = None,
         dsd_pcm_host_generation: Callable[[], int] | None = None,
         dsd_pcm_decoder_available: bool | Callable[[DsdSignalFormat], bool] = False,
         dsd_pcm_dsp_available: bool = False,
@@ -593,7 +595,9 @@ class ProductiveOutputRequestResolver:
                             "conversion selected but no DSD→PCM planner is composed",
                         )
                     if self._dsd_pcm_target_rates is not None:
-                        rates = self._dsd_pcm_target_rates(selected_device_id, binding)
+                        rates = self._dsd_pcm_target_rates(
+                            selected_device_id, binding, dsd.signal.channels
+                        )
                     else:
                         rates = tuple(
                             sorted(

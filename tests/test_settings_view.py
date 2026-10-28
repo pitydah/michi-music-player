@@ -62,6 +62,17 @@ def qapp():
     yield app
 
 
+class TestDsdPcmSettingsSurface:
+    def test_dsd_pcm_consent_controls_are_reachable(self):
+        qml = (QML_DIR / "views" / "SettingsView.qml").read_text()
+        assert "dsdPcmConversionSwitch" in qml
+        assert "set_dsd_pcm_conversion_consent" in qml
+        assert "dsdPcmDspSwitch" in qml
+        assert "set_dsd_pcm_dsp_consent" in qml
+        assert "dsdPcmQualityCombo" in qml
+        assert "set_dsd_pcm_quality_profile" in qml
+
+
 class TestSettingsViewGeometry:
     def test_panels_have_positive_size(self, qapp):
         engine = QQmlEngine()

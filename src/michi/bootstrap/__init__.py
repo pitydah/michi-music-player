@@ -801,8 +801,8 @@ def _build_services(
         decoder_discovery_cache[cache_key] = available
         return available
 
-    def _dsd_pcm_target_rates(stable_device_id, _binding):
-        """Rates from exact F32LE/stereo opened evidence only.
+    def _dsd_pcm_target_rates(stable_device_id, _binding, source_channels):
+        """Rates from exact F32LE/source-channel opened evidence only.
 
         A rate cached for another format or channel count is not a
         qualification for this route; no ladder member is extrapolated.
@@ -814,7 +814,7 @@ def _build_services(
                     for item in qualification.cached_evidence_current(stable_device_id)
                     if item.supported is True
                     and str(item.tuple.transport_format).upper() in {"F32LE", "F32"}
-                    and int(item.tuple.channels) == 2
+                    and int(item.tuple.channels) == int(source_channels)
                 },
                 reverse=True,
             )
