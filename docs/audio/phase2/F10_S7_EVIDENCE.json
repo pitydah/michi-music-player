@@ -1,0 +1,78 @@
+{
+  "schema_version": 2,
+  "phase": "AP2-F10",
+  "sprint": "AP2-F10-S7",
+  "state": "ACTIVE",
+  "base_head": "6ba248f",
+  "code_head": "eae03f5",
+  "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
+  "verdict": "ACTIVE, VERIFYING — selected F06 profile now reaches the productive DSD→PCM host; transitions, Signal Path and numeric certification remain",
+  "implemented": {
+    "profile_authority": {
+      "status": "IMPLEMENTED",
+      "detail": "The existing in-memory ServiceGraph.set_processing_profile is the only profile authority. Settings retains conversion/DSP consent and quality profile; no second profile store or preset was added.",
+      "files": [
+        "src/michi/bootstrap/__init__.py",
+        "src/michi/application/settings_service.py"
+      ]
+    },
+    "compile_and_install": {
+      "status": "IMPLEMENTED",
+      "detail": "The selected ProcessingProfile graph is resolved/compiled with EffectiveProcessingGraphResolver and ProcessingGraphCompiler, then installed through AudioProcessingService.begin_candidate/commit_candidate. The child host routes the candidate to DsdPcmHostRuntime when the DSD→PCM owner is active, with an exact pipeline generation and transactional direct-route rollback.",
+      "files": [
+        "src/michi/bootstrap/__init__.py",
+        "src/michi/infrastructure/audio_engines/gstreamer_host_session.py",
+        "src/michi/infrastructure/audio_engines/gstreamer_host_dsd_pcm.py",
+        "src/michi/application/audio_processing_service.py"
+      ]
+    },
+    "effective_after_start": {
+      "status": "IMPLEMENTED",
+      "detail": "The child may commit with configured caps while the pipeline is still quiescent; EFFECTIVE is published only after host-confirmed START and a negotiated F06 readback. A failed finalize retires the execution and never publishes EFFECTIVE.",
+      "files": [
+        "src/michi/bootstrap/__init__.py",
+        "src/michi/application/output_session_service.py"
+      ]
+    },
+    "fail_closed": {
+      "status": "IMPLEMENTED",
+      "detail": "DSP consent without an active F06 profile returns DSD_PCM_DSP_PROFILE_UNAVAILABLE; FIR profiles return DSD_PCM_DSP_FIR_STORE_UNAVAILABLE; Native/DoP policy refuses PCM DSP."
+    }
+  },
+  "tests": {
+    "product_dsp_e2e": "1 passed — Settings consent, selected ProcessingProfile, graph compile, AudioProcessingService commit, host installation, negotiated readback, EFFECTIVE, stop invalidation",
+    "host_processing_integration": "1 passed — AudioProcessingService installs F06 into DsdPcmHostRuntime through the supervised host",
+    "host_sample_vertical": "3 passed — real DSD64→F32LE→PEQ capture, bypass differs, direct route rollback",
+    "full_suite": "6300 passed, 22 skipped, 0 failed in 1888.79s (31:28)",
+    "ci": "PENDING_PUSH",
+    "focused": "54 passed in 78.06s (processing suites + DSD host/product)"
+  },
+  "gates": {
+    "S7-01_profile_authority": "PASS — existing ServiceGraph.set_processing_profile",
+    "S7-02_compile": "PASS — existing F04/F05/F06 compiler",
+    "S7-03_install_authority": "PASS — AudioProcessingService begin/commit routed to DSD host",
+    "S7-04_effective_readback": "PASS — EFFECTIVE only after START and negotiated caps",
+    "S7-05_no_profile": "PARTIAL — typed error implemented; dedicated negative E2E not yet run",
+    "S7-06_native_dop_exclusion": "PASS — policy refusal",
+    "S7-07_measured_sample_difference": "PARTIAL — direct host capture proves difference; product capture not exposed",
+    "S7-08_family_transitions": "NOT_RUN — AudioFamilyTransitionService still not wired to PlaybackService",
+    "S7-09_signal_truth_path": "PARTIAL — processing EFFECTIVE/readback exists; full observed node projection absent",
+    "S7-10_numeric_conformance": "PARTIAL — harness exists, §274.4 oracle absent",
+    "S7-11_async_product": "PARTIAL — async worker exists; product E2E uses inline executor",
+    "S7-12_ci": "PENDING_PUSH"
+  },
+  "constraints": {
+    "f09": "CLOSED",
+    "f10": "ACTIVE",
+    "f14": "NOT_RUN",
+    "f11_f15": "LOCKED",
+    "fakesink": "laboratory only",
+    "fake_physical_dac": false
+  },
+  "residual": [
+    "Product DSP installation is exercised with fakesink, not a physical DAC.",
+    "No product-level F32LE capture/spectral oracle; the measurable sample difference remains host-lab evidence.",
+    "AudioFamilyTransitionService and SignalPath observed nodes are not integrated.",
+    "Full suite and exact-SHA CI are pending."
+  ]
+}

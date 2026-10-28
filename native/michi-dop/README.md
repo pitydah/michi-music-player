@@ -99,7 +99,14 @@ formats without qualification and physical DAC DSD-mode verification (F14).
 The explicit DSD→PCM product route is a separate supervised pipeline built on
 `DsdPolicyService`, `DsdToPcmPlanner` and `DsdPcmHostRuntime`; this Rust element
 is never inserted into it. Conversion requires persisted, revisioned Settings
-consent, exact F32LE/stereo cache qualification and a selected decoder. The
-product route currently ends in the qualified PCM sink; the measured F06 PEQ
-vertical is wired inside `DsdPcmHostRuntime` and remains lab-certified until
-the product DSP transaction and numeric oracle are complete.
+consent, exact F32LE/stereo cache qualification and a selected decoder.
+
+When the user enables DSP consent and an F06 `ProcessingProfile` is selected
+through the existing `ServiceGraph.set_processing_profile` authority, the
+profile graph is compiled through the canonical F04/F05/F06 compiler and
+installed by `AudioProcessingService` into the DSD host pipeline. `EFFECTIVE`
+is published only after host-confirmed START and a negotiated readback; the
+filter remains on the same F32LE sample path. A missing profile fails with
+`DSD_PCM_DSP_PROFILE_UNAVAILABLE`, FIR profiles fail closed, and Native/DoP
+never receive PCM DSP. The current lab product evidence uses fakesink; numeric
+§274.4 certification and Signal Path node projection remain open.

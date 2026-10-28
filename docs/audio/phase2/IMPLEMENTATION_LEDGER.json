@@ -338,6 +338,33 @@
         "tests/test_settings_service.py",
         "tests/test_settings_lifecycle.py"
       ]
+    },
+    {
+      "file": "src/michi/infrastructure/audio_engines/gstreamer_host_dsd_pcm.py",
+      "owner": "DsdPcmHostRuntime",
+      "phase": "F10",
+      "contract": "explicit DSD→PCM pipeline, transactional F06 install, processing readback, exact release",
+      "tests": [
+        "tests/audio_phase2/test_dsd_pcm_host.py",
+        "tests/audio_phase2/test_dsd_pcm_processing_integration.py"
+      ]
+    },
+    {
+      "file": "src/michi/infrastructure/audio_engines/gstreamer_host_session.py",
+      "owner": "host child session",
+      "phase": "F10",
+      "contract": "processing candidate routing to the active DSD→PCM owner with pipeline-generation fencing",
+      "tests": [
+        "tests/audio_phase2/test_dsd_pcm_processing_integration.py",
+        "tests/audio_phase2/test_processing_capabilities.py"
+      ]
+    },
+    {
+      "file": "tests/audio_phase2/test_dsd_pcm_product_dsp_e2e.py",
+      "owner": "product DSP certification",
+      "phase": "F10",
+      "contract": "selected F06 profile → AudioProcessingService → DSD host → EFFECTIVE after negotiated START",
+      "tests": []
     }
   ]
 }

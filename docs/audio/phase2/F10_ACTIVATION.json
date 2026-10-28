@@ -71,5 +71,26 @@
     "f14": "NOT_RUN",
     "f11_f15": "LOCKED"
   },
-  "f14": "NOT_RUN"
+  "f14": "NOT_RUN",
+  "s7_checkpoint": {
+    "sprint": "AP2-F10-S7",
+    "status": "ACTIVE_VERIFYING_PENDING_CI",
+    "code_head": "eae03f5",
+    "evidence": "docs/audio/phase2/F10_S7_EVIDENCE.json",
+    "implemented": [
+      "existing ProcessingProfile selection is the only DSP profile authority",
+      "selected graph compiled through F04/F05/F06",
+      "AudioProcessingService installs into the productive DSD host route",
+      "EFFECTIVE only after host START and negotiated readback",
+      "stop/abort invalidate DSP effective evidence"
+    ],
+    "open": [
+      "AudioFamilyTransitionService wired to PlaybackService",
+      "Signal Truth/Path observed node projection",
+      "product-level sample capture/spectral oracle",
+      "product async prepare E2E"
+    ],
+    "f14": "NOT_RUN",
+    "f11_f15": "LOCKED"
+  }
 }
