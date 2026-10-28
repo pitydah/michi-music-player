@@ -4,7 +4,7 @@
   "sprint": "AP2-F10-S7",
   "state": "ACTIVE",
   "base_head": "6ba248f",
-  "code_head": "eae03f5",
+  "code_head": "4a3022a",
   "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
   "verdict": "ACTIVE, VERIFYING — selected F06 profile now reaches the productive DSD→PCM host; transitions, Signal Path and numeric certification remain",
   "implemented": {
@@ -44,7 +44,7 @@
     "host_processing_integration": "1 passed — AudioProcessingService installs F06 into DsdPcmHostRuntime through the supervised host",
     "host_sample_vertical": "3 passed — real DSD64→F32LE→PEQ capture, bypass differs, direct route rollback",
     "full_suite": "6300 passed, 22 skipped, 0 failed in 1888.79s (31:28)",
-    "ci": "PENDING_PUSH",
+    "ci": "PENDING — first run 40736061002 failed because the check job has no gst-libav DSD decoder; the DSP tests now skip there and run in dop-native-gate-a",
     "focused": "54 passed in 78.06s (processing suites + DSD host/product)"
   },
   "gates": {
@@ -74,5 +74,12 @@
     "No product-level F32LE capture/spectral oracle; the measurable sample difference remains host-lab evidence.",
     "AudioFamilyTransitionService and SignalPath observed nodes are not integrated.",
     "Full suite and exact-SHA CI are pending."
-  ]
+  ],
+  "ci_history": {
+    "40736061002": {
+      "status": "FAILURE",
+      "jobs": "check and dac failed; check had no avdec_dsd_msbf; product DSP test did not skip",
+      "fix": "skip when gst-libav DSD decoder absent; add both DSP tests to dop-native-gate-a"
+    }
+  }
 }
