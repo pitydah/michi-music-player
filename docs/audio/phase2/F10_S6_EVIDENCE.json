@@ -4,7 +4,7 @@
   "sprint": "AP2-F10-S6",
   "state": "ACTIVE",
   "base_head": "966f2ea9912a7ae85e17dea0294de190e1f20975",
-  "code_head": "ef4e162",
+  "code_head": "9bbdc74",
   "docs_head": "22030c0",
   "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
   "verdict": "ACTIVE, VERIFYING — core DSD→PCM product route and measured DSP lab vertical exist; AP2-F10 is not ready for closure review",
@@ -130,9 +130,9 @@
     "dsd_pcm_product_e2e": "1 passed (real resolver, supervised host, fakesink, replay)",
     "conformance_harness": "1 passed (real F32LE capture, PARTIAL oracle)",
     "installed_wheel_dsd_pcm": "LOCAL PASS — wheel aeeee25c37c3611d1754eca6debec34feba7b94a81adefd9ba209f1ed70fd5b1; site-packages import; RUNNING/EOS/RELEASED; cleanup confirmed",
-    "focused_s6": "62 passed in 16.86s",
-    "full_suite": "6295 passed, 22 skipped, 0 failed in 1871.59s (31:11)",
-    "ci": "PASS — run 40621715071; check 6267 passed, 50 skipped, 0 failed"
+    "focused_s6": "9 passed in 15.89s (transactional rollback, metrics, resolver, Settings surface)",
+    "full_suite": "6298 passed, 22 skipped, 0 failed in 1858.50s (30:58)",
+    "ci": "PASS at 8413ff0 — run 40625079781; check 6267 passed, 50 skipped, 0 failed; follow-up code 9bbdc74 CI pending"
   },
   "constraints": {
     "f09": "CLOSED",
@@ -152,8 +152,8 @@
     "Final-SHA CI and full-suite counts are pending."
   ],
   "local_results": {
-    "full_suite": "6295 passed, 22 skipped, 0 failed in 1871.59s (31:11)",
-    "focused": "62 passed in 16.86s",
+    "full_suite": "6298 passed, 22 skipped, 0 failed in 1858.50s (30:58)",
+    "focused": "9 passed in 15.89s",
     "ruff": "PASS",
     "alignment": "GO at ef4e162",
     "installed_wheel": "PASS"
@@ -173,5 +173,45 @@
     "native_artifact_sha256": "ff3039feb4db80ce4e4c29c6d10535bf56c36220b6a0bf856b4b0fc8201d98ca",
     "artifact_id": "12787433625",
     "note": "CI run certifies code head ef4e162 plus docs 22030c0; later evidence-only commits do not change production code."
+  },
+  "post_s6_audit_followup": {
+    "audit_head": "8413ff0",
+    "source": "KILLCRITIC audit after S6",
+    "fixed": {
+      "K-S6-02": {
+        "status": "FIXED",
+        "detail": "install_processing_filter now builds before unlink, removes a partially added bin, restores the direct PCM->sink route on any add/link/readback failure, and raises DSD_PCM_PROCESSING_ROLLBACK_FAILED if restoration cannot be proven.",
+        "test": "tests/audio_phase2/test_dsd_pcm_host.py::test_processing_install_rolls_back_direct_route_on_readback_failure"
+      },
+      "K-S6-03": {
+        "status": "FIXED",
+        "detail": "_metrics filters non-finite values before peak/RMS/DC, counts them in nan_inf, handles an all-invalid buffer without raising, and resets step continuity across invalid samples.",
+        "test": "tests/audio_phase2/test_dsd2pcm_conformance_tool.py::test_metrics_survive_all_invalid_and_mixed_samples"
+      },
+      "K-S6-04": {
+        "status": "PARTIAL",
+        "detail": "Target-rate callback now receives source channels and requires exact F32LE evidence for that channel count. Binding identity is still device/environment scoped; capability evidence has no per-binding generation field.",
+        "test": "tests/audio_phase2/test_dsd_pcm_resolver.py"
+      },
+      "K-S6-06": {
+        "status": "FIXED",
+        "detail": "SettingsView exposes conversion consent, separate DSP consent and quality profile through the existing SettingsBridge; DSP is disabled until conversion consent is enabled.",
+        "test": "tests/test_settings_view.py::TestDsdPcmSettingsSurface"
+      }
+    },
+    "open": {
+      "K-S6-01": "P0 product DSP through AudioProcessingService/PlaybackService remains unimplemented",
+      "K-S6-05": "P1 AudioFamilyTransitionService is still not wired into PlaybackService",
+      "K-S6-04_binding_identity": "PARTIAL exact binding-generation evidence remains unavailable",
+      "skip_analysis": "28 extra CI skips not analyzed",
+      "installed_wheel_hash": "CI artifact does not include the DSD wheel SHA"
+    },
+    "code_head": "9bbdc74",
+    "tests": {
+      "focused": "9 passed",
+      "full_suite": "6298 passed, 22 skipped, 0 failed",
+      "qml": "SettingsView qmllint EXIT 0"
+    },
+    "ci": "PENDING_PUSH"
   }
 }
