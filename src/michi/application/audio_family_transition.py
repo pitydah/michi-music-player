@@ -46,6 +46,10 @@ class FamilyTransitionRequest:
     binding_generation: int
     destructive_boundary: bool
     confirmed_position_ms: int | None = None
+    plan_id: str = ""
+    execution_id: str = ""
+    stable_device_id: str = ""
+    host_generation: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,6 +67,10 @@ class FamilyTransitionReceipt:
     predecessor_released: bool
     gapless: GaplessClass
     resume_status: PlaybackStatus
+    plan_id: str = ""
+    execution_id: str = ""
+    stable_device_id: str = ""
+    host_generation: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,11 +119,44 @@ class AudioFamilyTransitionService:
             predecessor_released=False,
             gapless=gapless,
             resume_status=resume,
+            plan_id=request.plan_id,
+            execution_id=request.execution_id,
+            stable_device_id=request.stable_device_id,
+            host_generation=request.host_generation,
         )
 
     def mark_released(
-        self, receipt: FamilyTransitionReceipt
+        self,
+        receipt: FamilyTransitionReceipt,
+        evidence: dict[str, object] | None = None,
     ) -> FamilyTransitionReceipt:
+        if not isinstance(evidence, dict):
+            raise TransitionError(
+                "TRANSITION_RELEASE_UNCONFIRMED",
+                "exact physical release evidence is required",
+            )
+        if (
+            evidence.get("confirmed") is not True
+            or evidence.get("terminal_state") != "RELEASED"
+            or evidence.get("provenance") != "SUPERVISED_HOST"
+        ):
+            raise TransitionError(
+                "TRANSITION_RELEASE_UNCONFIRMED",
+                "release evidence is not an exact confirmed host receipt",
+            )
+        expected = {
+            "plan_id": receipt.plan_id,
+            "execution_id": receipt.execution_id,
+            "stable_device_id": receipt.stable_device_id,
+            "binding_generation": receipt.binding_generation,
+            "host_generation": receipt.host_generation,
+        }
+        for field, wanted in expected.items():
+            if not wanted or str(evidence.get(field) or "") != str(wanted):
+                raise TransitionError(
+                    "TRANSITION_RELEASE_UNCONFIRMED",
+                    f"release evidence does not match {field}",
+                )
         return replace(receipt, predecessor_released=True)
 
     def on_failure(

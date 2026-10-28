@@ -25,6 +25,10 @@ def _request(**kw):
         binding_generation=6,
         destructive_boundary=True,
         confirmed_position_ms=1200,
+        plan_id="plan:1",
+        execution_id="exec:1",
+        stable_device_id="dev:dac",
+        host_generation=7,
     )
     base.update(kw)
     return FamilyTransitionRequest(**base)
@@ -54,9 +58,40 @@ def test_same_family_and_stale_epoch_rejected():
 def test_release_marking_is_explicit():
     service = AudioFamilyTransitionService()
     receipt = service.plan(_request())
-    released = service.mark_released(receipt)
+    evidence = {
+        "confirmed": True,
+        "terminal_state": "RELEASED",
+        "provenance": "SUPERVISED_HOST",
+        "plan_id": "plan:1",
+        "execution_id": "exec:1",
+        "stable_device_id": "dev:dac",
+        "binding_generation": 6,
+        "host_generation": 7,
+    }
+    released = service.mark_released(receipt, evidence)
     assert released.predecessor_released is True
     assert released.request_epoch == receipt.request_epoch
+
+
+def test_release_marking_without_exact_receipt_is_rejected():
+    service = AudioFamilyTransitionService()
+    receipt = service.plan(_request())
+    with pytest.raises(TransitionError, match="TRANSITION_RELEASE_UNCONFIRMED"):
+        service.mark_released(receipt)
+    with pytest.raises(TransitionError, match="TRANSITION_RELEASE_UNCONFIRMED"):
+        service.mark_released(
+            receipt,
+            {
+                "confirmed": True,
+                "terminal_state": "RELEASED",
+                "provenance": "SUPERVISED_HOST",
+                "plan_id": "plan:1",
+                "execution_id": "other",
+                "stable_device_id": "dev:dac",
+                "binding_generation": 6,
+                "host_generation": 7,
+            },
+        )
 
 
 def test_failed_rollback_converges_stopped():
