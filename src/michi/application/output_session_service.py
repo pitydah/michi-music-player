@@ -952,6 +952,7 @@ class OutputSessionService:
         dsd_pcm_finalize_processing: (
             Callable[[DsdPcmSessionPrepared], None] | None
         ) = None,
+        dsd_pcm_invalidate_processing: Callable[[str], None] | None = None,
         truth_recorder=None,
     ) -> None:
         self._planner = planner
@@ -981,6 +982,7 @@ class OutputSessionService:
         self._dsd_pcm_stop = dsd_pcm_stop
         self._dsd_pcm_plan_still_current = dsd_pcm_plan_still_current
         self._dsd_pcm_finalize_processing = dsd_pcm_finalize_processing
+        self._dsd_pcm_invalidate_processing = dsd_pcm_invalidate_processing
         # ADDITIVE: the ONE canonical recorder (never a second one).
         self._truth_recorder = truth_recorder
         self._execution_instance_epoch = next(_EXECUTION_INSTANCE_SEQ)
@@ -1299,6 +1301,8 @@ class OutputSessionService:
         self._record_dsd_pcm_family(
             OutputFamilyState.UNAVAILABLE, prepared, detail="eos"
         )
+        if self._dsd_pcm_invalidate_processing is not None:
+            self._dsd_pcm_invalidate_processing("eos")
         return True
 
     def notify_native_dsd_eos(self, execution_id: str) -> bool:

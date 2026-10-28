@@ -131,8 +131,16 @@ def test_selected_profile_is_effective_on_product_dsd_playback(tmp_path, monkeyp
         identity = port.query_dsd_pcm_identity()
         assert identity["processing"]["graph_revision"] == 1
         assert identity["processing"]["caps_source"] == "negotiated"
+        execution = graph.output_session.active_execution_id
+        eos_deadline = time.monotonic() + 8.0
+        while time.monotonic() < eos_deadline:
+            port.dispatch_pending()
+            if graph.output_session._dsd_pcm_terminal_execution == execution:
+                break
+            time.sleep(0.02)
+        assert graph.output_session._dsd_pcm_terminal_execution == execution
+        assert graph.audio_processing.effective_state.value != "effective"
         graph.playback.stop()
         assert graph.output_session.state.value == "idle"
-        assert graph.audio_processing.effective_state.value != "effective"
     finally:
         _close(graph)
