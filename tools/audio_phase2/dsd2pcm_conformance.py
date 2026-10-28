@@ -184,9 +184,11 @@ def run(*, fixture: Path | None, target_rate: int, profile: str) -> dict[str, An
         runtime.commit(expected)
         runtime.start(expected)
         deadline = time.monotonic() + 15.0
+        eos_observed = False
         while time.monotonic() < deadline:
             runtime.query_identity()
             if runtime.query_identity().get("eos"):
+                eos_observed = True
                 break
             time.sleep(0.02)
         raw = runtime.captured_bytes()
@@ -218,11 +220,13 @@ def run(*, fixture: Path | None, target_rate: int, profile: str) -> dict[str, An
                 "numeric_finiteness": (
                     "PASS" if metrics.get("nan_inf") == 0 else "FAIL"
                 ),
+                "eos": "PASS" if eos_observed else "FAIL",
                 "oracle": "NOT_RUN",
             },
             "status": "PARTIAL",
             "environment": {"python": "3.11", "sink": "appsink"},
             "cleanup_confirmed": bool(release.get("release")),
+            "eos_observed": eos_observed,
             "release": release.get("release"),
         }
 
@@ -241,7 +245,12 @@ def main() -> int:
     if args.json is not None:
         args.json.write_text(text + "\n", encoding="utf-8")
     print(text)
-    return 0 if result["sample_count"] > 0 and result["cleanup_confirmed"] else 1
+    complete = (
+        result["sample_count"] > 0
+        and result["cleanup_confirmed"]
+        and result["eos_observed"]
+    )
+    return 0 if complete else 1
 
 
 if __name__ == "__main__":
