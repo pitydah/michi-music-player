@@ -398,7 +398,9 @@ jobs:
           MICHI_GST_LAB_SINK: fakesink
         run: |
           python -m pytest tests/audio_phase2/test_dop_host_runtime.py \
-            tests/audio_phase2/test_dop_product_e2e.py -q
+            tests/audio_phase2/test_dop_product_e2e.py \
+            tests/audio_phase2/test_dsd_pcm_processing_integration.py \
+            tests/audio_phase2/test_dsd_pcm_product_dsp_e2e.py -q
 
       - name: Build and install platform wheel
         run: |

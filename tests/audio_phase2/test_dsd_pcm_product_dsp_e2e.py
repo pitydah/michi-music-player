@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import importlib.util
+import shutil
+import subprocess
 import time
 from pathlib import Path
 
@@ -17,8 +19,25 @@ from tests.audio_phase2.test_managed_productive_flow import (
 
 _HAS_GI = importlib.util.find_spec("gi") is not None
 
+
+def _has_dsd_decoder() -> bool:
+    inspector = shutil.which("gst-inspect-1.0")
+    if inspector is None:
+        return False
+    return (
+        subprocess.run(
+            [inspector, "avdec_dsd_msbf"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        ).returncode
+        == 0
+    )
+
+
 pytestmark = pytest.mark.skipif(
-    not _HAS_GI, reason="PyGObject/GStreamer not available on this host"
+    not _HAS_GI or not _has_dsd_decoder(),
+    reason="gst-libav DSD decoder unavailable on this host",
 )
 
 
