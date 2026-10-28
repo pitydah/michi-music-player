@@ -74,7 +74,7 @@
   "f14": "NOT_RUN",
   "s7_checkpoint": {
     "sprint": "AP2-F10-S7",
-    "status": "ACTIVE_VERIFYING_PENDING_CI",
+    "status": "ACTIVE_VERIFYING_CI_GREEN",
     "code_head": "4a3022a",
     "evidence": "docs/audio/phase2/F10_S7_EVIDENCE.json",
     "implemented": [
@@ -91,6 +91,7 @@
       "product async prepare E2E"
     ],
     "f14": "NOT_RUN",
-    "f11_f15": "LOCKED"
+    "f11_f15": "LOCKED",
+    "ci_run": "40741342880"
   }
 }

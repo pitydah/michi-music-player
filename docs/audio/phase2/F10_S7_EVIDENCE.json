@@ -44,7 +44,7 @@
     "host_processing_integration": "1 passed — AudioProcessingService installs F06 into DsdPcmHostRuntime through the supervised host",
     "host_sample_vertical": "3 passed — real DSD64→F32LE→PEQ capture, bypass differs, direct route rollback",
     "full_suite": "6300 passed, 22 skipped, 0 failed in 1888.79s (31:28)",
-    "ci": "PENDING — first run 40736061002 failed because the check job has no gst-libav DSD decoder; the DSP tests now skip there and run in dop-native-gate-a",
+    "ci": "PASS — run 40741342880; all 4 jobs success; check 6270 passed, 52 skipped, 0 failed; native DSP step 13 passed",
     "focused": "54 passed in 78.06s (processing suites + DSD host/product)"
   },
   "gates": {
@@ -59,7 +59,7 @@
     "S7-09_signal_truth_path": "PARTIAL — processing EFFECTIVE/readback exists; full observed node projection absent",
     "S7-10_numeric_conformance": "PARTIAL — harness exists, §274.4 oracle absent",
     "S7-11_async_product": "PARTIAL — async worker exists; product E2E uses inline executor",
-    "S7-12_ci": "PENDING_PUSH"
+    "S7-12_ci": "PASS — run 40741342880 at fd7ae1a; all four jobs success"
   },
   "constraints": {
     "f09": "CLOSED",
@@ -81,5 +81,20 @@
       "jobs": "check and dac failed; check had no avdec_dsd_msbf; product DSP test did not skip",
       "fix": "skip when gst-libav DSD decoder absent; add both DSP tests to dop-native-gate-a"
     }
+  },
+  "docs_head": "fd7ae1a",
+  "ci": {
+    "run_id": "40741342880",
+    "head_sha": "fd7ae1a",
+    "status": "success",
+    "jobs": {
+      "check": "success",
+      "min-qt": "success",
+      "dac-v35-software-closure": "success",
+      "dop-native-gate-a": "success"
+    },
+    "check_tests": "6270 passed, 52 skipped, 0 failed in 1820.17s (30:20)",
+    "native_dsp_step": "13 passed in 10.64s (DoP host, DSD processing integration, product DSP E2E)",
+    "note": "code head 4a3022a; evidence/docs head fd7ae1a"
   }
 }
