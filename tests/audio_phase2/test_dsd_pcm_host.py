@@ -287,3 +287,102 @@ def test_dsd_pcm_f06_peq_processes_real_f32_frames(tmp_path):
 
     samples = struct.unpack(f"<{len(processed) // 4}f", processed)
     assert all(value == value and abs(value) != float("inf") for value in samples)
+
+
+def test_processing_install_rolls_back_direct_route_on_readback_failure(
+    tmp_path, monkeypatch
+):
+    from michi.application.effective_processing_graph import (
+        EffectiveProcessingGraphResolver,
+    )
+    from michi.application.processing_graph_compiler import (
+        ProcessingBackendCapabilities,
+        ProcessingGraphCompiler,
+    )
+    from michi.domain.audio_processing import (
+        BiquadType,
+        ParametricEqNode,
+        PeqBand,
+        ProcessingGraph,
+        ProcessingStrategy,
+    )
+    from michi.domain.audio_signal import ChannelLayout, PcmSignalFormat
+    from michi.infrastructure.audio_engines.gstreamer_host_dsd_pcm import (
+        DsdPcmHostRuntime,
+    )
+    from michi.infrastructure.audio_processing.native_mapping import (
+        NativeProcessingMapping,
+    )
+
+    source = tmp_path / "rollback.dsf"
+    source.write_bytes(build_dsf(sample_count=8_192, payload=bytes([0x69]) * 16_384))
+    plan = DsdToPcmPlanner().plan(
+        source_identity="track:rollback",
+        source_format=_format(),
+        quality_profile="FAST",
+        binding_generation=1,
+        available_output_rates=(88_200,),
+        decoder_available=True,
+        target_qualified=True,
+        backend_version="gst-libav",
+    )
+    signal = PcmSignalFormat(
+        rate_hz=88_200,
+        transport_format="F32LE",
+        significant_bits=32,
+        layout=ChannelLayout(positions=("FL", "FR")),
+    )
+    graph = ProcessingGraph(
+        graph_id="graph:rollback",
+        revision=1,
+        nodes=(
+            ParametricEqNode(
+                node_id="peq",
+                bands=(PeqBand("b1", BiquadType.PEAK, 1000.0, 1.4, 12.0, True),),
+            ),
+        ),
+    )
+    effective = EffectiveProcessingGraphResolver().resolve(
+        graph, input_signal=signal, assets=()
+    )
+    compiled = ProcessingGraphCompiler().compile(
+        effective,
+        backend=ProcessingBackendCapabilities(
+            backend_id="test", strategies=frozenset(ProcessingStrategy)
+        ),
+        assets=(),
+    )
+    wire = NativeProcessingMapping().plan_to_wire(compiled)
+
+    import michi.infrastructure.audio_processing.gstreamer_runtime as runtime_module
+
+    def boom(*_args, **_kwargs):
+        raise RuntimeError("injected readback failure")
+
+    monkeypatch.setattr(runtime_module, "inspect_processing_filter", boom)
+    runtime = DsdPcmHostRuntime()
+    try:
+        identity = runtime.prepare(_payload(plan, source))
+        expected = {
+            "plan_id": identity["plan_id"],
+            "execution_id": identity["execution_id"],
+            "stable_device_id": identity["stable_device_id"],
+            "device": identity["device"],
+            "binding_generation": identity["binding_generation"],
+            "host_generation": identity["host_generation"],
+        }
+        with pytest.raises(RuntimeError, match="injected readback failure"):
+            runtime.install_processing_filter(wire)
+        assert runtime._processing_filter is None
+        caps_src = runtime._pcm_caps.get_static_pad("src")
+        sink_sink = runtime._sink.get_static_pad("sink")
+        assert caps_src.get_peer() is sink_sink
+
+        monkeypatch.undo()
+        readback = runtime.install_processing_filter(wire)
+        assert readback["graph_revision"] == 1
+        runtime.remove_processing_filter()
+        assert caps_src.get_peer() is sink_sink
+        runtime.stop(expected)
+    finally:
+        runtime.close()

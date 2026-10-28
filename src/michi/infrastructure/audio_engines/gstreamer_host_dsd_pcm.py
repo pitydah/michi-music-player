@@ -363,39 +363,66 @@ class DsdPcmHostRuntime:
         filter_bin = info["bin"]
         caps_src = self._pcm_caps.get_static_pad("src")
         sink_sink = self._sink.get_static_pad("sink")
-        if (
-            caps_src is None
-            or sink_sink is None
-            or caps_src.get_peer() is not sink_sink
-            or not caps_src.unlink(sink_sink)
-        ):
+        if caps_src is None or sink_sink is None:
+            raise DsdPcmHostError(
+                "DSD_PCM_PROCESSING_LINK_FAILED", "PCM route pads missing"
+            )
+        if caps_src.get_peer() is not sink_sink or not caps_src.unlink(sink_sink):
             raise DsdPcmHostError(
                 "DSD_PCM_PROCESSING_LINK_FAILED", "cannot unlink PCM route"
             )
-        if not self._pipeline.add(filter_bin):
-            raise DsdPcmHostError(
-                "DSD_PCM_PROCESSING_INSTALL_FAILED", "cannot add filter bin"
-            )
-        sink_pad = filter_bin.get_static_pad("sink")
-        src_pad = filter_bin.get_static_pad("src")
-        if None in (sink_pad, src_pad, caps_src, sink_sink):
-            raise DsdPcmHostError(
-                "DSD_PCM_PROCESSING_LINK_FAILED", "filter ghost pads missing"
-            )
-        if (
-            caps_src.link(sink_pad) != self._gst.PadLinkReturn.OK
-            or src_pad.link(sink_sink) != self._gst.PadLinkReturn.OK
-        ):
-            raise DsdPcmHostError(
-                "DSD_PCM_PROCESSING_LINK_FAILED", "filter link rejected"
-            )
-        filter_bin.sync_state_with_parent()
+        added = False
+        try:
+            if not self._pipeline.add(filter_bin):
+                raise DsdPcmHostError(
+                    "DSD_PCM_PROCESSING_INSTALL_FAILED", "cannot add filter bin"
+                )
+            added = True
+            sink_pad = filter_bin.get_static_pad("sink")
+            src_pad = filter_bin.get_static_pad("src")
+            if None in (sink_pad, src_pad):
+                raise DsdPcmHostError(
+                    "DSD_PCM_PROCESSING_LINK_FAILED", "filter ghost pads missing"
+                )
+            if (
+                caps_src.link(sink_pad) != self._gst.PadLinkReturn.OK
+                or src_pad.link(sink_sink) != self._gst.PadLinkReturn.OK
+            ):
+                raise DsdPcmHostError(
+                    "DSD_PCM_PROCESSING_LINK_FAILED", "filter link rejected"
+                )
+            filter_bin.sync_state_with_parent()
+            readback = inspect_processing_filter(info, plan)
+        except Exception as exc:
+            if added:
+                try:
+                    self._discard_filter_bin(filter_bin)
+                except Exception as rollback_exc:  # noqa: BLE001
+                    raise DsdPcmHostError(
+                        "DSD_PCM_PROCESSING_ROLLBACK_FAILED",
+                        f"{exc}; rollback: {rollback_exc}",
+                    ) from exc
+            if not caps_src.link(sink_sink):
+                raise DsdPcmHostError(
+                    "DSD_PCM_PROCESSING_ROLLBACK_FAILED",
+                    f"{exc}; direct route restore failed",
+                ) from exc
+            raise
         self._processing_filter = filter_bin
-        readback = inspect_processing_filter(info, plan)
         self._processing_info = readback
         if self._identity is not None:
             self._identity["processing"] = readback
         return readback
+
+    def _discard_filter_bin(self, filter_bin) -> None:
+        """Remove a partially installed filter and leave no half-link."""
+        sink_pad = filter_bin.get_static_pad("sink")
+        src_pad = filter_bin.get_static_pad("src")
+        for pad in (sink_pad, src_pad):
+            if pad is not None and pad.is_linked():
+                pad.unlink(pad.get_peer())
+        filter_bin.set_state(self._gst.State.NULL)
+        self._pipeline.remove(filter_bin)
 
     def remove_processing_filter(self) -> None:
         filter_bin = self._processing_filter
