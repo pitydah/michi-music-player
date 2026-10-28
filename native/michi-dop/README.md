@@ -108,5 +108,7 @@ installed by `AudioProcessingService` into the DSD host pipeline. `EFFECTIVE`
 is published only after host-confirmed START and a negotiated readback; the
 filter remains on the same F32LE sample path. A missing profile fails with
 `DSD_PCM_DSP_PROFILE_UNAVAILABLE`, FIR profiles fail closed, and Native/DoP
-never receive PCM DSP. The current lab product evidence uses fakesink; numeric
-§274.4 certification and Signal Path node projection remain open.
+never receive PCM DSP. The installed-wheel DSD→PCM verifier compiles and
+installs the same profile path and requires negotiated EFFECTIVE evidence.
+The current lab product evidence uses fakesink; numeric §274.4 certification
+and Signal Path node projection remain open.

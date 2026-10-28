@@ -4,7 +4,7 @@
   "sprint": "AP2-F10-S7",
   "state": "ACTIVE",
   "base_head": "6ba248f",
-  "code_head": "cb07540",
+  "code_head": "78e0550",
   "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
   "verdict": "ACTIVE, VERIFYING — selected F06 profile now reaches the productive DSD→PCM host; transitions, Signal Path and numeric certification remain",
   "implemented": {
@@ -37,15 +37,29 @@
     "fail_closed": {
       "status": "IMPLEMENTED",
       "detail": "DSP consent without an active F06 profile returns DSD_PCM_DSP_PROFILE_UNAVAILABLE; FIR profiles return DSD_PCM_DSP_FIR_STORE_UNAVAILABLE; Native/DoP policy refuses PCM DSP."
+    },
+    "product_capture": {
+      "status": "IMPLEMENTED",
+      "detail": "MICHI_DSD_PCM_CAPTURE enables a bounded pad-probe capture in the child; the product E2E reads captured F32LE bytes/hash through QUERY_DSD_PCM_EVIDENCE.",
+      "file": "src/michi/infrastructure/audio_engines/gstreamer_host_dsd_pcm.py",
+      "test": "tests/audio_phase2/test_dsd_pcm_product_dsp_e2e.py"
+    },
+    "installed_wheel_dsp": {
+      "status": "IMPLEMENTED (local PASS; CI pending)",
+      "detail": "scripts/verify_installed_dsd_pcm_e2e.py now compiles a selected F06 profile and installs it through AudioProcessingService before START, then asserts negotiated readback and EFFECTIVE.",
+      "file": "scripts/verify_installed_dsd_pcm_e2e.py",
+      "wheel_sha256": "ca08032cc4cdf1984d99123dab56cca34b71435d9491e8baa54fc342cd87d39d"
     }
   },
   "tests": {
     "product_dsp_e2e": "1 passed — Settings consent, selected ProcessingProfile, graph compile, AudioProcessingService commit, host installation, negotiated readback, EFFECTIVE, stop invalidation",
     "host_processing_integration": "1 passed — AudioProcessingService installs F06 into DsdPcmHostRuntime through the supervised host",
     "host_sample_vertical": "3 passed — real DSD64→F32LE→PEQ capture, bypass differs, direct route rollback",
-    "full_suite": "6300 passed, 22 skipped, 0 failed in 1872.63s (31:12)",
-    "ci": "PENDING_PUSH — previous run 40741342880 was green for code 4a3022a; EOS invalidation is new",
-    "focused": "54 passed in 78.06s (processing suites + DSD host/product)"
+    "full_suite": "6300 passed, 22 skipped, 0 failed in 1882.97s (31:22)",
+    "ci": "PENDING_PUSH",
+    "focused": "54 passed in 78.06s (processing suites + DSD host/product)",
+    "product_capture": "PASS — product E2E reads non-empty F32LE capture and hash after negotiated DSP",
+    "installed_wheel_dsp": "LOCAL PASS — wheel ca08032c..., site-packages, selected profile, negotiated readback, EFFECTIVE, no skip"
   },
   "gates": {
     "S7-01_profile_authority": "PASS — existing ServiceGraph.set_processing_profile",
@@ -54,7 +68,7 @@
     "S7-04_effective_readback": "PASS — EFFECTIVE only after START and negotiated caps",
     "S7-05_no_profile": "PARTIAL — typed error implemented; dedicated negative E2E not yet run",
     "S7-06_native_dop_exclusion": "PASS — policy refusal",
-    "S7-07_measured_sample_difference": "PARTIAL — direct host capture proves difference; product capture not exposed",
+    "S7-07_measured_sample_difference": "PARTIAL — product capture now returns real F32LE bytes/hash; bypass-vs-DSP comparison remains host-lab",
     "S7-08_family_transitions": "NOT_RUN — AudioFamilyTransitionService still not wired to PlaybackService",
     "S7-09_signal_truth_path": "PARTIAL — processing EFFECTIVE/readback exists; full observed node projection absent",
     "S7-10_numeric_conformance": "PARTIAL — harness exists, §274.4 oracle absent",
