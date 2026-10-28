@@ -40,6 +40,33 @@ class TestSettingsService:
         assert s2.volume == 99
         assert s2.muted is True
 
+    def test_dsd_pcm_consent_defaults_deny_and_revisions_monotonic(self):
+        repo = FakeSettingsRepo()
+        svc = SettingsService(repo)
+        assert svc.state.dsd_pcm_conversion_consent is False
+        assert svc.state.dsd_pcm_dsp_consent is False
+        assert svc.state.dsd_pcm_policy_revision == 0
+        svc.set_dsd_pcm_conversion_consent(True)
+        assert svc.state.dsd_pcm_conversion_consent is True
+        assert svc.state.dsd_pcm_policy_revision == 1
+        svc.set_dsd_pcm_dsp_consent(True)
+        assert svc.state.dsd_pcm_dsp_consent is True
+        assert svc.state.dsd_pcm_policy_revision == 2
+        svc.set_dsd_pcm_conversion_consent(False)
+        assert svc.state.dsd_pcm_conversion_consent is False
+        assert svc.state.dsd_pcm_dsp_consent is False
+        assert svc.state.dsd_pcm_policy_revision == 3
+        assert repo.load().dsd_pcm_conversion_consent is False
+
+    def test_dsd_pcm_dsp_consent_requires_conversion_consent(self):
+        svc = SettingsService(FakeSettingsRepo())
+        try:
+            svc.set_dsd_pcm_dsp_consent(True)
+        except ValueError as exc:
+            assert str(exc) == "DSD_PCM_DSP_CONSENT_REQUIRES_CONVERSION"
+        else:
+            raise AssertionError("DSP consent must not bypass conversion consent")
+
     def test_full_state_preserved_on_partial_update(self):
         repo = FakeSettingsRepo()
         repo.save(

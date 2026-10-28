@@ -62,7 +62,7 @@ from michi.application.dsd_policy_service import (
 from michi.application.dsd_policy_service import (
     OutputFamily as DsdOutputFamily,
 )
-from michi.application.dsd_to_pcm_plan import DsdToPcmPlanner
+from michi.application.dsd_to_pcm_plan import DsdToPcmPlanner, decoder_factory_for
 from michi.application.enrichment_coordinator import EnrichmentCoordinator
 from michi.application.enrichment_evidence import LibraryEnrichmentEvidenceBuilder
 from michi.application.enrichment_executor import ThreadPoolEnrichmentExecutor
@@ -489,6 +489,7 @@ def _build_services(
     output_preparation_executor: QtAsyncCallExecutor | None = None,
     managed_processing_provider=None,
     ir_provider=None,
+    settings_service: SettingsService | None = None,
 ) -> ServiceGraph:
     """Build the PRODUCTION library service graph (composition root core).
 
@@ -510,6 +511,9 @@ def _build_services(
     """
     if metadata_extractor is None:
         metadata_extractor = InfrastructureMetadataExtractor()
+    if settings_service is None:
+        settings_service = SettingsService(SQLiteSettingsRepository(Path(db_path)))
+        settings_service.load()
 
     # Tests and production share this graph. Production already completed
     # open_for_startup; a direct test graph still needs the same schema v2.
@@ -758,53 +762,90 @@ def _build_services(
             )
         return tuple(qualifications)
 
-    def _dsd_pcm_decoder_available() -> bool:
+    decoder_discovery_cache: dict[tuple[str, str], bool] = {}
+
+    def _dsd_pcm_decoder_available(source=None) -> bool:
+        """Probe only the exact decoder this source selects, with a deadline.
+
+        The owner process never imports ``gi``; discovery is a bounded
+        subprocess cached by executable + exact factory set. A missing
+        unrelated planar factory must not reject a non-planar source.
+        """
         inspector = shutil.which("gst-inspect-1.0")
         if inspector is None:
             return False
-        return all(
-            subprocess.run(
-                [inspector, name],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                check=False,
-            ).returncode
-            == 0
-            for name in (
-                "avdec_dsd_lsbf",
-                "avdec_dsd_msbf",
-                "avdec_dsd_lsbf_planar",
-                "avdec_dsd_msbf_planar",
-                "audioresample",
+        names = ["dsdconvert", "audioresample"]
+        if source is not None:
+            try:
+                names.insert(0, decoder_factory_for(source))
+            except Exception:  # noqa: BLE001 - typed planner owns the error
+                return False
+        cache_key = (inspector, "|".join(names))
+        cached = decoder_discovery_cache.get(cache_key)
+        if cached is not None:
+            return cached
+        try:
+            available = all(
+                subprocess.run(
+                    [inspector, name],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=False,
+                    timeout=5.0,
+                ).returncode
+                == 0
+                for name in names
             )
-        )
+        except (OSError, subprocess.SubprocessError):
+            available = False
+        decoder_discovery_cache[cache_key] = available
+        return available
 
     def _dsd_pcm_target_rates(stable_device_id, _binding):
+        """Rates from exact F32LE/stereo opened evidence only.
+
+        A rate cached for another format or channel count is not a
+        qualification for this route; no ladder member is extrapolated.
+        """
         return tuple(
             sorted(
                 {
                     int(item.tuple.rate_hz)
                     for item in qualification.cached_evidence_current(stable_device_id)
+                    if item.supported is True
+                    and str(item.tuple.transport_format).upper() in {"F32LE", "F32"}
+                    and int(item.tuple.channels) == 2
                 },
                 reverse=True,
             )
         )
 
     def _dsd_pcm_policy(source):
-        if os.environ.get("MICHI_DSD_PCM_CONVERT", "").strip() != "1":
+        state = settings_service.state
+        lab_override = os.environ.get("MICHI_DSD_PCM_CONVERT", "").strip() == "1"
+        consent = bool(state.dsd_pcm_conversion_consent or lab_override)
+        if not consent:
             return None
+        intent = (
+            DsdIntent.PROCESS_AS_PCM
+            if state.dsd_pcm_dsp_consent
+            else DsdIntent.CONVERT_TO_PCM
+        )
         decision = DsdPolicyService().decide(
             DsdPolicyRequest(
                 source_kind=SourceKind.DSD,
                 source_identity="resolver",
                 source_format=source,
-                intent=DsdIntent.CONVERT_TO_PCM,
-                dsp_requested=False,
+                intent=intent,
+                dsp_requested=bool(state.dsd_pcm_dsp_consent),
                 conversion_consent=True,
                 source_truth_verified=True,
-                decoder_available=_dsd_pcm_decoder_available(),
+                decoder_available=_dsd_pcm_decoder_available(source),
                 target_qualified=True,
-                quality_profile="HIGH",
+                dsp_available=bool(state.dsd_pcm_dsp_consent),
+                quality_profile=state.dsd_pcm_quality_profile,
+                policy_revision=state.dsd_pcm_policy_revision,
+                current_policy_revision=state.dsd_pcm_policy_revision,
             )
         )
         if decision.decision not in (
@@ -838,7 +879,7 @@ def _build_services(
         dsd_pcm_host_generation=lambda: int(
             gstreamer_provider.current_supervisor.host_generation
         ),
-        dsd_pcm_decoder_available=_dsd_pcm_decoder_available(),
+        dsd_pcm_decoder_available=_dsd_pcm_decoder_available,
         dsd_pcm_dsp_available=False,
     )
     preparation_executor = output_preparation_executor or QtAsyncCallExecutor()
@@ -1323,6 +1364,11 @@ def _build_services(
         return gstreamer_provider.current_port.stop_dsd_pcm(prepared.handle)
 
     def _dsd_pcm_plan_still_current(plan) -> bool:
+        state = settings_service.state
+        if not state.dsd_pcm_conversion_consent:
+            return False
+        if plan.policy_revision != state.dsd_pcm_policy_revision:
+            return False
         return any(
             binding.kind is BindingKind.ALSA_PCM
             and binding.currently_available
@@ -1890,6 +1936,7 @@ class ApplicationContainer:
             db_path,
             cache_root=_cache_dir(),
             startup_selected_engine=settings_state.audio_engine_id,
+            settings_service=settings,
         )
         self._audio_router = graph.audio_router
         self._audio_engine_registry = graph.audio_engine_registry

@@ -79,6 +79,7 @@ class DsdToPcmPlan:
     stable_device_id: str = ""
     binding_locator: str = ""
     host_generation: int = 0
+    policy_revision: int = 0
 
 
 class DsdToPcmPlanner:
@@ -104,6 +105,7 @@ class DsdToPcmPlanner:
         stable_device_id: str = "",
         binding_locator: str = "",
         host_generation: int = 0,
+        policy_revision: int = 0,
     ) -> DsdToPcmPlan:
         if quality_profile not in QUALITY_RATE_LADDERS:
             raise DsdToPcmPlanError("DSD_PCM_QUALITY_PROFILE_UNKNOWN", quality_profile)
@@ -169,6 +171,7 @@ class DsdToPcmPlanner:
                     backend_version,
                     str(processing_graph_revision),
                     str(binding_generation),
+                    str(policy_revision),
                     "|".join(evidence_refs),
                 )
             ).encode()
@@ -192,4 +195,5 @@ class DsdToPcmPlanner:
             stable_device_id=stable_device_id,
             binding_locator=binding_locator,
             host_generation=host_generation,
+            policy_revision=policy_revision,
         )

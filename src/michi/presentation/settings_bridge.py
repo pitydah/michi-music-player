@@ -26,6 +26,7 @@ class SettingsBridge(QObject):
     """Thin adapter: SettingsService persisted state → QML properties/slots."""
 
     onlineEnrichmentChanged = Signal()
+    dsdPcmPolicyChanged = Signal()
     libraryViewsChanged = Signal()
     # POST-R4 E2 (12.4, auditoría): la elección de artwork de un álbum
     # cambió (album_key) — el composition root la re-proyecta al
@@ -54,6 +55,18 @@ class SettingsBridge(QObject):
     def _get_online_enrichment(self) -> bool:
         return self._service.state.online_enrichment
 
+    def _get_dsd_pcm_conversion_consent(self) -> bool:
+        return bool(self._service.state.dsd_pcm_conversion_consent)
+
+    def _get_dsd_pcm_dsp_consent(self) -> bool:
+        return bool(self._service.state.dsd_pcm_dsp_consent)
+
+    def _get_dsd_pcm_quality_profile(self) -> str:
+        return self._service.state.dsd_pcm_quality_profile
+
+    def _get_dsd_pcm_policy_revision(self) -> int:
+        return int(self._service.state.dsd_pcm_policy_revision)
+
     def _get_library_views(self) -> str:
         return library_view_preferences_to_json(self._service.state.library_views)
 
@@ -64,6 +77,18 @@ class SettingsBridge(QObject):
     windowGeometry = Property(str, _get_window_geometry)
     onlineEnrichment = Property(
         bool, _get_online_enrichment, notify=onlineEnrichmentChanged
+    )
+    dsdPcmConversionConsent = Property(
+        bool, _get_dsd_pcm_conversion_consent, notify=dsdPcmPolicyChanged
+    )
+    dsdPcmDspConsent = Property(
+        bool, _get_dsd_pcm_dsp_consent, notify=dsdPcmPolicyChanged
+    )
+    dsdPcmQualityProfile = Property(
+        str, _get_dsd_pcm_quality_profile, notify=dsdPcmPolicyChanged
+    )
+    dsdPcmPolicyRevision = Property(
+        int, _get_dsd_pcm_policy_revision, notify=dsdPcmPolicyChanged
     )
     libraryViews = Property(str, _get_library_views, notify=libraryViewsChanged)
 
@@ -83,6 +108,25 @@ class SettingsBridge(QObject):
     def set_online_enrichment(self, enabled: bool) -> None:
         self._service.set_online_enrichment(bool(enabled))
         self.onlineEnrichmentChanged.emit()
+
+    @Slot(bool)
+    def set_dsd_pcm_conversion_consent(self, enabled: bool) -> None:
+        self._service.set_dsd_pcm_conversion_consent(bool(enabled))
+        self.dsdPcmPolicyChanged.emit()
+
+    @Slot(bool)
+    def set_dsd_pcm_dsp_consent(self, enabled: bool) -> None:
+        self._service.set_dsd_pcm_dsp_consent(bool(enabled))
+        self.dsdPcmPolicyChanged.emit()
+
+    @Slot(str, result=bool)
+    def set_dsd_pcm_quality_profile(self, profile: str) -> bool:
+        try:
+            self._service.set_dsd_pcm_quality_profile(profile)
+        except ValueError:
+            return False
+        self.dsdPcmPolicyChanged.emit()
+        return True
 
     @Slot(str, result=bool)
     def set_library_views(self, json_str: str) -> bool:

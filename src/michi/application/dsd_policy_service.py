@@ -57,6 +57,8 @@ class DsdPolicyRequest:
     current_processing_graph_revision: int | None = None
     binding_generation: int = 0
     current_binding_generation: int | None = None
+    policy_revision: int = 0
+    current_policy_revision: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,6 +69,7 @@ class DsdPolicyDecision:
     conversion_consent_required: bool
     quality_profile: str | None
     target_rate_hz: int | None = None
+    policy_revision: int = 0
 
 
 class DsdPolicyService:
@@ -164,6 +167,11 @@ class DsdPolicyService:
             and request.binding_generation != request.current_binding_generation
         ):
             return "BINDING_GENERATION_STALE"
+        if (
+            request.current_policy_revision is not None
+            and request.policy_revision != request.current_policy_revision
+        ):
+            return "POLICY_REVISION_STALE"
         return None
 
     @staticmethod
@@ -180,6 +188,7 @@ class DsdPolicyService:
                 and not request.conversion_consent
             ),
             quality_profile=request.quality_profile,
+            policy_revision=request.policy_revision,
         )
 
     def _refused(self, reason: str, request: DsdPolicyRequest) -> DsdPolicyDecision:
@@ -189,6 +198,7 @@ class DsdPolicyService:
             reasons=(reason,),
             conversion_consent_required=reason == "CONVERSION_CONSENT_REQUIRED",
             quality_profile=request.quality_profile,
+            policy_revision=request.policy_revision,
         )
 
     def _unavailable(self, reason: str, request: DsdPolicyRequest) -> DsdPolicyDecision:
@@ -198,4 +208,5 @@ class DsdPolicyService:
             reasons=(reason,),
             conversion_consent_required=False,
             quality_profile=request.quality_profile,
+            policy_revision=request.policy_revision,
         )

@@ -1257,6 +1257,38 @@ class SQLiteSettingsRepository(SettingsRepository):
                         "invalid persisted setting 'audio_engine_id'; "
                         "using default qt_multimedia"
                     )
+            elif key == "dsd_pcm_conversion_consent":
+                state.dsd_pcm_conversion_consent, malformed = _decode_dsd_bool(value)
+                if malformed:
+                    logger.warning(
+                        "invalid persisted setting 'dsd_pcm_conversion_consent'; "
+                        "using safe default False"
+                    )
+            elif key == "dsd_pcm_dsp_consent":
+                state.dsd_pcm_dsp_consent, malformed = _decode_dsd_bool(value)
+                if malformed:
+                    logger.warning(
+                        "invalid persisted setting 'dsd_pcm_dsp_consent'; "
+                        "using safe default False"
+                    )
+            elif key == "dsd_pcm_quality_profile":
+                state.dsd_pcm_quality_profile, malformed = _decode_dsd_quality_profile(
+                    value
+                )
+                if malformed:
+                    logger.warning(
+                        "invalid persisted setting 'dsd_pcm_quality_profile'; "
+                        "using default HIGH"
+                    )
+            elif key == "dsd_pcm_policy_revision":
+                state.dsd_pcm_policy_revision, malformed = _decode_dsd_policy_revision(
+                    value
+                )
+                if malformed:
+                    logger.warning(
+                        "invalid persisted setting 'dsd_pcm_policy_revision'; "
+                        "using default 0"
+                    )
             elif key == "library_view_preferences":
                 state.library_views, malformed = library_view_preferences_from_json(
                     value
@@ -1275,6 +1307,8 @@ class SQLiteSettingsRepository(SettingsRepository):
                         "invalid persisted setting 'album_artwork_source'; "
                         "using empty defaults"
                     )
+        if state.dsd_pcm_dsp_consent and not state.dsd_pcm_conversion_consent:
+            state.dsd_pcm_dsp_consent = False
         return state
 
     def save(self, state: SettingsState) -> None:
@@ -1287,6 +1321,13 @@ class SQLiteSettingsRepository(SettingsRepository):
             ("window_geometry", window_geometry_to_json(state.window_geometry)),
             ("online_enrichment", str(state.online_enrichment).lower()),
             ("audio_engine_id", state.audio_engine_id.value),
+            (
+                "dsd_pcm_conversion_consent",
+                str(state.dsd_pcm_conversion_consent).lower(),
+            ),
+            ("dsd_pcm_dsp_consent", str(state.dsd_pcm_dsp_consent).lower()),
+            ("dsd_pcm_quality_profile", state.dsd_pcm_quality_profile),
+            ("dsd_pcm_policy_revision", str(state.dsd_pcm_policy_revision)),
             (
                 "library_view_preferences",
                 library_view_preferences_to_json(state.library_views),
@@ -1312,6 +1353,29 @@ class SQLiteSettingsRepository(SettingsRepository):
             conn.commit()
         finally:
             conn.close()
+
+
+def _decode_dsd_bool(raw: object) -> tuple[bool, bool]:
+    """AP2-F10 consent is fail-closed: only explicit booleans enable it."""
+    if isinstance(raw, str) and raw.strip().lower() in {"true", "false"}:
+        return raw.strip().lower() == "true", False
+    return False, True
+
+
+def _decode_dsd_quality_profile(raw: object) -> tuple[str, bool]:
+    if isinstance(raw, str) and raw in {"FAST", "BALANCED", "HIGH", "REFERENCE"}:
+        return raw, False
+    return "HIGH", True
+
+
+def _decode_dsd_policy_revision(raw: object) -> tuple[int, bool]:
+    try:
+        value = int(str(raw))
+    except (TypeError, ValueError):
+        return 0, True
+    if value < 0:
+        return 0, True
+    return value, False
 
 
 def _decode_online_enrichment(raw: object) -> tuple[bool, bool]:

@@ -263,6 +263,12 @@ class SettingsState:
     # M11.3F: persisted user engine preference (SELECTED intent — never the
     # ACTIVE engine). Missing/malformed preference falls back to Qt.
     audio_engine_id: AudioEngineId = AudioEngineId.QT_MULTIMEDIA
+    # AP2-F10: explicit, revisioned DSD conversion consent. Conversion and
+    # DSP consent are deliberately separate; both default to deny.
+    dsd_pcm_conversion_consent: bool = False
+    dsd_pcm_dsp_consent: bool = False
+    dsd_pcm_quality_profile: str = "HIGH"
+    dsd_pcm_policy_revision: int = 0
     library_views: LibraryViewPreferences = field(
         default_factory=LibraryViewPreferences
     )

@@ -176,6 +176,19 @@ def test_preserve_requires_available_native_route():
     assert result.reason == "NATIVE_DSD_UNAVAILABLE"
 
 
+def test_stale_policy_revision_is_unavailable():
+    result = DsdPolicyService().decide(
+        _request(
+            intent=DsdIntent.CONVERT_TO_PCM,
+            conversion_consent=True,
+            policy_revision=3,
+            current_policy_revision=4,
+        )
+    )
+    assert result.decision is OutputFamily.UNAVAILABLE
+    assert result.reason == "POLICY_REVISION_STALE"
+
+
 def test_conversion_requires_verified_source_truth():
     result = DsdPolicyService().decide(
         _request(

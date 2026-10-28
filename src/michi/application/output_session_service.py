@@ -452,7 +452,7 @@ class ProductiveOutputRequestResolver:
         dsd_pcm_planner: DsdToPcmPlanner | None = None,
         dsd_pcm_target_rates: (Callable[[str, object], tuple[int, ...]] | None) = None,
         dsd_pcm_host_generation: Callable[[], int] | None = None,
-        dsd_pcm_decoder_available: bool = False,
+        dsd_pcm_decoder_available: bool | Callable[[DsdSignalFormat], bool] = False,
         dsd_pcm_dsp_available: bool = False,
         dsd_pcm_quality_profile: str = "HIGH",
     ) -> None:
@@ -619,7 +619,11 @@ class ProductiveOutputRequestResolver:
                             ),
                             binding_generation=binding.generation,
                             available_output_rates=rates,
-                            decoder_available=self._dsd_pcm_decoder_available,
+                            decoder_available=(
+                                self._dsd_pcm_decoder_available(dsd.signal)
+                                if callable(self._dsd_pcm_decoder_available)
+                                else self._dsd_pcm_decoder_available
+                            ),
                             target_qualified=bool(rates),
                             dsp_active=(
                                 dsd_decision.decision is DsdOutputFamily.DSD_TO_PCM_DSP
@@ -633,6 +637,7 @@ class ProductiveOutputRequestResolver:
                                 if self._dsd_pcm_host_generation is not None
                                 else 0
                             ),
+                            policy_revision=dsd_decision.policy_revision,
                         )
                     except Exception as exc:  # noqa: BLE001 - typed planner boundary
                         code = getattr(exc, "code", "DSD_PCM_PLAN_FAILED")

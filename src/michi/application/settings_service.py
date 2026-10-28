@@ -66,6 +66,78 @@ class SettingsService:
             self.state.audio_engine_id = previous
             raise
 
+    def set_dsd_pcm_conversion_consent(self, enabled: bool) -> None:
+        """Persist explicit DSD→PCM conversion consent transactionally.
+
+        Absence is the safe default. Every accepted change advances the
+        monotonic policy revision consumed by plans and pre-COMMIT checks.
+        Revoking conversion also revokes DSP consent on the same route.
+        """
+        enabled = bool(enabled)
+        previous = (
+            self.state.dsd_pcm_conversion_consent,
+            self.state.dsd_pcm_dsp_consent,
+            self.state.dsd_pcm_policy_revision,
+        )
+        if previous[0] == enabled:
+            return
+        self.state.dsd_pcm_conversion_consent = enabled
+        if not enabled:
+            self.state.dsd_pcm_dsp_consent = False
+        self.state.dsd_pcm_policy_revision += 1
+        try:
+            self.save()
+        except Exception:
+            (
+                self.state.dsd_pcm_conversion_consent,
+                self.state.dsd_pcm_dsp_consent,
+                self.state.dsd_pcm_policy_revision,
+            ) = previous
+            raise
+
+    def set_dsd_pcm_dsp_consent(self, enabled: bool) -> None:
+        """Persist DSP consent separately; requires conversion consent."""
+        enabled = bool(enabled)
+        if enabled and not self.state.dsd_pcm_conversion_consent:
+            raise ValueError("DSD_PCM_DSP_CONSENT_REQUIRES_CONVERSION")
+        previous = (
+            self.state.dsd_pcm_dsp_consent,
+            self.state.dsd_pcm_policy_revision,
+        )
+        if previous[0] == enabled:
+            return
+        self.state.dsd_pcm_dsp_consent = enabled
+        self.state.dsd_pcm_policy_revision += 1
+        try:
+            self.save()
+        except Exception:
+            (
+                self.state.dsd_pcm_dsp_consent,
+                self.state.dsd_pcm_policy_revision,
+            ) = previous
+            raise
+
+    def set_dsd_pcm_quality_profile(self, quality_profile: str) -> None:
+        allowed = ("FAST", "BALANCED", "HIGH", "REFERENCE")
+        if quality_profile not in allowed:
+            raise ValueError("DSD_PCM_QUALITY_PROFILE_UNKNOWN")
+        previous = (
+            self.state.dsd_pcm_quality_profile,
+            self.state.dsd_pcm_policy_revision,
+        )
+        if previous[0] == quality_profile:
+            return
+        self.state.dsd_pcm_quality_profile = quality_profile
+        self.state.dsd_pcm_policy_revision += 1
+        try:
+            self.save()
+        except Exception:
+            (
+                self.state.dsd_pcm_quality_profile,
+                self.state.dsd_pcm_policy_revision,
+            ) = previous
+            raise
+
     def set_album_artwork_source(self, album_key: str, source: str) -> None:
         """POST-R4 E2 (12.4): persiste la fuente de artwork elegida por
         el usuario para un álbum ("local"/"external"/"" = quitar la

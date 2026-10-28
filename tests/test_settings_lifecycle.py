@@ -155,3 +155,51 @@ class TestStudioListMetadataLevelRemovedFromSchema:
         assert "metadataLevel" not in serialized["studioList"], (
             "el studio list persistido ya no lleva metadataLevel"
         )
+
+
+class TestDsdPcmPolicyPersistence:
+    def test_consent_revision_and_quality_round_trip(self, tmp_path):
+        from michi.infrastructure.sqlite_settings import (
+            SQLiteSettingsRepository,
+        )
+
+        db = tmp_path / "settings.db"
+        repo = SQLiteSettingsRepository.open_for_startup(db)
+        service = SettingsService(repo)
+        assert service.state.dsd_pcm_conversion_consent is False
+        service.set_dsd_pcm_quality_profile("BALANCED")
+        service.set_dsd_pcm_conversion_consent(True)
+        service.set_dsd_pcm_dsp_consent(True)
+        reloaded = SettingsService(SQLiteSettingsRepository.open_for_startup(db))
+        state = reloaded.state
+        assert state.dsd_pcm_conversion_consent is True
+        assert state.dsd_pcm_dsp_consent is True
+        assert state.dsd_pcm_quality_profile == "BALANCED"
+        assert state.dsd_pcm_policy_revision == 3
+
+    def test_malformed_persisted_policy_fails_closed(self, tmp_path):
+        import sqlite3
+
+        from michi.infrastructure.sqlite_settings import (
+            SQLiteSettingsRepository,
+        )
+
+        db = tmp_path / "settings.db"
+        SQLiteSettingsRepository.open_for_startup(db)
+        conn = sqlite3.connect(str(db))
+        conn.executemany(
+            "INSERT OR REPLACE INTO settings VALUES (?, ?)",
+            [
+                ("dsd_pcm_conversion_consent", "yes"),
+                ("dsd_pcm_dsp_consent", "1"),
+                ("dsd_pcm_quality_profile", "ULTRA"),
+                ("dsd_pcm_policy_revision", "-5"),
+            ],
+        )
+        conn.commit()
+        conn.close()
+        state = SettingsService(SQLiteSettingsRepository.open_for_startup(db)).state
+        assert state.dsd_pcm_conversion_consent is False
+        assert state.dsd_pcm_dsp_consent is False
+        assert state.dsd_pcm_quality_profile == "HIGH"
+        assert state.dsd_pcm_policy_revision == 0
