@@ -4,7 +4,7 @@
   "sprint": "AP2-F10-S7",
   "state": "ACTIVE",
   "base_head": "6ba248f",
-  "code_head": "4a3022a",
+  "code_head": "cb07540",
   "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
   "verdict": "ACTIVE, VERIFYING — selected F06 profile now reaches the productive DSD→PCM host; transitions, Signal Path and numeric certification remain",
   "implemented": {
@@ -28,7 +28,7 @@
     },
     "effective_after_start": {
       "status": "IMPLEMENTED",
-      "detail": "The child may commit with configured caps while the pipeline is still quiescent; EFFECTIVE is published only after host-confirmed START and a negotiated F06 readback. A failed finalize retires the execution and never publishes EFFECTIVE.",
+      "detail": "The child may commit with configured caps while the pipeline is still quiescent; EFFECTIVE is published only after host-confirmed START and a negotiated F06 readback. A failed finalize retires the execution and never publishes EFFECTIVE. EOS and stop both retire EFFECTIVE; EOS does not leave a false effective processing truth.",
       "files": [
         "src/michi/bootstrap/__init__.py",
         "src/michi/application/output_session_service.py"
@@ -43,8 +43,8 @@
     "product_dsp_e2e": "1 passed — Settings consent, selected ProcessingProfile, graph compile, AudioProcessingService commit, host installation, negotiated readback, EFFECTIVE, stop invalidation",
     "host_processing_integration": "1 passed — AudioProcessingService installs F06 into DsdPcmHostRuntime through the supervised host",
     "host_sample_vertical": "3 passed — real DSD64→F32LE→PEQ capture, bypass differs, direct route rollback",
-    "full_suite": "6300 passed, 22 skipped, 0 failed in 1888.79s (31:28)",
-    "ci": "PASS — run 40741342880; all 4 jobs success; check 6270 passed, 52 skipped, 0 failed; native DSP step 13 passed",
+    "full_suite": "6300 passed, 22 skipped, 0 failed in 1872.63s (31:12)",
+    "ci": "PENDING_PUSH — previous run 40741342880 was green for code 4a3022a; EOS invalidation is new",
     "focused": "54 passed in 78.06s (processing suites + DSD host/product)"
   },
   "gates": {
@@ -59,7 +59,7 @@
     "S7-09_signal_truth_path": "PARTIAL — processing EFFECTIVE/readback exists; full observed node projection absent",
     "S7-10_numeric_conformance": "PARTIAL — harness exists, §274.4 oracle absent",
     "S7-11_async_product": "PARTIAL — async worker exists; product E2E uses inline executor",
-    "S7-12_ci": "PASS — run 40741342880 at fd7ae1a; all four jobs success"
+    "S7-12_ci": "PENDING_PUSH"
   },
   "constraints": {
     "f09": "CLOSED",
@@ -80,6 +80,11 @@
       "status": "FAILURE",
       "jobs": "check and dac failed; check had no avdec_dsd_msbf; product DSP test did not skip",
       "fix": "skip when gst-libav DSD decoder absent; add both DSP tests to dop-native-gate-a"
+    },
+    "40746957435": {
+      "status": "SUCCESS",
+      "head": "e37e985",
+      "note": "docs-only CI green before EOS invalidation"
     }
   },
   "docs_head": "fd7ae1a",
