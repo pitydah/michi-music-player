@@ -13,6 +13,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -880,7 +881,7 @@ def _build_services(
             gstreamer_provider.current_supervisor.host_generation
         ),
         dsd_pcm_decoder_available=_dsd_pcm_decoder_available,
-        dsd_pcm_dsp_available=False,
+        dsd_pcm_dsp_available=True,
     )
     preparation_executor = output_preparation_executor or QtAsyncCallExecutor()
     # AP2-F05 Package A: ONE processing authority over the SAME hosted host.
@@ -1293,6 +1294,116 @@ def _build_services(
             )
         return lab
 
+    def _dsd_pcm_processing_plan(plan):
+        """Compile the EXPLICITLY selected F06 profile for this DSD PCM route."""
+        if not settings_service.state.dsd_pcm_dsp_consent:
+            return None
+        profile = _current_processing_profile()
+        if profile is None or not bool(getattr(profile, "enabled", False)):
+            raise OutputSessionError(
+                "DSD_PCM_DSP_PROFILE_UNAVAILABLE",
+                "DSP consent is enabled but no active F06 profile is selected",
+            )
+        target_device = getattr(profile, "target_device_id", None)
+        if target_device and target_device != plan.stable_device_id:
+            raise OutputSessionError(
+                "DSD_PCM_DSP_PROFILE_DEVICE_MISMATCH",
+                "the selected F06 profile targets another device",
+            )
+        from michi.application.effective_processing_graph import (
+            EffectiveProcessingGraphResolver,
+        )
+        from michi.application.managed_pcm_output_planner import with_auto_headroom
+        from michi.application.processing_graph_compiler import (
+            ProcessingGraphCompiler,
+            ProcessingSamplePolicy,
+        )
+        from michi.domain.audio_processing import ConvolutionNode
+
+        positions = tuple(plan.source_format.layout or ())
+        if not positions:
+            positions = tuple(f"CH{index}" for index in range(plan.channels))
+        signal = PcmSignalFormat(
+            rate_hz=plan.target_rate_hz,
+            transport_format=plan.output_format,
+            significant_bits=32,
+            layout=ChannelLayout(positions=positions),
+        )
+        graph = profile.graph
+        if bool(getattr(profile, "auto_headroom", False)):
+            graph = with_auto_headroom(graph)
+        if any(isinstance(node, ConvolutionNode) for node in graph.nodes):
+            raise OutputSessionError(
+                "DSD_PCM_DSP_FIR_STORE_UNAVAILABLE",
+                "FIR profiles are not wired to the DSD→PCM route",
+            )
+        audio_processing_service.refresh_capabilities()
+        effective = EffectiveProcessingGraphResolver().resolve(
+            graph, input_signal=signal, assets=()
+        )
+        return ProcessingGraphCompiler().compile(
+            effective,
+            backend=audio_processing_service.capabilities,
+            assets=(),
+            sample_policy=ProcessingSamplePolicy(terminal_format_verified=True),
+        )
+
+    def _dsd_pcm_install_processing(plan, identity):
+        compiled = _dsd_pcm_processing_plan(plan)
+        if compiled is None:
+            return None
+        candidate = audio_processing_service.begin_candidate(
+            compiled,
+            host_generation=int(identity.get("host_generation") or 0),
+            transport=processing_transport,
+        )
+        receipt = audio_processing_service.commit_candidate(
+            candidate,
+            transport=processing_transport,
+            allow_configured_caps=True,
+        )
+        return {
+            "plan_id": compiled.plan_id,
+            "graph_revision": compiled.graph_revision,
+            "processing_generation": candidate.processing_generation,
+            "published_revision": None,
+            "runtime_identity": receipt.native_runtime_identity,
+            "latency_samples": int(compiled.total_latency_samples),
+            "receipt": receipt,
+        }
+
+    def _dsd_pcm_finalize_processing(prepared: DsdPcmSessionPrepared) -> None:
+        receipt = prepared.processing_receipt
+        if receipt is None:
+            return
+        port = gstreamer_provider.current_port
+        if port is None or not hasattr(port, "query_dsd_pcm_identity"):
+            raise OutputSessionError(
+                "DSD_PCM_DSP_EVIDENCE_UNAVAILABLE",
+                "the DSD→PCM host cannot prove post-START processing",
+            )
+        deadline = time.monotonic() + 2.0
+        processing = None
+        while time.monotonic() < deadline:
+            identity = port.query_dsd_pcm_identity()
+            candidate = identity.get("processing")
+            if isinstance(candidate, dict):
+                processing = candidate
+                if candidate.get("caps_source") == "negotiated":
+                    break
+            time.sleep(0.01)
+        if not isinstance(processing, dict):
+            raise OutputSessionError(
+                "DSD_PCM_DSP_EVIDENCE_UNAVAILABLE",
+                "the host returned no processing readback after START",
+            )
+        if processing.get("caps_source") != "negotiated":
+            raise OutputSessionError(
+                "DSD_PCM_DSP_NOT_NEGOTIATED",
+                "DSP was installed but the working caps were not negotiated",
+            )
+        audio_processing_service.publish_effective(receipt)
+
     def _dsd_pcm_prepare(plan, path, instance_id):
         port = gstreamer_provider.current_port
         if port is None or not hasattr(port, "prepare_dsd_pcm"):
@@ -1337,6 +1448,19 @@ def _build_services(
             "binding_generation": int(identity.get("binding_generation") or 0),
             "host_generation": int(identity.get("host_generation") or 0),
         }
+        try:
+            processing = _dsd_pcm_install_processing(plan, identity)
+        except Exception:
+            # The child pipeline was prepared but never reached COMMIT.
+            # Retire it with the exact identity before propagating the DSP
+            # failure; a leaked prepared pipeline is not acceptable.
+            with contextlib.suppress(Exception):
+                port.abort_dsd_pcm(expected)
+            raise
+        processing_receipt = None
+        if processing is not None:
+            processing_receipt = processing.pop("receipt", None)
+            identity["processing"] = processing
         return DsdPcmSessionPrepared(
             plan=plan,
             execution_id=expected["execution_id"],
@@ -1346,6 +1470,7 @@ def _build_services(
             runtime_identity=dict(identity),
             evidence_refs=tuple(plan.evidence_refs),
             handle=expected,
+            processing_receipt=processing_receipt,
         )
 
     def _dsd_pcm_commit(prepared: DsdPcmSessionPrepared) -> None:
@@ -1354,14 +1479,22 @@ def _build_services(
         gstreamer_provider.current_port.commit_dsd_pcm(prepared.handle)
 
     def _dsd_pcm_abort(prepared: DsdPcmSessionPrepared, reason: str) -> dict:
-        if prepared.handle is None:
-            return {"aborted": True, "already": True}
-        return gstreamer_provider.current_port.abort_dsd_pcm(prepared.handle)
+        try:
+            if prepared.handle is None:
+                return {"aborted": True, "already": True}
+            return gstreamer_provider.current_port.abort_dsd_pcm(prepared.handle)
+        finally:
+            # DSP evidence belongs to the execution being retired. Even an
+            # unconfirmed physical abort must not leave EFFECTIVE published.
+            audio_processing_service.invalidate_effective(f"dsd_pcm_abort:{reason}")
 
     def _dsd_pcm_stop(prepared: DsdPcmSessionPrepared, reason: str) -> dict:
-        if prepared.handle is None:
-            return {"stopped": True, "already": True}
-        return gstreamer_provider.current_port.stop_dsd_pcm(prepared.handle)
+        try:
+            if prepared.handle is None:
+                return {"stopped": True, "already": True}
+            return gstreamer_provider.current_port.stop_dsd_pcm(prepared.handle)
+        finally:
+            audio_processing_service.invalidate_effective(f"dsd_pcm_stop:{reason}")
 
     def _dsd_pcm_plan_still_current(plan) -> bool:
         state = settings_service.state
@@ -1410,6 +1543,7 @@ def _build_services(
         dsd_pcm_abort=_dsd_pcm_abort,
         dsd_pcm_stop=_dsd_pcm_stop,
         dsd_pcm_plan_still_current=_dsd_pcm_plan_still_current,
+        dsd_pcm_finalize_processing=_dsd_pcm_finalize_processing,
         truth_recorder=signal_truth,
     )
     from michi.application.volume_policy_service import VolumePolicyService

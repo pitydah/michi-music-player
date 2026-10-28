@@ -564,6 +564,7 @@ class AudioProcessingService:
         candidate: ProcessingCandidateIdentity,
         *,
         transport: object | None = None,
+        allow_configured_caps: bool = False,
     ) -> ProcessingCommitReceipt:
         """Authorize the destructive commit and require a real receipt.
 
@@ -640,7 +641,10 @@ class AudioProcessingService:
                         "DSP_COMMIT_RECEIPT_INVALID",
                         "receipt carries no post-install readback",
                     )
-                if post_install.get("caps_source") != "negotiated":
+                if (
+                    post_install.get("caps_source") != "negotiated"
+                    and not allow_configured_caps
+                ):
                     raise ProcessingTransactionError(
                         "DSP_CAPS_NOT_NEGOTIATED",
                         "productive commit requires negotiated working caps",

@@ -383,8 +383,9 @@ class HostEngineSession:
         built = build_processing_candidate(plan)
         self._processing_candidate = built
         self._processing_plan_wire = dict(plan)
+        owner = self._dsd_pcm if self._dsd_pcm_active else self._port
         self._processing_pipeline_generation = int(
-            getattr(self._port, "pipeline_generation", 0)
+            getattr(owner, "pipeline_generation", 0)
         )
         self._processing_generation = int(payload.get("processing_generation") or 0)
         self._processing_host_generation = int(payload.get("host_generation") or 0)
@@ -410,11 +411,12 @@ class HostEngineSession:
                 "detail": "commit plan does not match the prepared candidate",
             }
         port = self._require_port()
+        owner = self._dsd_pcm if self._dsd_pcm_active else port
         # ── PRE-DESTRUCTIVE GENERATION FENCE ─────────────────────────
         # Prove the CURRENT reality still matches the prepared identity
         # BEFORE any native mutation: a stale commit can never install over
         # a newer pipeline/processing generation.
-        current_pipeline_generation = int(getattr(port, "pipeline_generation", 0))
+        current_pipeline_generation = int(getattr(owner, "pipeline_generation", 0))
         if (
             self._processing_pipeline_generation is None
             or current_pipeline_generation != self._processing_pipeline_generation
@@ -448,7 +450,10 @@ class HostEngineSession:
         # PREPARE and is retired FIRST with PROVEN teardown: a teardown
         # failure leaves the productive runtime untouched.
         self._abort_processing_candidate()
-        install = getattr(port, "install_processing_filter", None)
+        if owner is self._dsd_pcm:
+            install = getattr(owner, "install_processing_filter", None)
+        else:
+            install = getattr(port, "install_processing_filter", None)
         if not callable(install):
             # EFFECTIVE requires a REAL productive install: fail closed.
             return False, {
@@ -463,12 +468,23 @@ class HostEngineSession:
             inspect_processing_filter,
         )
 
-        filter_info = build_processing_filter(plan)
         try:
-            install_result = install(filter_info["bin"])
-            if not isinstance(install_result, dict):
+            if owner is self._dsd_pcm:
+                observed = install(plan)
+                install_result = {
+                    "installed": True,
+                    "runtime_identity": (
+                        f"dsd-pcm:{observed.get('plan_id', '')}:"
+                        f"{current_pipeline_generation}"
+                    ),
+                    "pipeline_generation": current_pipeline_generation,
+                }
+            else:
+                filter_info = build_processing_filter(plan)
+                install_result = install(filter_info["bin"])
+                observed = inspect_processing_filter(filter_info, plan)
+            if not isinstance(install_result, dict) or not isinstance(observed, dict):
                 raise RuntimeError("install seam returned no receipt facts")
-            observed = inspect_processing_filter(filter_info, plan)
         except Exception as exc:  # noqa: BLE001 - typed rejection boundary
             code = getattr(exc, "code", None) or "DSP_COMMIT_FAILED"
             return False, {
@@ -549,7 +565,8 @@ class HostEngineSession:
         self, payload: dict[str, Any]
     ) -> tuple[bool, dict[str, Any]]:
         port = self._require_port()
-        remove = getattr(port, "remove_processing_filter", None)
+        owner = self._dsd_pcm if self._dsd_pcm_active else port
+        remove = getattr(owner, "remove_processing_filter", None)
         if not callable(remove):
             return False, {
                 "code": "DSP_PLAYBACK_SEAM_UNAVAILABLE",
@@ -559,14 +576,16 @@ class HostEngineSession:
         if self._processing_candidate is not None:
             self._abort_processing_candidate()
             self._processing_plan_wire = None
-        installed_filter = getattr(port, "_installed_processing_filter", None)
+        installed_filter = getattr(owner, "_installed_processing_filter", None)
+        if owner is self._dsd_pcm:
+            installed_filter = getattr(owner, "_processing_filter", None)
         had_filter = installed_filter is not None
         removed = bool(remove())
         return True, {
             "bypassed": removed,
             "removed": removed,
             "had_filter": had_filter,
-            "pipeline_generation": int(getattr(port, "pipeline_generation", 0)),
+            "pipeline_generation": int(getattr(owner, "pipeline_generation", 0)),
         }
 
     def _op_abort_processing_candidate(

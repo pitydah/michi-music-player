@@ -16,6 +16,7 @@ one immutable request and reports identity/caps evidence.
 from __future__ import annotations
 
 import contextlib
+import time
 from dataclasses import dataclass
 from typing import Any
 
@@ -133,9 +134,19 @@ class DsdPcmHostRuntime:
         self._sink = None
         self._processing_filter = None
         self._processing_info: dict[str, Any] | None = None
+        self._processing_filter_info: dict[str, Any] | None = None
+        self._processing_plan_wire: dict[str, Any] | None = None
         self._capture_probe: int | None = None
         self._captured = bytearray()
         self._capture_limit = 0
+        self._pipeline_generation = 0
+
+    @property
+    def pipeline_generation(self) -> int:
+        return self._pipeline_generation
+
+    def _advance_pipeline_generation(self) -> None:
+        self._pipeline_generation += 1
 
     def _ensure_gst(self):
         if self._gst is not None:
@@ -158,6 +169,7 @@ class DsdPcmHostRuntime:
                 "release the active DSD→PCM execution first",
             )
         self.close()
+        self._advance_pipeline_generation()
         gst = self._ensure_gst()
         self._request = request
         pipeline = gst.Pipeline.new("michi-dsd-pcm")
@@ -391,7 +403,22 @@ class DsdPcmHostRuntime:
                 raise DsdPcmHostError(
                     "DSD_PCM_PROCESSING_LINK_FAILED", "filter link rejected"
                 )
-            filter_bin.sync_state_with_parent()
+            filter_bin.set_state(self._gst.State.PAUSED)
+            filter_bin.get_state(2 * self._gst.SECOND)
+            if self._pipeline is not None:
+                self._pipeline.set_state(self._gst.State.PAUSED)
+                self._pipeline.get_state(2 * self._gst.SECOND)
+            working_capsfilter = info.get("working_capsfilter")
+            deadline = time.monotonic() + 2.0
+            while time.monotonic() < deadline:
+                source_pad = (
+                    working_capsfilter.get_static_pad("src")
+                    if working_capsfilter is not None
+                    else None
+                )
+                if source_pad is not None and source_pad.get_current_caps() is not None:
+                    break
+                time.sleep(0.01)
             readback = inspect_processing_filter(info, plan)
         except Exception as exc:
             if added:
@@ -410,6 +437,8 @@ class DsdPcmHostRuntime:
             raise
         self._processing_filter = filter_bin
         self._processing_info = readback
+        self._processing_filter_info = info
+        self._processing_plan_wire = dict(plan)
         if self._identity is not None:
             self._identity["processing"] = readback
         return readback
@@ -444,6 +473,8 @@ class DsdPcmHostRuntime:
             )
         self._processing_filter = None
         self._processing_info = None
+        self._processing_filter_info = None
+        self._processing_plan_wire = None
         if self._identity is not None:
             self._identity["processing"] = None
 
@@ -611,15 +642,33 @@ class DsdPcmHostRuntime:
         self._sink = None
         self._processing_filter = None
         self._processing_info = None
+        self._processing_filter_info = None
+        self._processing_plan_wire = None
         self._capture_probe = None
         self._errors = []
         self._eos = False
+        self._advance_pipeline_generation()
         return True
 
     def query_identity(self) -> dict[str, Any]:
         self._drain_bus()
         if self._identity is None:
             return {"dsd_pcm": False}
+        if (
+            self._processing_filter is not None
+            and self._processing_filter_info is not None
+        ):
+            from michi.infrastructure.audio_processing.gstreamer_runtime import (
+                inspect_processing_filter,
+            )
+
+            try:
+                self._processing_info = inspect_processing_filter(
+                    self._processing_filter_info, self._processing_plan_wire or {}
+                )
+                self._identity["processing"] = self._processing_info
+            except Exception:
+                pass
         payload = dict(self._identity)
         payload.update(
             {
@@ -685,7 +734,10 @@ class DsdPcmHostRuntime:
         self._sink = None
         self._processing_filter = None
         self._processing_info = None
+        self._processing_filter_info = None
+        self._processing_plan_wire = None
         self._capture_probe = None
         self._committed = False
         self._errors = []
         self._eos = False
+        self._advance_pipeline_generation()

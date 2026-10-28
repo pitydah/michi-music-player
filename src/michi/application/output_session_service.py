@@ -382,6 +382,7 @@ class DsdPcmSessionPrepared:
     runtime_identity: dict
     evidence_refs: tuple[str, ...]
     handle: object | None = None
+    processing_receipt: object | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -948,6 +949,9 @@ class OutputSessionService:
         dsd_pcm_abort: (Callable[[DsdPcmSessionPrepared, str], dict] | None) = None,
         dsd_pcm_stop: (Callable[[DsdPcmSessionPrepared, str], dict] | None) = None,
         dsd_pcm_plan_still_current: Callable[[DsdToPcmPlan], bool] | None = None,
+        dsd_pcm_finalize_processing: (
+            Callable[[DsdPcmSessionPrepared], None] | None
+        ) = None,
         truth_recorder=None,
     ) -> None:
         self._planner = planner
@@ -976,6 +980,7 @@ class OutputSessionService:
         self._dsd_pcm_abort = dsd_pcm_abort
         self._dsd_pcm_stop = dsd_pcm_stop
         self._dsd_pcm_plan_still_current = dsd_pcm_plan_still_current
+        self._dsd_pcm_finalize_processing = dsd_pcm_finalize_processing
         # ADDITIVE: the ONE canonical recorder (never a second one).
         self._truth_recorder = truth_recorder
         self._execution_instance_epoch = next(_EXECUTION_INSTANCE_SEQ)
@@ -1256,6 +1261,25 @@ class OutputSessionService:
         ):
             return False
         self._dsd_pcm_playing_execution = execution_id
+        if (
+            self._dsd_pcm_finalize_processing is not None
+            and prepared.processing_receipt is not None
+        ):
+            try:
+                self._dsd_pcm_finalize_processing(prepared)
+            except Exception as exc:  # noqa: BLE001 - effective gate
+                self._dsd_pcm_terminal_execution = prepared.execution_id
+                self._record_dsd_pcm_family(
+                    OutputFamilyState.UNAVAILABLE,
+                    prepared,
+                    detail=f"processing_finalize_failed:{exc}",
+                )
+                try:
+                    self._dsd_pcm_abort_quietly(prepared, "processing_finalize_failed")
+                finally:
+                    if self._state is OutputSessionState.RUNNING:
+                        self._transition(OutputSessionState.FAILED)
+                return False
         self._record_dsd_pcm_family(OutputFamilyState.RUNNING, prepared)
         return True
 
