@@ -5,7 +5,7 @@
   "state": "ACTIVE",
   "base_head": "966f2ea9912a7ae85e17dea0294de190e1f20975",
   "code_head": "ef4e162",
-  "docs_head": "PENDING_S6_DOCS_COMMIT",
+  "docs_head": "22030c0",
   "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
   "verdict": "ACTIVE, VERIFYING — core DSD→PCM product route and measured DSP lab vertical exist; AP2-F10 is not ready for closure review",
   "commits_observed": [
@@ -116,9 +116,9 @@
     "S6-27": "NOT_RUN — latency/continuity/EOS-tail metrics not certified",
     "S6-28": "PARTIAL — real host product E2E without DSP; DSP lab host only",
     "S6-29": "PASS (local) — wheel aeeee25c..., site-packages import, real host, RUNNING/EOS/RELEASED, no skip",
-    "S6-30": "PARTIAL — installed-wheel DSD→PCM step added to dop-native-gate-a; exact-SHA CI not yet observed",
-    "S6-31": "PASS (local) — 6295 passed, 22 skipped, 0 failed in 1871.59s on the S6 tree; exact-SHA CI pending",
-    "S6-32": "NOT_RUN — no final SHA CI run yet",
+    "S6-30": "PASS — installed-wheel DSD→PCM CI step executed successfully in dop-native-gate-a",
+    "S6-31": "PASS — local 6295/22/0 and CI 6267/50/0, all four jobs success",
+    "S6-32": "PASS (code+docs head 22030c0) — exact SHA run 40621715071, all four jobs success; later evidence-only commits are noted separately",
     "S6-33": "PARTIAL — this checkpoint plus measured artifacts; no final CI trace",
     "S6-34": "PASS — F14 NOT_RUN, F11–F15 LOCKED, PHASE2_STATE unchanged"
   },
@@ -132,7 +132,7 @@
     "installed_wheel_dsd_pcm": "LOCAL PASS — wheel aeeee25c37c3611d1754eca6debec34feba7b94a81adefd9ba209f1ed70fd5b1; site-packages import; RUNNING/EOS/RELEASED; cleanup confirmed",
     "focused_s6": "62 passed in 16.86s",
     "full_suite": "6295 passed, 22 skipped, 0 failed in 1871.59s (31:11)",
-    "ci": "PENDING_PUSH"
+    "ci": "PASS — run 40621715071; check 6267 passed, 50 skipped, 0 failed"
   },
   "constraints": {
     "f09": "CLOSED",
@@ -155,7 +155,23 @@
     "full_suite": "6295 passed, 22 skipped, 0 failed in 1871.59s (31:11)",
     "focused": "62 passed in 16.86s",
     "ruff": "PASS",
-    "alignment": "PENDING_DOCS",
+    "alignment": "GO at ef4e162",
     "installed_wheel": "PASS"
+  },
+  "ci": {
+    "run_id": "40621715071",
+    "head_sha": "22030c06e197e48c6c9cbdbb4d322b1b3d0894c2",
+    "status": "success",
+    "jobs": {
+      "check": "success",
+      "min-qt": "success",
+      "dac-v35-software-closure": "success",
+      "dop-native-gate-a": "success"
+    },
+    "check_tests": "6267 passed, 50 skipped, 0 failed in 1694.01s (28:14)",
+    "installed_dsd_pcm_e2e": "PASS — site-packages, fakesink, START/EOS/RELEASED, skipped=false, cleanup_confirmed=true",
+    "native_artifact_sha256": "ff3039feb4db80ce4e4c29c6d10535bf56c36220b6a0bf856b4b0fc8201d98ca",
+    "artifact_id": "12787433625",
+    "note": "CI run certifies code head ef4e162 plus docs 22030c0; later evidence-only commits do not change production code."
   }
 }
