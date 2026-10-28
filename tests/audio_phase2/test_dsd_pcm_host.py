@@ -183,3 +183,107 @@ def test_port_executes_dsd_pcm_with_exact_release_receipt(tmp_path, monkeypatch)
         assert again["release"]["execution_id"] == expected["execution_id"]
     finally:
         supervisor.close()
+
+
+def test_dsd_pcm_f06_peq_processes_real_f32_frames(tmp_path):
+    from michi.application.effective_processing_graph import (
+        EffectiveProcessingGraphResolver,
+    )
+    from michi.application.processing_graph_compiler import (
+        ProcessingBackendCapabilities,
+        ProcessingGraphCompiler,
+    )
+    from michi.domain.audio_processing import (
+        BiquadType,
+        ParametricEqNode,
+        PeqBand,
+        ProcessingGraph,
+        ProcessingStrategy,
+    )
+    from michi.domain.audio_signal import ChannelLayout, PcmSignalFormat
+    from michi.infrastructure.audio_processing.native_mapping import (
+        NativeProcessingMapping,
+    )
+
+    source = tmp_path / "dsp.dsf"
+    source.write_bytes(build_dsf(sample_count=88_200, payload=bytes([0x69]) * 176_400))
+    plan = DsdToPcmPlanner().plan(
+        source_identity="track:dsp",
+        source_format=_format(),
+        quality_profile="FAST",
+        binding_generation=1,
+        available_output_rates=(88_200,),
+        decoder_available=True,
+        target_qualified=True,
+        backend_version="gst-libav",
+    )
+    signal = PcmSignalFormat(
+        rate_hz=88_200,
+        transport_format="F32LE",
+        significant_bits=32,
+        layout=ChannelLayout(positions=("FL", "FR")),
+    )
+    graph = ProcessingGraph(
+        graph_id="graph:dsd-peq",
+        revision=1,
+        nodes=(
+            ParametricEqNode(
+                node_id="peq",
+                bands=(PeqBand("b1", BiquadType.PEAK, 1000.0, 1.4, 12.0, True),),
+            ),
+        ),
+    )
+    effective = EffectiveProcessingGraphResolver().resolve(
+        graph, input_signal=signal, assets=()
+    )
+    compiled = ProcessingGraphCompiler().compile(
+        effective,
+        backend=ProcessingBackendCapabilities(
+            backend_id="test", strategies=frozenset(ProcessingStrategy)
+        ),
+        assets=(),
+    )
+    wire = NativeProcessingMapping().plan_to_wire(compiled)
+
+    from michi.infrastructure.audio_engines.gstreamer_host_dsd_pcm import (
+        DsdPcmHostRuntime,
+    )
+
+    def run(*, dsp: bool) -> bytes:
+        runtime = DsdPcmHostRuntime()
+        try:
+            identity = runtime.prepare(_payload(plan, source))
+            expected = {
+                "plan_id": identity["plan_id"],
+                "execution_id": identity["execution_id"],
+                "stable_device_id": identity["stable_device_id"],
+                "device": identity["device"],
+                "binding_generation": identity["binding_generation"],
+                "host_generation": identity["host_generation"],
+            }
+            if dsp:
+                readback = runtime.install_processing_filter(wire)
+                assert readback["graph_revision"] == 1
+                assert readback["nodes"]
+            runtime.enable_capture(400_000)
+            runtime.commit(expected)
+            runtime.start(expected)
+            deadline = time.monotonic() + 30.0
+            while time.monotonic() < deadline:
+                if runtime.query_identity().get("eos"):
+                    break
+                time.sleep(0.02)
+            runtime.stop(expected)
+            return runtime.captured_bytes()
+        finally:
+            runtime.close()
+
+    bypass = run(dsp=False)
+    processed = run(dsp=True)
+    assert bypass and processed
+    assert bypass != processed
+    assert len(processed) % 8 == 0
+    import struct
+
+    samples = struct.unpack(f"<{len(processed) // 4}f", processed)
+    assert all(value == value and abs(value) != float("inf") for value in samples)

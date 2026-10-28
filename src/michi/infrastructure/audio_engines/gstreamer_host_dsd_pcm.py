@@ -129,6 +129,13 @@ class DsdPcmHostRuntime:
         self._committed = False
         self._errors: list[dict[str, str]] = []
         self._eos = False
+        self._pcm_caps = None
+        self._sink = None
+        self._processing_filter = None
+        self._processing_info: dict[str, Any] | None = None
+        self._capture_probe: int | None = None
+        self._captured = bytearray()
+        self._capture_limit = 0
 
     def _ensure_gst(self):
         if self._gst is not None:
@@ -236,6 +243,8 @@ class DsdPcmHostRuntime:
                     )
             elements.append(resampler)
         elements.extend([pcm_caps, sink])
+        self._pcm_caps = pcm_caps
+        self._sink = sink
         for element in elements:
             if not pipeline.add(element):
                 self.close()
@@ -309,6 +318,7 @@ class DsdPcmHostRuntime:
             "output_caps": self._caps_text(sink.get_static_pad("sink")),
             "prerolled": True,
             "path": request.path,
+            "processing": None,
         }
         self._last_receipt = None
         return dict(self._identity)
@@ -331,6 +341,109 @@ class DsdPcmHostRuntime:
             return ""
         err, debug = message.parse_error()
         return f"{err}: {debug}"
+
+    def install_processing_filter(self, plan: dict[str, Any]) -> dict[str, Any]:
+        """Insert the F06 filter bin into THIS DSD→PCM sample path."""
+        if self._pipeline is None or self._pcm_caps is None or self._sink is None:
+            raise DsdPcmHostError(
+                "DSD_PCM_PROCESSING_NOT_PREPARED", "prepare before install"
+            )
+        if self._processing_filter is not None:
+            raise DsdPcmHostError(
+                "DSD_PCM_PROCESSING_ALREADY_INSTALLED", "filter already present"
+            )
+        from michi.infrastructure.audio_processing.gstreamer_graph_builder import (
+            build_processing_filter,
+        )
+        from michi.infrastructure.audio_processing.gstreamer_runtime import (
+            inspect_processing_filter,
+        )
+
+        info = build_processing_filter(plan)
+        filter_bin = info["bin"]
+        caps_src = self._pcm_caps.get_static_pad("src")
+        sink_sink = self._sink.get_static_pad("sink")
+        if (
+            caps_src is None
+            or sink_sink is None
+            or caps_src.get_peer() is not sink_sink
+            or not caps_src.unlink(sink_sink)
+        ):
+            raise DsdPcmHostError(
+                "DSD_PCM_PROCESSING_LINK_FAILED", "cannot unlink PCM route"
+            )
+        if not self._pipeline.add(filter_bin):
+            raise DsdPcmHostError(
+                "DSD_PCM_PROCESSING_INSTALL_FAILED", "cannot add filter bin"
+            )
+        sink_pad = filter_bin.get_static_pad("sink")
+        src_pad = filter_bin.get_static_pad("src")
+        if None in (sink_pad, src_pad, caps_src, sink_sink):
+            raise DsdPcmHostError(
+                "DSD_PCM_PROCESSING_LINK_FAILED", "filter ghost pads missing"
+            )
+        if (
+            caps_src.link(sink_pad) != self._gst.PadLinkReturn.OK
+            or src_pad.link(sink_sink) != self._gst.PadLinkReturn.OK
+        ):
+            raise DsdPcmHostError(
+                "DSD_PCM_PROCESSING_LINK_FAILED", "filter link rejected"
+            )
+        filter_bin.sync_state_with_parent()
+        self._processing_filter = filter_bin
+        readback = inspect_processing_filter(info, plan)
+        self._processing_info = readback
+        if self._identity is not None:
+            self._identity["processing"] = readback
+        return readback
+
+    def remove_processing_filter(self) -> None:
+        filter_bin = self._processing_filter
+        if filter_bin is None:
+            return
+        caps_src = self._pcm_caps.get_static_pad("src")
+        sink_sink = self._sink.get_static_pad("sink")
+        for pad in (caps_src, filter_bin.get_static_pad("sink")):
+            if pad is not None and pad.is_linked():
+                pad.unlink(pad.get_peer())
+        for pad in (filter_bin.get_static_pad("src"), sink_sink):
+            if pad is not None and pad.is_linked():
+                pad.unlink(pad.get_peer())
+        filter_bin.set_state(self._gst.State.NULL)
+        self._pipeline.remove(filter_bin)
+        if not self._pcm_caps.link(self._sink):
+            raise DsdPcmHostError(
+                "DSD_PCM_PROCESSING_REMOVE_FAILED", "cannot restore PCM route"
+            )
+        self._processing_filter = None
+        self._processing_info = None
+        if self._identity is not None:
+            self._identity["processing"] = None
+
+    def enable_capture(self, max_frames: int) -> None:
+        if self._sink is None:
+            raise DsdPcmHostError("DSD_PCM_CAPTURE_NOT_PREPARED", "no sink")
+        pad = self._sink.get_static_pad("sink")
+        if pad is None:
+            raise DsdPcmHostError("DSD_PCM_CAPTURE_NOT_PREPARED", "no sink pad")
+        self._capture_limit = max(0, int(max_frames))
+
+        def _probe(_pad, info):
+            buffer = info.get_buffer()
+            if buffer is None:
+                return self._gst.PadProbeReturn.OK
+            success, map_info = buffer.map(self._gst.MapFlags.READ)
+            if success:
+                remaining = self._capture_limit - len(self._captured)
+                if remaining > 0:
+                    self._captured.extend(bytes(map_info.data)[:remaining])
+                buffer.unmap(map_info)
+            return self._gst.PadProbeReturn.OK
+
+        self._capture_probe = pad.add_probe(self._gst.PadProbeType.BUFFER, _probe)
+
+    def captured_bytes(self) -> bytes:
+        return bytes(self._captured)
 
     def commit(self, expected: dict[str, Any]) -> dict[str, Any]:
         self._require_expected(expected)
@@ -467,6 +580,11 @@ class DsdPcmHostRuntime:
         self._request = None
         self._identity = None
         self._committed = False
+        self._pcm_caps = None
+        self._sink = None
+        self._processing_filter = None
+        self._processing_info = None
+        self._capture_probe = None
         self._errors = []
         self._eos = False
         return True
@@ -536,6 +654,11 @@ class DsdPcmHostRuntime:
         self._request = None
         self._identity = None
         self._last_receipt = None
+        self._pcm_caps = None
+        self._sink = None
+        self._processing_filter = None
+        self._processing_info = None
+        self._capture_probe = None
         self._committed = False
         self._errors = []
         self._eos = False
