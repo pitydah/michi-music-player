@@ -440,6 +440,32 @@ jobs:
           PY
           cp installed-dop-e2e.json "$GITHUB_WORKSPACE/artifacts/installed-dop-e2e.json"
 
+      - name: Installed wheel DSD→PCM end-to-end (fail closed)
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/artifacts"
+          rm -rf /tmp/michi-dsd-pcm-installed-run
+          mkdir -p /tmp/michi-dsd-pcm-installed-run
+          cp scripts/verify_installed_dsd_pcm_e2e.py /tmp/michi-dsd-pcm-installed-run/
+          cd /tmp/michi-dsd-pcm-installed-run
+          env -u PYTHONPATH -u MICHI_DOP_PREFIX \
+            MICHI_GST_LAB_SINK=fakesink \
+            /tmp/michi-dop-wheel/bin/python -I verify_installed_dsd_pcm_e2e.py \
+              --json installed-dsd-pcm-e2e.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path("installed-dsd-pcm-e2e.json").read_text())
+          assert report["status"] == "PASS", report
+          assert report["skipped"] is False, report
+          assert report["cleanup_confirmed"] is True, report
+          assert "site-packages" in report["package"], report
+          print("installed wheel DSD→PCM e2e: PASS")
+          PY
+          cp installed-dsd-pcm-e2e.json \
+            "$GITHUB_WORKSPACE/artifacts/installed-dsd-pcm-e2e.json"
+
       - name: Record artifact digest
         run: |
           mkdir -p artifacts
@@ -454,4 +480,5 @@ jobs:
           path: |
             artifacts/michidop-gate-a.sha256
             artifacts/installed-dop-e2e.json
+            artifacts/installed-dsd-pcm-e2e.json
           if-no-files-found: error
