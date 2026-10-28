@@ -1,0 +1,161 @@
+{
+  "schema_version": 2,
+  "phase": "AP2-F10",
+  "sprint": "AP2-F10-S6",
+  "state": "ACTIVE",
+  "base_head": "966f2ea9912a7ae85e17dea0294de190e1f20975",
+  "code_head": "ef4e162",
+  "docs_head": "PENDING_S6_DOCS_COMMIT",
+  "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
+  "verdict": "ACTIVE, VERIFYING — core DSD→PCM product route and measured DSP lab vertical exist; AP2-F10 is not ready for closure review",
+  "commits_observed": [
+    "cd2baea fix(audio): require exact release receipt for family transitions",
+    "03cb52b feat(audio): connect converted PCM to F06 processing graph",
+    "77b83a9 feat(audio): persist explicit DSD PCM conversion policy",
+    "fc4182a test(audio): add DSD PCM numeric capture harness",
+    "ef4e162 ci(audio): gate installed DSD PCM product end-to-end"
+  ],
+  "implemented": {
+    "settings_policy": {
+      "status": "IMPLEMENTED",
+      "detail": "SettingsState persists explicit conversion consent, separate DSP consent, HIGH/quality profile and a monotonic policy revision. Conversion and DSP default to deny; malformed/legacy rows fail closed. The QML bridge exposes read/write slots without a new settings authority.",
+      "files": [
+        "src/michi/domain/settings.py",
+        "src/michi/application/settings_service.py",
+        "src/michi/infrastructure/sqlite_settings.py",
+        "src/michi/presentation/settings_bridge.py",
+        "src/michi/bootstrap/__init__.py"
+      ],
+      "tests": [
+        "tests/test_settings_service.py",
+        "tests/test_settings_lifecycle.py",
+        "tests/audio_phase2/test_dsd_dsp_matrix.py"
+      ]
+    },
+    "exact_target_qualification": {
+      "status": "IMPLEMENTED (bootstrap path)",
+      "detail": "The productive resolver receives only rates backed by current, supported F32LE/stereo cache evidence; a rate cached for another format/channel tuple is never extrapolated. The planner receives the policy revision, and the pre-commit plan recheck rejects revoked consent or a stale revision.",
+      "files": [
+        "src/michi/bootstrap/__init__.py",
+        "src/michi/application/output_session_service.py",
+        "src/michi/application/dsd_to_pcm_plan.py"
+      ]
+    },
+    "decoder_discovery": {
+      "status": "IMPLEMENTED (bootstrap path)",
+      "detail": "Discovery probes only the exact decoder selected by bit order, plus dsdconvert/audioresample, with a bounded 5s subprocess and process-local cache. The owner process does not import gi. Cache invalidation is environment-process scoped, not generation scoped.",
+      "files": [
+        "src/michi/bootstrap/__init__.py"
+      ]
+    },
+    "f06_dsp_vertical": {
+      "status": "IMPLEMENTED (lab vertical)",
+      "detail": "DsdPcmHostRuntime links the real F06 filter bin between converted F32LE caps and the sink, synchronizes state, reads back the graph and restores the direct route on removal. A real DSF DSD64 fixture is decoded through avdec_dsd_lsbf; bypass and PEQ captures are compared byte-for-byte and inspected for finite samples. This is NOT routed through AudioProcessingService/Playback in the product bootstrap.",
+      "files": [
+        "src/michi/infrastructure/audio_engines/gstreamer_host_dsd_pcm.py"
+      ],
+      "tests": [
+        "tests/audio_phase2/test_dsd_pcm_host.py::test_dsd_pcm_f06_peq_processes_real_f32_frames"
+      ]
+    },
+    "family_release_receipts": {
+      "status": "IMPLEMENTED",
+      "detail": "AudioFamilyTransitionService.mark_released requires an exact supervised release receipt (plan/execution/device/binding/host generation, RELEASED, SUPERVISED_HOST); booleans and foreign receipts are rejected.",
+      "files": [
+        "src/michi/application/audio_family_transition.py"
+      ]
+    },
+    "numeric_harness": {
+      "status": "IMPLEMENTED (PARTIAL certification)",
+      "detail": "tools/audio_phase2/dsd2pcm_conformance.py runs the real DSD→PCM host pipeline, captures F32LE buffers at appsink, reports caps, hashes, sample count and numeric facts. It deliberately returns PARTIAL because no independent §274.4 oracle/corpus is present.",
+      "files": [
+        "tools/audio_phase2/dsd2pcm_conformance.py"
+      ],
+      "tests": [
+        "tests/audio_phase2/test_dsd2pcm_conformance_tool.py"
+      ]
+    },
+    "installed_wheel": {
+      "status": "IMPLEMENTED (local PASS)",
+      "detail": "scripts/verify_installed_dsd_pcm_e2e.py runs from outside the checkout against the installed wheel and requires site-packages import, real supervised host, confirmed START, EOS, release and Signal Truth RUNNING/RELEASED with no skip.",
+      "files": [
+        "scripts/verify_installed_dsd_pcm_e2e.py",
+        ".github/workflows/ci.yml"
+      ],
+      "wheel_sha256": "aeeee25c37c3611d1754eca6debec34feba7b94a81adefd9ba209f1ed70fd5b1",
+      "local_result": "PASS — package imported from site-packages; real supervised host; START/EOS/STOP; Truth RUNNING and RELEASED; cleanup_confirmed=true"
+    }
+  },
+  "gates": {
+    "S6-01": "PARTIAL — topology_loss_applies and host generation fences tested; full event source older/current/newer matrix not certified",
+    "S6-02": "PARTIAL — DSD→PCM device loss converges LOST/UNAVAILABLE with no autoplay; late PLAYING coverage incomplete",
+    "S6-03": "PASS — exact DoP/DSD→PCM release receipts retained on uncertainty",
+    "S6-04": "PARTIAL — retry/rebind paths tested; real DAC reconnect with qualification revalidation NOT_RUN",
+    "S6-05": "PARTIAL — worker prepare exists; product E2E still uses async_submit=None",
+    "S6-06": "PARTIAL — supersession/STOP tests exist; late START after B not exhaustively certified",
+    "S6-07": "PASS — RUNNING requires host-confirmed PLAYING for DSD→PCM",
+    "S6-08": "PASS — identity-less/cross-family/late EOS rejected at the port",
+    "S6-09": "PASS — Settings consent is persistent, explicit and revisioned",
+    "S6-10": "PASS — default deny; no automatic conversion",
+    "S6-11": "PARTIAL — exact F32LE/stereo cache evidence consumed; no physical DAC tuple test",
+    "S6-12": "PARTIAL — exact factory + deadline + cache; no host-query discovery/cancellation",
+    "S6-13": "PARTIAL — policy revision and graph/binding checks exist; pre-COMMIT race matrix incomplete",
+    "S6-14": "PASS — real DSF DSD64 → avdec → F32LE → F06 PEQ → capture",
+    "S6-15": "PARTIAL — bytes differ and are finite; independent spectral oracle not run",
+    "S6-16": "PARTIAL — removal/readback/cleanup tested; DSP restart/failure-at-START matrix incomplete",
+    "S6-17": "PASS — policy refuses DSP on Native/DoP",
+    "S6-18": "PASS — family release requires exact physical receipt",
+    "S6-19": "PARTIAL — unit service only; PlaybackService integration matrix not run",
+    "S6-20": "PARTIAL — runtime identity/caps recorded; full PLANNED/INSTALLED/OBSERVED projection absent",
+    "S6-21": "PARTIAL — DSD conversion evidence model exists; not projected through SignalPathService",
+    "S6-22": "PARTIAL — conversion evidence declares bit-perfect NOT_APPLICABLE; not user-visible",
+    "S6-23": "PARTIAL — resampler readback enforced by host; profile certification absent",
+    "S6-24": "PARTIAL — harness emits SHA/caps/metrics; corpus coverage is generated silence only",
+    "S6-25": "NOT_RUN — §274.4 thresholds have no independent oracle/reference corpus",
+    "S6-26": "PARTIAL — HIGH is default; no measured profile certification",
+    "S6-27": "NOT_RUN — latency/continuity/EOS-tail metrics not certified",
+    "S6-28": "PARTIAL — real host product E2E without DSP; DSP lab host only",
+    "S6-29": "PASS (local) — wheel aeeee25c..., site-packages import, real host, RUNNING/EOS/RELEASED, no skip",
+    "S6-30": "PARTIAL — installed-wheel DSD→PCM step added to dop-native-gate-a; exact-SHA CI not yet observed",
+    "S6-31": "PASS (local) — 6295 passed, 22 skipped, 0 failed in 1871.59s on the S6 tree; exact-SHA CI pending",
+    "S6-32": "NOT_RUN — no final SHA CI run yet",
+    "S6-33": "PARTIAL — this checkpoint plus measured artifacts; no final CI trace",
+    "S6-34": "PASS — F14 NOT_RUN, F11–F15 LOCKED, PHASE2_STATE unchanged"
+  },
+  "tests": {
+    "settings_policy": "PASS (tests/test_settings_service.py, tests/test_settings_lifecycle.py)",
+    "dsd_policy_matrix": "PASS (test_dsd_dsp_matrix.py)",
+    "dsd_plan": "PASS (test_dsd_to_pcm_plan.py)",
+    "dsd_pcm_host": "3 passed (includes real F06 PEQ vertical)",
+    "dsd_pcm_product_e2e": "1 passed (real resolver, supervised host, fakesink, replay)",
+    "conformance_harness": "1 passed (real F32LE capture, PARTIAL oracle)",
+    "installed_wheel_dsd_pcm": "LOCAL PASS — wheel aeeee25c37c3611d1754eca6debec34feba7b94a81adefd9ba209f1ed70fd5b1; site-packages import; RUNNING/EOS/RELEASED; cleanup confirmed",
+    "focused_s6": "62 passed in 16.86s",
+    "full_suite": "6295 passed, 22 skipped, 0 failed in 1871.59s (31:11)",
+    "ci": "PENDING_PUSH"
+  },
+  "constraints": {
+    "f09": "CLOSED",
+    "f10": "ACTIVE",
+    "f14": "NOT_RUN",
+    "f11_f15": "LOCKED",
+    "physical_dac_claim": false,
+    "fakesink": "laboratory only",
+    "dsp_on_native_or_dop": false,
+    "implicit_pcm_fallback": false
+  },
+  "residual_p0_p1": [
+    "S6-14/S6-15 integration is a direct DsdPcmHostRuntime seam; AudioProcessingService/Playback do not yet install the graph on the product DSP path.",
+    "S6-05 product Qt responsiveness is not proven because the product E2E uses the inline prepare path.",
+    "S6-20/S6-21 Signal Truth/Path does not yet publish the full observed DSD conversion node graph.",
+    "S6-25/S6-27 numeric thresholds and latency need an independent corpus and oracle.",
+    "Final-SHA CI and full-suite counts are pending."
+  ],
+  "local_results": {
+    "full_suite": "6295 passed, 22 skipped, 0 failed in 1871.59s (31:11)",
+    "focused": "62 passed in 16.86s",
+    "ruff": "PASS",
+    "alignment": "PENDING_DOCS",
+    "installed_wheel": "PASS"
+  }
+}

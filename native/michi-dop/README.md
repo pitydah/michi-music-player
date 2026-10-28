@@ -92,5 +92,14 @@ resource is declared released on uncertainty.
 Included: productive DoP playback on a selected ALSA endpoint, installed
 wheel discovery, conformance corpus, host integration and Signal Truth
 lifecycle. Not included: AppImage/Flatpak/deb distribution, alternative DAC
-formats without qualification, physical DAC DSD-mode verification (F14), and
-DSD→PCM or DSP paths (F10+).
+formats without qualification and physical DAC DSD-mode verification (F14).
+
+## Related AP2-F10 DSD→PCM path
+
+The explicit DSD→PCM product route is a separate supervised pipeline built on
+`DsdPolicyService`, `DsdToPcmPlanner` and `DsdPcmHostRuntime`; this Rust element
+is never inserted into it. Conversion requires persisted, revisioned Settings
+consent, exact F32LE/stereo cache qualification and a selected decoder. The
+product route currently ends in the qualified PCM sink; the measured F06 PEQ
+vertical is wired inside `DsdPcmHostRuntime` and remains lab-certified until
+the product DSP transaction and numeric oracle are complete.

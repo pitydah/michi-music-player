@@ -42,10 +42,34 @@
   ],
   "not_claimed": [
     "F10 CLOSED",
+    "READY_FOR_CLOSURE_REVIEW",
     "all quality profiles certified",
     "DSD512 qualification",
     "physical DAC DSD-mode interpretation",
+    "product DSP through AudioProcessingService",
     "UI convergence (F11)"
   ],
+  "s6_checkpoint": {
+    "sprint": "AP2-F10-S6",
+    "status": "ACTIVE_VERIFYING",
+    "code_head": "ef4e162",
+    "evidence": "docs/audio/phase2/F10_S6_EVIDENCE.json",
+    "implemented": [
+      "persisted explicit conversion/DSP consent with monotonic policy revision",
+      "exact F32LE/stereo cache qualification and revision fence",
+      "bounded exact decoder discovery",
+      "real DSD64->PCM F32LE->F06 PEQ lab capture",
+      "numeric F32LE harness",
+      "installed-wheel DSD->PCM product E2E"
+    ],
+    "not_certified": [
+      "product DSP transaction through AudioProcessingService",
+      "full Signal Truth/Path observed node projection",
+      "numeric oracle and §274.4 profile certification",
+      "final full-suite and exact-SHA CI"
+    ],
+    "f14": "NOT_RUN",
+    "f11_f15": "LOCKED"
+  },
   "f14": "NOT_RUN"
 }

@@ -312,6 +312,32 @@
       "tests": [
         "tests/audio_phase2/test_dsd_to_pcm_runtime.py"
       ]
+    },
+    {
+      "file": "tools/audio_phase2/dsd2pcm_conformance.py",
+      "owner": "numeric conformance harness",
+      "phase": "F10",
+      "contract": "real DSD->PCM appsink capture, caps/hash/numeric facts, no oracle certification without evidence",
+      "tests": [
+        "tests/audio_phase2/test_dsd2pcm_conformance_tool.py"
+      ]
+    },
+    {
+      "file": "scripts/verify_installed_dsd_pcm_e2e.py",
+      "owner": "installed wheel verifier",
+      "phase": "F10",
+      "contract": "installed-package DSD->PCM product vertical: PlaybackService, supervised host, START/EOS/release, no checkout imports",
+      "tests": []
+    },
+    {
+      "file": "src/michi/domain/settings.py",
+      "owner": "settings domain",
+      "phase": "F10",
+      "contract": "persisted explicit DSD conversion/DSP consent, quality profile and monotonic policy revision",
+      "tests": [
+        "tests/test_settings_service.py",
+        "tests/test_settings_lifecycle.py"
+      ]
     }
   ]
 }
