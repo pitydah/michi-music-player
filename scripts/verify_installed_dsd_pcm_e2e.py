@@ -48,7 +48,15 @@ def main() -> int:
 
     import michi
     from michi.application.audio_output_planner import OutputPlanner
+    from michi.application.audio_processing_service import AudioProcessingService
     from michi.application.dsd_to_pcm_plan import DsdToPcmPlanner
+    from michi.application.effective_processing_graph import (
+        EffectiveProcessingGraphResolver,
+    )
+    from michi.application.processing_graph_compiler import (
+        ProcessingGraphCompiler,
+        ProcessingSamplePolicy,
+    )
     from michi.application.output_session_service import (
         DsdPcmSessionPrepared,
         OutputRequest,
@@ -56,6 +64,15 @@ def main() -> int:
     )
     from michi.application.playback_service import PlaybackService
     from michi.domain.audio_output import OutputSessionState
+    from michi.domain.audio_processing import (
+        BiquadType,
+        ParametricEqNode,
+        PeqBand,
+        ProcessingGraph,
+        ProcessingProfile,
+        ProcessingStrategy,
+    )
+    from michi.domain.audio_signal import ChannelLayout, PcmSignalFormat
     from michi.domain.dsd_signal import (
         DsdBitOrder,
         DsdOrganization,
@@ -68,6 +85,9 @@ def main() -> int:
     )
     from michi.infrastructure.audio_engines.gstreamer_host_port import (
         GStreamerHostedAudioPort,
+    )
+    from michi.infrastructure.audio_processing.native_mapping import (
+        NativeProcessingMapping,
     )
 
     package_path = Path(michi.__file__).resolve()
@@ -114,6 +134,50 @@ def main() -> int:
     )
     truth = SignalTruthRecorder()
     holder: dict[str, OutputSessionService] = {}
+    processing = AudioProcessingService(
+        capability_query=port.query_processing_capabilities,
+        native_mapping=NativeProcessingMapping(),
+        transport=port,
+    )
+    profile = ProcessingProfile(
+        profile_id="installed:dsd-peq",
+        display_name="Installed DSD PEQ",
+        graph=ProcessingGraph(
+            graph_id="installed:dsd-peq",
+            revision=1,
+            nodes=(
+                ParametricEqNode(
+                    node_id="peq",
+                    bands=(
+                        PeqBand("b1", BiquadType.PEAK, 1000.0, 1.4, 12.0, True),
+                    ),
+                ),
+            ),
+        ),
+    )
+    signal = PcmSignalFormat(
+        rate_hz=plan.target_rate_hz,
+        transport_format="F32LE",
+        significant_bits=32,
+        layout=ChannelLayout(positions=("FL", "FR")),
+    )
+    from michi.application.processing_graph_compiler import (
+        ProcessingBackendCapabilities,
+    )
+
+    processing.refresh_capabilities()
+    effective = EffectiveProcessingGraphResolver().resolve(
+        profile.graph, input_signal=signal, assets=()
+    )
+    compiled = ProcessingGraphCompiler().compile(
+        effective,
+        backend=ProcessingBackendCapabilities(
+            backend_id="installed-host",
+            strategies=frozenset(ProcessingStrategy),
+        ),
+        assets=(),
+        sample_policy=ProcessingSamplePolicy(terminal_format_verified=True),
+    )
 
     def prepare(plan_value, path, instance_id):
         identity = port.prepare_dsd_pcm(
@@ -137,9 +201,22 @@ def main() -> int:
                     list(item) for item in plan_value.resampler_policy
                 ],
                 "sink_factory": "fakesink",
+        "dsp_active": True,
+        "dsp_plan_id": compiled.plan_id,
+        "dsp_graph_revision": compiled.graph_revision,
             }
         )
         port.add_dsd_pcm_eos_listener(holder["session"].notify_dsd_pcm_eos)
+        candidate = processing.begin_candidate(
+            compiled,
+            host_generation=int(identity["host_generation"]),
+            transport=port,
+        )
+        receipt = processing.commit_candidate(
+            candidate,
+            transport=port,
+            allow_configured_caps=True,
+        )
         expected = {
             "plan_id": identity["plan_id"],
             "execution_id": identity["execution_id"],
@@ -157,7 +234,20 @@ def main() -> int:
             runtime_identity=dict(identity),
             evidence_refs=plan_value.evidence_refs,
             handle=expected,
+            processing_receipt=receipt,
         )
+
+    def finalize(prepared):
+        deadline = time.monotonic() + 2.0
+        observed = None
+        while time.monotonic() < deadline:
+            observed = port.query_dsd_pcm_identity().get("processing")
+            if isinstance(observed, dict) and observed.get("caps_source") == "negotiated":
+                break
+            time.sleep(0.01)
+        if not isinstance(observed, dict) or observed.get("caps_source") != "negotiated":
+            raise SystemExit("DSP_CAPS_NOT_NEGOTIATED")
+        processing.publish_effective(prepared.processing_receipt)
 
     session = OutputSessionService(
         OutputPlanner(),
@@ -170,6 +260,8 @@ def main() -> int:
         dsd_pcm_abort=lambda prepared, _reason: port.abort_dsd_pcm(prepared.handle),
         dsd_pcm_stop=lambda prepared, _reason: port.stop_dsd_pcm(prepared.handle),
         dsd_pcm_plan_still_current=lambda _plan: True,
+        dsd_pcm_finalize_processing=finalize,
+        dsd_pcm_invalidate_processing=processing.invalidate_effective,
         truth_recorder=truth,
     )
     holder["session"] = session
@@ -191,6 +283,11 @@ def main() -> int:
             raise SystemExit("PLAYBACK_NOT_ACCEPTED")
         if session.state is not OutputSessionState.RUNNING:
             raise SystemExit(f"SESSION_NOT_RUNNING: {session.state}")
+        observed = port.query_dsd_pcm_identity().get("processing") or {}
+        if observed.get("graph_revision") != compiled.graph_revision:
+            raise SystemExit("DSP_GRAPH_NOT_INSTALLED")
+        if processing.effective_state.value != "effective":
+            raise SystemExit(f"DSP_NOT_EFFECTIVE: {processing.effective_state}")
         execution = session.active_execution_id
         deadline = time.monotonic() + 10.0
         while time.monotonic() < deadline:
@@ -200,6 +297,8 @@ def main() -> int:
             time.sleep(0.02)
         if session._dsd_pcm_terminal_execution != execution:
             raise SystemExit("EOS_NOT_OBSERVED")
+        if processing.effective_state.value == "effective":
+            raise SystemExit("DSP_NOT_RETIRED_ON_EOS")
         playback.stop()
         if session.state is not OutputSessionState.IDLE:
             raise SystemExit(f"SESSION_NOT_IDLE: {session.state}")
@@ -222,6 +321,9 @@ def main() -> int:
         "execution_id": execution,
         "target_rate_hz": plan.target_rate_hz,
         "sink_factory": "fakesink",
+        "dsp_active": True,
+        "dsp_plan_id": compiled.plan_id,
+        "dsp_graph_revision": compiled.graph_revision,
         "truth_states": [str(state) for state in states],
         "elapsed_s": round(time.monotonic() - started, 3),
         "cleanup_confirmed": True,
