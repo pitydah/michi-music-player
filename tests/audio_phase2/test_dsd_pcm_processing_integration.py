@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import shutil
+import time
 import subprocess
 from pathlib import Path
 
@@ -196,7 +197,14 @@ def test_audio_processing_service_installs_f06_on_dsd_pcm_host(tmp_path):
         port.commit_dsd_pcm(expected)
         start = port.start_dsd_pcm(expected)
         assert start["confirmed"] is True
+        deadline = time.monotonic() + 2.0
         observed = port.query_dsd_pcm_identity()
+        while time.monotonic() < deadline:
+            observed = port.query_dsd_pcm_identity()
+            processing_info = observed.get("processing") or {}
+            if processing_info.get("caps_source") == "negotiated":
+                break
+            time.sleep(0.01)
         assert observed["processing"]["graph_revision"] == compiled.graph_revision
         assert observed["processing"]["caps_source"] == "negotiated"
         assert processing.publish_effective(receipt) >= candidate.processing_generation
