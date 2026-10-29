@@ -39,6 +39,7 @@ from michi.application.dop_planner import (
     DopPlannerError,
     DopPlannerV3,
 )
+from michi.application.dsd_conversion_evidence import build_dsd_conversion_evidence
 from michi.application.dsd_output_planner import (
     NativeDsdOutputPlan,
     NativeDsdPlanner,
@@ -2604,6 +2605,14 @@ class OutputSessionService:
         plan = current.plan if current is not None else self._dsd_pcm_plan
         if plan is None:
             return
+        runtime_identity = dict(current.runtime_identity) if current is not None else {}
+        if current is not None:
+            with suppress(Exception):
+                runtime_identity["conversion"] = build_dsd_conversion_evidence(
+                    plan,
+                    dsp_active=isinstance(runtime_identity.get("processing"), dict),
+                    runtime_identity=runtime_identity,
+                ).to_dict()
         with suppress(Exception):
             recorder.record_output_family_event(
                 OutputFamilyEvent(
@@ -2619,9 +2628,7 @@ class OutputSessionService:
                     ),
                     processing_plan_id=None,
                     transform_policy=("dsd_to_pcm",),
-                    runtime_identity=(
-                        dict(current.runtime_identity) if current is not None else {}
-                    ),
+                    runtime_identity=runtime_identity,
                     bit_perfect=False,
                     detail=detail,
                 )

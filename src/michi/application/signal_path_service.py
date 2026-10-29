@@ -110,6 +110,38 @@ class SignalPathService:
         SignalTruthReason.ST_SOURCE_DECODED_MISMATCH: SignalPathNodeKind.SOURCE,
     }
 
+    def project_dsd_conversion(self, evidence) -> dict:
+        """Project observed DSD conversion nodes without importing app modules."""
+        observed_nodes = getattr(evidence, "observed_nodes", ())
+        if not observed_nodes:
+            raise SignalPathProjectionError(
+                "DSD conversion evidence has no observed nodes"
+            )
+        nodes = [
+            {
+                "node": node.node.value,
+                "level": node.level.value,
+                "detail": node.detail,
+            }
+            for node in observed_nodes
+        ]
+        dsp = next((node for node in nodes if node["node"] == "DSP_NODE"), None)
+        output = next(
+            (node for node in nodes if node["node"] == "OUTPUT_NEGOTIATION"),
+            None,
+        )
+        observed = (
+            dsp is not None
+            and dsp["level"] == "OBSERVED"
+            and output is not None
+            and output["level"] == "OBSERVED"
+        )
+        return {
+            "plan_id": evidence.plan_id,
+            "nodes": nodes,
+            "verdict": "OBSERVED" if observed else "PARTIAL",
+        }
+
     def project(self, snapshot: SignalTruthSnapshot) -> SignalPathSnapshot:
         """Explain one classified snapshot; refuse any foreign generation."""
         identity = snapshot.identity

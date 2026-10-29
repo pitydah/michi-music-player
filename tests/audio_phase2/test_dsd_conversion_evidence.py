@@ -63,3 +63,26 @@ def test_native_rate_has_no_resampler_node():
     evidence = build_dsd_conversion_evidence(plan)
     assert ConversionNode.RESAMPLER not in evidence.nodes
     assert ConversionNode.DSP_NODE not in evidence.nodes
+
+
+def test_observed_conversion_path_marks_lab_dac_and_dsp():
+    from michi.application.signal_path_service import SignalPathService
+
+    plan = _plan()
+    evidence = build_dsd_conversion_evidence(
+        plan,
+        dsp_active=True,
+        runtime_identity={
+            "decoder_caps": "audio/x-dsd,format=DSDU8,rate=352800,channels=2",
+            "output_caps": "audio/x-raw,format=F32LE,rate=88200,channels=2",
+            "sink_factory": "fakesink",
+            "processing": {"graph_revision": 1},
+        },
+    )
+    levels = {node.node: node.level for node in evidence.observed_nodes}
+    assert levels[ConversionNode.DSP_NODE].value == "OBSERVED"
+    assert levels[ConversionNode.OUTPUT_NEGOTIATION].value == "OBSERVED"
+    assert levels[ConversionNode.DAC].value == "LAB"
+    path = SignalPathService().project_dsd_conversion(evidence)
+    assert path["verdict"] == "OBSERVED"
+    assert path["plan_id"] == plan.plan_id
