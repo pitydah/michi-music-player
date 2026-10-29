@@ -75,7 +75,7 @@
   "s7_checkpoint": {
     "sprint": "AP2-F10-S7",
     "status": "ACTIVE_VERIFYING_PENDING_CI",
-    "code_head": "916d058",
+    "code_head": "b35a83a",
     "evidence": "docs/audio/phase2/F10_S7_EVIDENCE.json",
     "implemented": [
       "existing ProcessingProfile selection is the only DSP profile authority",

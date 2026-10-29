@@ -4,7 +4,7 @@
   "sprint": "AP2-F10-S7",
   "state": "ACTIVE",
   "base_head": "6ba248f",
-  "code_head": "916d058",
+  "code_head": "b35a83a",
   "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
   "verdict": "ACTIVE, VERIFYING — selected F06 profile now reaches the productive DSD→PCM host; transitions, Signal Path and numeric certification remain",
   "implemented": {
@@ -70,7 +70,7 @@
     "product_dsp_e2e": "1 passed — Settings consent, selected ProcessingProfile, graph compile, AudioProcessingService commit, host installation, negotiated readback, EFFECTIVE, stop invalidation",
     "host_processing_integration": "1 passed — AudioProcessingService installs F06 into DsdPcmHostRuntime through the supervised host",
     "host_sample_vertical": "3 passed — real DSD64→F32LE→PEQ capture, bypass differs, direct route rollback",
-    "full_suite": "6302 passed, 22 skipped, 0 failed in 1840.88s (30:40)",
+    "full_suite": "6303 passed, 22 skipped, 0 failed in 1829.76s (30:29)",
     "ci": "PENDING_PUSH",
     "focused": "36 signal-path/evidence tests + async DSD prepare passed",
     "product_capture": "PASS — product E2E reads non-empty F32LE capture and hash after negotiated DSP",
@@ -132,5 +132,23 @@
     "native_installed_dsd_dsp": "PASS — dsp_active=true, graph revision 1",
     "native_dsp_step": "13 passed",
     "note": "code head 78e0550; style/docs head e24518c"
+  },
+  "post_s7_audit": {
+    "audited_head": "23bb8a8",
+    "fixed": {
+      "K-S7-02": "bypass now requires a route-restored receipt from DsdPcmHostRuntime and reports bypassed only on removed/already + route_restored",
+      "K-S7-04": "post-START readback validates plan_id, graph_revision and execution_id against the accepted receipt",
+      "K-S7-05": "SignalPathService requires the nodes of the selected route; no-DSP observed routes classify OBSERVED_LAB; fakesink DAC is LAB",
+      "K-S7-06": "link results compare against Gst.PadLinkReturn.OK and filter removal is checked with a receipt"
+    },
+    "partial": {
+      "K-S7-01": "DSP OBSERVED now requires processing_effective; product truth event must be revalidated to confirm the RUNNING snapshot carries it",
+      "K-S7-03": "canonical profile selection exists in ServiceGraph.set_processing_profile; no QML selection surface"
+    },
+    "open": [
+      "AudioFamilyTransitionService not wired",
+      "numeric §274.4 oracle/corpus absent"
+    ],
+    "local_tests": "6303 passed, 22 skipped, 0 failed"
   }
 }
