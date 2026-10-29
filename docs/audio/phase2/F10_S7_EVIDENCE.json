@@ -4,7 +4,7 @@
   "sprint": "AP2-F10-S7",
   "state": "ACTIVE",
   "base_head": "6ba248f",
-  "code_head": "78e0550",
+  "code_head": "916d058",
   "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
   "verdict": "ACTIVE, VERIFYING — selected F06 profile now reaches the productive DSD→PCM host; transitions, Signal Path and numeric certification remain",
   "implemented": {
@@ -49,17 +49,34 @@
       "detail": "scripts/verify_installed_dsd_pcm_e2e.py now compiles a selected F06 profile and installs it through AudioProcessingService before START, then asserts negotiated readback and EFFECTIVE.",
       "file": "scripts/verify_installed_dsd_pcm_e2e.py",
       "wheel_sha256": "ca08032cc4cdf1984d99123dab56cca34b71435d9491e8baa54fc342cd87d39d"
+    },
+    "signal_path": {
+      "status": "IMPLEMENTED (DSD conversion projection)",
+      "detail": "OutputFamilyEvent runtime_identity now carries observed conversion nodes; SignalPathService.project_dsd_conversion projects them and rejects missing evidence. LAB is explicit for fakesink/appsink.",
+      "files": [
+        "src/michi/application/dsd_conversion_evidence.py",
+        "src/michi/application/signal_path_service.py",
+        "src/michi/application/output_session_service.py"
+      ],
+      "test": "tests/audio_phase2/test_dsd_conversion_evidence.py::test_observed_conversion_path_marks_lab_dac_and_dsp"
+    },
+    "async_prepare": {
+      "status": "IMPLEMENTED (API/worker)",
+      "detail": "A deferred executor proves prepare_for_media_async returns before worker completion and commits READY only from the completion callback.",
+      "test": "tests/audio_phase2/test_dsd_pcm_async_prepare.py"
     }
   },
   "tests": {
     "product_dsp_e2e": "1 passed — Settings consent, selected ProcessingProfile, graph compile, AudioProcessingService commit, host installation, negotiated readback, EFFECTIVE, stop invalidation",
     "host_processing_integration": "1 passed — AudioProcessingService installs F06 into DsdPcmHostRuntime through the supervised host",
     "host_sample_vertical": "3 passed — real DSD64→F32LE→PEQ capture, bypass differs, direct route rollback",
-    "full_suite": "6300 passed, 22 skipped, 0 failed in 1882.97s (31:22)",
-    "ci": "PASS — run 40782026613 at e24518c; all 4 jobs success; check 6270 passed, 52 skipped, 0 failed; native installed DSD→PCM DSP PASS",
-    "focused": "54 passed in 78.06s (processing suites + DSD host/product)",
+    "full_suite": "6302 passed, 22 skipped, 0 failed in 1840.88s (30:40)",
+    "ci": "PENDING_PUSH",
+    "focused": "36 signal-path/evidence tests + async DSD prepare passed",
     "product_capture": "PASS — product E2E reads non-empty F32LE capture and hash after negotiated DSP",
-    "installed_wheel_dsp": "PASS local and CI — wheel sha ca08032c..., site-packages, selected profile, negotiated readback, EFFECTIVE, skipped=false"
+    "installed_wheel_dsp": "PASS local and CI — wheel sha ca08032c..., site-packages, selected profile, negotiated readback, EFFECTIVE, skipped=false",
+    "signal_path": "PASS — observed DSD conversion nodes, LAB DAC, SignalPath projection verdict OBSERVED",
+    "async_prepare": "PASS — deferred executor returns before worker; READY after owner completion"
   },
   "gates": {
     "S7-01_profile_authority": "PASS — existing ServiceGraph.set_processing_profile",
@@ -70,10 +87,10 @@
     "S7-06_native_dop_exclusion": "PASS — policy refusal",
     "S7-07_measured_sample_difference": "PARTIAL — product capture now returns real F32LE bytes/hash; bypass-vs-DSP comparison remains host-lab",
     "S7-08_family_transitions": "NOT_RUN — AudioFamilyTransitionService still not wired to PlaybackService",
-    "S7-09_signal_truth_path": "PARTIAL — processing EFFECTIVE/readback exists; full observed node projection absent",
+    "S7-09_signal_truth_path": "PASS (DSD conversion) — observed nodes published through truth event; SignalPathService projection returns OBSERVED/PARTIAL and labels fakesink DAC LAB",
     "S7-10_numeric_conformance": "PARTIAL — harness exists, §274.4 oracle absent",
-    "S7-11_async_product": "PARTIAL — async worker exists; product E2E uses inline executor",
-    "S7-12_ci": "PASS — run 40782026613 at e24518c; all four jobs success"
+    "S7-11_async_product": "PARTIAL — deferred executor proves prepare returns before worker; Qt event-loop measurement not run",
+    "S7-12_ci": "PENDING_PUSH"
   },
   "constraints": {
     "f09": "CLOSED",
@@ -86,7 +103,6 @@
   "residual": [
     "Product DSP installation is exercised with fakesink, not a physical DAC.",
     "No product-level F32LE capture/spectral oracle; the measurable sample difference remains host-lab evidence.",
-    "AudioFamilyTransitionService and SignalPath observed nodes are not integrated.",
     "Full suite and exact-SHA CI are pending."
   ],
   "ci_history": {
