@@ -128,6 +128,12 @@ def test_selected_profile_is_effective_on_product_dsd_playback(tmp_path, monkeyp
             time.sleep(0.02)
         assert graph.output_session.state.value == "running"
         assert graph.audio_processing.effective_state.value == "effective"
+        assert (
+            graph.output_session._dsd_pcm_prepared.runtime_identity[
+                "processing_effective"
+            ]
+            is True
+        )
         port = graph.gstreamer_engine_provider.current_port
         identity = port.query_dsd_pcm_identity()
         assert identity["processing"]["graph_revision"] == 1

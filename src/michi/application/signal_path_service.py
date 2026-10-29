@@ -111,7 +111,7 @@ class SignalPathService:
     }
 
     def project_dsd_conversion(self, evidence) -> dict:
-        """Project observed DSD conversion nodes without importing app modules."""
+        """Classify the nodes required by the selected DSD conversion route."""
         observed_nodes = getattr(evidence, "observed_nodes", ())
         if not observed_nodes:
             raise SignalPathProjectionError(
@@ -125,21 +125,26 @@ class SignalPathService:
             }
             for node in observed_nodes
         ]
-        dsp = next((node for node in nodes if node["node"] == "DSP_NODE"), None)
-        output = next(
-            (node for node in nodes if node["node"] == "OUTPUT_NEGOTIATION"),
-            None,
-        )
-        observed = (
-            dsp is not None
-            and dsp["level"] == "OBSERVED"
-            and output is not None
-            and output["level"] == "OBSERVED"
-        )
+        levels = {node["node"]: node["level"] for node in nodes}
+        required = {
+            "SOURCE_DSD",
+            "DSD_TO_PCM_DECODER",
+            "OUTPUT_NEGOTIATION",
+        }
+        if getattr(evidence, "dsp_active", False):
+            required.add("DSP_NODE")
+        complete = all(levels.get(name) == "OBSERVED" for name in required)
+        dac = levels.get("DAC")
+        if complete and dac == "OBSERVED":
+            verdict = "OBSERVED"
+        elif complete and dac == "LAB":
+            verdict = "OBSERVED_LAB"
+        else:
+            verdict = "PARTIAL"
         return {
             "plan_id": evidence.plan_id,
             "nodes": nodes,
-            "verdict": "OBSERVED" if observed else "PARTIAL",
+            "verdict": verdict,
         }
 
     def project(self, snapshot: SignalTruthSnapshot) -> SignalPathSnapshot:

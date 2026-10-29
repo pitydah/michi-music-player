@@ -580,10 +580,30 @@ class HostEngineSession:
         if owner is self._dsd_pcm:
             installed_filter = getattr(owner, "_processing_filter", None)
         had_filter = installed_filter is not None
-        removed = bool(remove())
+        result = remove()
+        if owner is self._dsd_pcm:
+            if not isinstance(result, dict):
+                return False, {
+                    "code": "DSP_BYPASS_UNCONFIRMED",
+                    "detail": "remove seam returned no release receipt",
+                    "predecessor_untouched": False,
+                }
+            removed = bool(result.get("removed") or result.get("already"))
+            restored = bool(result.get("route_restored"))
+            return True, {
+                "bypassed": removed and restored,
+                "removed": removed,
+                "had_filter": had_filter,
+                "route_restored": restored,
+                "pipeline_generation": int(
+                    result.get("pipeline_generation")
+                    or getattr(owner, "pipeline_generation", 0)
+                ),
+                "receipt": result,
+            }
         return True, {
-            "bypassed": removed,
-            "removed": removed,
+            "bypassed": bool(result),
+            "removed": bool(result),
             "had_filter": had_filter,
             "pipeline_generation": int(getattr(owner, "pipeline_generation", 0)),
         }

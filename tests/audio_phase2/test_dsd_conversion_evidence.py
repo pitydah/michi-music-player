@@ -77,6 +77,7 @@ def test_observed_conversion_path_marks_lab_dac_and_dsp():
             "output_caps": "audio/x-raw,format=F32LE,rate=88200,channels=2",
             "sink_factory": "fakesink",
             "processing": {"graph_revision": 1},
+            "processing_effective": True,
         },
     )
     levels = {node.node: node.level for node in evidence.observed_nodes}
@@ -84,5 +85,21 @@ def test_observed_conversion_path_marks_lab_dac_and_dsp():
     assert levels[ConversionNode.OUTPUT_NEGOTIATION].value == "OBSERVED"
     assert levels[ConversionNode.DAC].value == "LAB"
     path = SignalPathService().project_dsd_conversion(evidence)
-    assert path["verdict"] == "OBSERVED"
+    assert path["verdict"] == "OBSERVED_LAB"
     assert path["plan_id"] == plan.plan_id
+
+
+def test_observed_conversion_without_dsp_is_lab_observed_not_partial():
+    from michi.application.signal_path_service import SignalPathService
+
+    evidence = build_dsd_conversion_evidence(
+        _plan(),
+        dsp_active=False,
+        runtime_identity={
+            "decoder_caps": "audio/x-dsd,format=DSDU8,rate=352800,channels=2",
+            "output_caps": "audio/x-raw,format=F32LE,rate=88200,channels=2",
+            "sink_factory": "fakesink",
+        },
+    )
+    path = SignalPathService().project_dsd_conversion(evidence)
+    assert path["verdict"] == "OBSERVED_LAB"

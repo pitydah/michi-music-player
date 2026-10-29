@@ -71,7 +71,11 @@ def build_dsd_conversion_evidence(
 ) -> DsdConversionEvidence:
     identity = runtime_identity if isinstance(runtime_identity, dict) else {}
     processing = identity.get("processing")
-    dsp_observed = bool(dsp_active and isinstance(processing, dict))
+    dsp_observed = bool(
+        dsp_active
+        and isinstance(processing, dict)
+        and identity.get("processing_effective") is True
+    )
     sink_factory = str(identity.get("sink_factory") or "")
     lab = sink_factory in {"fakesink", "appsink"}
     observed = [

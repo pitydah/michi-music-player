@@ -429,13 +429,17 @@ class DsdPcmHostRuntime:
         except Exception as exc:
             if added:
                 try:
-                    self._discard_filter_bin(filter_bin)
+                    if not self._discard_filter_bin(filter_bin):
+                        raise DsdPcmHostError(
+                            "DSD_PCM_PROCESSING_ROLLBACK_FAILED",
+                            "filter bin removal was not confirmed",
+                        )
                 except Exception as rollback_exc:  # noqa: BLE001
                     raise DsdPcmHostError(
                         "DSD_PCM_PROCESSING_ROLLBACK_FAILED",
                         f"{exc}; rollback: {rollback_exc}",
                     ) from exc
-            if not caps_src.link(sink_sink):
+            if caps_src.link(sink_sink) != self._gst.PadLinkReturn.OK:
                 raise DsdPcmHostError(
                     "DSD_PCM_PROCESSING_ROLLBACK_FAILED",
                     f"{exc}; direct route restore failed",
@@ -449,7 +453,7 @@ class DsdPcmHostRuntime:
             self._identity["processing"] = readback
         return readback
 
-    def _discard_filter_bin(self, filter_bin) -> None:
+    def _discard_filter_bin(self, filter_bin) -> bool:
         """Remove a partially installed filter and leave no half-link."""
         sink_pad = filter_bin.get_static_pad("sink")
         src_pad = filter_bin.get_static_pad("src")
@@ -457,12 +461,38 @@ class DsdPcmHostRuntime:
             if pad is not None and pad.is_linked():
                 pad.unlink(pad.get_peer())
         filter_bin.set_state(self._gst.State.NULL)
-        self._pipeline.remove(filter_bin)
+        removed = self._pipeline.remove(filter_bin)
+        return bool(removed)
 
-    def remove_processing_filter(self) -> None:
+    def remove_processing_filter(self) -> dict[str, Any]:
+        identity = dict(self._identity or {})
+        generation = self._pipeline_generation
         filter_bin = self._processing_filter
         if filter_bin is None:
-            return
+            if self._pcm_caps is None or self._sink is None:
+                raise DsdPcmHostError(
+                    "DSD_PCM_PROCESSING_REMOVE_FAILED", "no PCM route"
+                )
+            caps_src = self._pcm_caps.get_static_pad("src")
+            sink_sink = self._sink.get_static_pad("sink")
+            if (
+                caps_src is None
+                or sink_sink is None
+                or caps_src.get_peer() is not sink_sink
+            ):
+                raise DsdPcmHostError(
+                    "DSD_PCM_PROCESSING_REMOVE_FAILED",
+                    "direct PCM route is not intact",
+                )
+            return {
+                "removed": False,
+                "already": True,
+                "route_restored": True,
+                "pipeline_generation": generation,
+                "execution_id": identity.get("execution_id"),
+                "plan_id": identity.get("plan_id"),
+                "terminal_state": "BYPASSED",
+            }
         caps_src = self._pcm_caps.get_static_pad("src")
         sink_sink = self._sink.get_static_pad("sink")
         for pad in (caps_src, filter_bin.get_static_pad("sink")):
@@ -472,8 +502,11 @@ class DsdPcmHostRuntime:
             if pad is not None and pad.is_linked():
                 pad.unlink(pad.get_peer())
         filter_bin.set_state(self._gst.State.NULL)
-        self._pipeline.remove(filter_bin)
-        if not self._pcm_caps.link(self._sink):
+        if not self._pipeline.remove(filter_bin):
+            raise DsdPcmHostError(
+                "DSD_PCM_PROCESSING_REMOVE_FAILED", "cannot remove filter bin"
+            )
+        if caps_src.link(sink_sink) != self._gst.PadLinkReturn.OK:
             raise DsdPcmHostError(
                 "DSD_PCM_PROCESSING_REMOVE_FAILED", "cannot restore PCM route"
             )
@@ -483,6 +516,15 @@ class DsdPcmHostRuntime:
         self._processing_plan_wire = None
         if self._identity is not None:
             self._identity["processing"] = None
+        return {
+            "removed": True,
+            "already": False,
+            "route_restored": True,
+            "pipeline_generation": generation,
+            "execution_id": identity.get("execution_id"),
+            "plan_id": identity.get("plan_id"),
+            "terminal_state": "BYPASSED",
+        }
 
     def enable_capture(self, max_frames: int) -> None:
         if self._sink is None:

@@ -1402,6 +1402,19 @@ def _build_services(
                 "DSD_PCM_DSP_NOT_NEGOTIATED",
                 "DSP was installed but the working caps were not negotiated",
             )
+        candidate = receipt.candidate
+        if (
+            str(processing.get("plan_id") or "") != candidate.plan_id
+            or int(processing.get("graph_revision") or -1)
+            != int(candidate.graph_revision)
+            or str(identity.get("execution_id") or "") != prepared.execution_id
+        ):
+            raise OutputSessionError(
+                "DSD_PCM_DSP_READBACK_MISMATCH",
+                "post-START readback does not match the accepted receipt",
+            )
+        prepared.runtime_identity["processing_effective"] = True
+        prepared.runtime_identity["processing"] = processing
         audio_processing_service.publish_effective(receipt)
 
     def _dsd_pcm_prepare(plan, path, instance_id):

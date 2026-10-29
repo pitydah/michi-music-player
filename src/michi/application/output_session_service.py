@@ -2610,7 +2610,10 @@ class OutputSessionService:
             with suppress(Exception):
                 runtime_identity["conversion"] = build_dsd_conversion_evidence(
                     plan,
-                    dsp_active=isinstance(runtime_identity.get("processing"), dict),
+                    dsp_active=bool(
+                        isinstance(runtime_identity.get("processing"), dict)
+                        or runtime_identity.get("processing_effective") is True
+                    ),
                     runtime_identity=runtime_identity,
                 ).to_dict()
         with suppress(Exception):

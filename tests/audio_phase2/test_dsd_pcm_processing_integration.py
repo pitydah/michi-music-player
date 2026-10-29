@@ -201,6 +201,9 @@ def test_audio_processing_service_installs_f06_on_dsd_pcm_host(tmp_path):
         assert observed["processing"]["caps_source"] == "negotiated"
         assert processing.publish_effective(receipt) >= candidate.processing_generation
         assert processing.effective_state is ProcessingEffectiveState.EFFECTIVE
+        bypass = port.bypass_processing()
+        assert bypass["bypassed"] is True
+        assert bypass["route_restored"] is True
         port.stop_dsd_pcm(expected)
         processing.shutdown()
     finally:
