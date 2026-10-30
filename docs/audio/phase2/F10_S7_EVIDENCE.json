@@ -4,7 +4,7 @@
   "sprint": "AP2-F10-S7",
   "state": "ACTIVE",
   "base_head": "6ba248f",
-  "code_head": "b35a83a",
+  "code_head": "2ed8505",
   "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
   "verdict": "ACTIVE, VERIFYING — selected F06 profile now reaches the productive DSD→PCM host; transitions, Signal Path and numeric certification remain",
   "implemented": {
@@ -70,7 +70,7 @@
     "product_dsp_e2e": "1 passed — Settings consent, selected ProcessingProfile, graph compile, AudioProcessingService commit, host installation, negotiated readback, EFFECTIVE, stop invalidation",
     "host_processing_integration": "1 passed — AudioProcessingService installs F06 into DsdPcmHostRuntime through the supervised host",
     "host_sample_vertical": "3 passed — real DSD64→F32LE→PEQ capture, bypass differs, direct route rollback",
-    "full_suite": "6303 passed, 22 skipped, 0 failed in 1829.76s (30:29)",
+    "full_suite": "6303 passed, 22 skipped, 0 failed in 1875.99s (31:15)",
     "ci": "PENDING_PUSH",
     "focused": "36 signal-path/evidence tests + async DSD prepare passed",
     "product_capture": "PASS — product E2E reads non-empty F32LE capture and hash after negotiated DSP",
@@ -87,7 +87,7 @@
     "S7-06_native_dop_exclusion": "PASS — policy refusal",
     "S7-07_measured_sample_difference": "PARTIAL — product capture now returns real F32LE bytes/hash; bypass-vs-DSP comparison remains host-lab",
     "S7-08_family_transitions": "NOT_RUN — AudioFamilyTransitionService still not wired to PlaybackService",
-    "S7-09_signal_truth_path": "PASS (DSD conversion) — observed nodes published through truth event; SignalPathService projection returns OBSERVED/PARTIAL and labels fakesink DAC LAB",
+    "S7-09_signal_truth_path": "PASS — observed DSD conversion nodes published after negotiated START; no-DSP route OBSERVED_LAB; fakesink DAC LAB",
     "S7-10_numeric_conformance": "PARTIAL — harness exists, §274.4 oracle absent",
     "S7-11_async_product": "PARTIAL — deferred executor proves prepare returns before worker; Qt event-loop measurement not run",
     "S7-12_ci": "PENDING_PUSH"
@@ -139,10 +139,10 @@
       "K-S7-02": "bypass now requires a route-restored receipt from DsdPcmHostRuntime and reports bypassed only on removed/already + route_restored",
       "K-S7-04": "post-START readback validates plan_id, graph_revision and execution_id against the accepted receipt",
       "K-S7-05": "SignalPathService requires the nodes of the selected route; no-DSP observed routes classify OBSERVED_LAB; fakesink DAC is LAB",
-      "K-S7-06": "link results compare against Gst.PadLinkReturn.OK and filter removal is checked with a receipt"
+      "K-S7-06": "link results compare against Gst.PadLinkReturn.OK and filter removal is checked with a receipt",
+      "K-S7-01": "DSP OBSERVED is gated by processing_effective, set only after post-START negotiated readback; product E2E asserts DSP_NODE=OBSERVED and DAC=LAB in the RUNNING conversion snapshot"
     },
     "partial": {
-      "K-S7-01": "DSP OBSERVED now requires processing_effective; product truth event must be revalidated to confirm the RUNNING snapshot carries it",
       "K-S7-03": "canonical profile selection exists in ServiceGraph.set_processing_profile; no QML selection surface"
     },
     "open": [
