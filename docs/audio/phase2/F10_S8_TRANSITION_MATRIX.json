@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "phase": "AP2-F10",
+  "sprint": "AP2-F10-S8B",
+  "base_sha": "d80c3308c783d27ddf074be22c36c3dab57cb447",
+  "code_sha": "5511c10",
+  "status": "PARTIAL",
+  "integration": {
+    "playback": "PlaybackService invokes AudioFamilyTransitionService after output preparation and before load/play",
+    "output_session": "transition_snapshot, current_family and last_release_evidence expose real session state/receipts",
+    "receipt_validation": "mark_released requires confirmed/RELEASED/SUPERVISED_HOST and exact plan/execution/device/binding/host identity",
+    "host_release": "DoP/DSD host receipts are consumed when present; PCM Direct/Managed do not have a SUPERVISED_HOST release receipt"
+  },
+  "matrix": {
+    "T01": {
+      "source": "PCM_DIRECT",
+      "target": "DSD_TO_PCM",
+      "status": "NOT_RUN",
+      "reason": "PCM Direct release has no SUPERVISED_HOST receipt"
+    },
+    "T02": {
+      "source": "DSD_TO_PCM",
+      "target": "DOP",
+      "status": "PARTIAL",
+      "test": "tests/audio_phase2/test_family_transitions_productive.py::test_playback_marks_dsd_to_dop_transition_with_exact_receipt",
+      "test_kind": "service doubles",
+      "receipt": "exact fixture receipt; predecessor_released=true",
+      "reason": "Playback/OutputSession path is exercised, but no supervised host release is executed in this test"
+    },
+    "T03": {
+      "source": "PCM_MANAGED",
+      "target": "DSD_TO_PCM",
+      "status": "NOT_RUN",
+      "reason": "Managed release adapter not implemented"
+    },
+    "T04": {
+      "source": "DSD_TO_PCM",
+      "target": "PCM_MANAGED",
+      "status": "NOT_RUN",
+      "reason": "Managed destination not yet exercised"
+    },
+    "T05": {
+      "source": "NATIVE_DSD",
+      "target": "DSD_TO_PCM",
+      "status": "NOT_RUN",
+      "reason": "Native DSD host receipt adapter not wired"
+    },
+    "T06": {
+      "source": "DSD_TO_PCM",
+      "target": "NATIVE_DSD",
+      "status": "NOT_RUN",
+      "reason": "Native DSD destination not yet exercised"
+    },
+    "T07": {
+      "source": "DOP",
+      "target": "DSD_TO_PCM",
+      "status": "NOT_RUN",
+      "reason": "DoP source host transition not yet exercised"
+    },
+    "T08": {
+      "source": "DSD_TO_PCM",
+      "target": "DOP",
+      "status": "PARTIAL",
+      "see": "T02"
+    },
+    "T09": {
+      "source": "DSD_TO_PCM DSP OFF",
+      "target": "DSD_TO_PCM DSP ON",
+      "status": "NOT_RUN",
+      "reason": "same-family reconfiguration is not a family transition"
+    },
+    "T10": {
+      "source": "DSD_TO_PCM DSP ON",
+      "target": "DSD_TO_PCM DSP OFF",
+      "status": "NOT_RUN",
+      "reason": "same-family reconfiguration; bypass receipt exists but no transition test"
+    },
+    "T11": {
+      "source": "DSD_TO_PCM quality A",
+      "target": "DSD_TO_PCM quality B",
+      "status": "NOT_RUN",
+      "reason": "same-family reconfiguration"
+    },
+    "T12": {
+      "source": "DAC A",
+      "target": "DAC B",
+      "status": "NOT_RUN",
+      "reason": "same-family device reconfiguration"
+    }
+  },
+  "negative_tests": {
+    "missing_release_receipt": "PASS — target aborted, on_rejected called, no receipt appended",
+    "stale_epoch": "covered by AudioFamilyTransitionService unit tests",
+    "foreign_receipt": "rejected by mark_released exact-field validation"
+  },
+  "limitations": [
+    "The transition test uses service doubles for the output transaction; it is not a supervised-host transition.",
+    "No PCM Direct/Managed release receipt adapter exists, so T01/T03/T04 cannot be marked PASS.",
+    "No autoplay/PAUSED/STOP matrix was executed for transitions."
+  ]
+}
