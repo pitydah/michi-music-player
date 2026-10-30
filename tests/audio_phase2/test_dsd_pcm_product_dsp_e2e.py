@@ -128,6 +128,20 @@ def test_selected_profile_is_effective_on_product_dsd_playback(tmp_path, monkeyp
             time.sleep(0.02)
         assert graph.output_session.state.value == "running"
         assert graph.audio_processing.effective_state.value == "effective"
+        conversion = next(
+            event.runtime_identity["conversion"]
+            for event in graph.signal_truth.output_family_events
+            if event.family == "dsd_pcm"
+            and "conversion" in event.runtime_identity
+            and any(
+                node["node"] == "DSP_NODE" and node["level"] == "OBSERVED"
+                for node in event.runtime_identity["conversion"]["observed_nodes"]
+            )
+        )
+        levels = {node["node"]: node["level"] for node in conversion["observed_nodes"]}
+        assert levels["DSP_NODE"] == "OBSERVED"
+        assert levels["OUTPUT_NEGOTIATION"] == "OBSERVED"
+        assert levels["DAC"] == "LAB"
         assert (
             graph.output_session._dsd_pcm_prepared.runtime_identity[
                 "processing_effective"

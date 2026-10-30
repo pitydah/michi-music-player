@@ -1007,6 +1007,7 @@ class OutputSessionService:
         self._dsd_pcm_plan: DsdToPcmPlan | None = None
         self._dsd_pcm_prepared: DsdPcmSessionPrepared | None = None
         self._dsd_pcm_playing_execution: str | None = None
+        self._dsd_pcm_processing_effective = False
         self._dsd_pcm_eos_execution: str | None = None
         self._dsd_pcm_terminal_execution: str | None = None
         self._selected_device_id: str | None = None
@@ -1270,6 +1271,7 @@ class OutputSessionService:
         ):
             try:
                 self._dsd_pcm_finalize_processing(prepared)
+                self._dsd_pcm_processing_effective = True
             except Exception as exc:  # noqa: BLE001 - effective gate
                 self._dsd_pcm_terminal_execution = prepared.execution_id
                 self._record_dsd_pcm_family(
@@ -1298,6 +1300,7 @@ class OutputSessionService:
         ):
             return False
         self._dsd_pcm_eos_execution = execution_id
+        self._dsd_pcm_processing_effective = False
         self._dsd_pcm_terminal_execution = execution_id
         self._record_dsd_pcm_family(
             OutputFamilyState.UNAVAILABLE, prepared, detail="eos"
@@ -3957,6 +3960,7 @@ class OutputSessionService:
             self._dsd_pcm_prepared = None
             self._dsd_pcm_plan = None
             self._dsd_pcm_playing_execution = None
+            self._dsd_pcm_processing_effective = False
             self._dsd_pcm_eos_execution = None
             self._dsd_pcm_terminal_execution = prepared.execution_id
             self._executor_receipt = None
