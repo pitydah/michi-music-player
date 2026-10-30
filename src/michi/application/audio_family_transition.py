@@ -8,6 +8,7 @@ from enum import StrEnum
 
 class AudioFamily(StrEnum):
     PCM_DIRECT = "PCM_DIRECT"
+    PCM_MANAGED = "PCM_MANAGED"
     NATIVE_DSD = "NATIVE_DSD"
     DOP = "DOP"
     DSD_TO_PCM = "DSD_TO_PCM"

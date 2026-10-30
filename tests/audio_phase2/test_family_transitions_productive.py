@@ -9,8 +9,16 @@ from michi.application.playback_service import PlaybackService
 
 
 class _Output:
-    def __init__(self, *, evidence: dict | None = None, reject: bool = False) -> None:
-        self.current_family = AudioFamily.DOP
+    def __init__(
+        self,
+        *,
+        evidence: dict | None = None,
+        reject: bool = False,
+        source: AudioFamily = AudioFamily.DSD_TO_PCM,
+        target: AudioFamily = AudioFamily.DOP,
+    ) -> None:
+        self.current_family = target
+        self.source_family = source
         self.last_release_evidence = evidence
         self.reject = reject
         self.aborted: list[str] = []
@@ -21,7 +29,7 @@ class _Output:
 
     def transition_snapshot(self):
         return {
-            "family": AudioFamily.DSD_TO_PCM,
+            "family": self.source_family,
             "state": "running",
             "generation": 7,
             "plan_id": "plan:source",
@@ -91,3 +99,36 @@ def test_playback_rejects_target_when_release_receipt_is_missing():
     assert output.aborted == ["tok:target"]
     assert rejected
     assert playback.family_transition_receipts == []
+
+
+import pytest
+
+from michi.application.audio_family_transition import AudioFamily
+
+
+@pytest.mark.parametrize(
+    ("source", "target"),
+    [
+        (AudioFamily.PCM_DIRECT, AudioFamily.DSD_TO_PCM),
+        (AudioFamily.DSD_TO_PCM, AudioFamily.PCM_DIRECT),
+        (AudioFamily.PCM_MANAGED, AudioFamily.DSD_TO_PCM),
+        (AudioFamily.DSD_TO_PCM, AudioFamily.PCM_MANAGED),
+        (AudioFamily.NATIVE_DSD, AudioFamily.DSD_TO_PCM),
+        (AudioFamily.DSD_TO_PCM, AudioFamily.NATIVE_DSD),
+        (AudioFamily.DOP, AudioFamily.DSD_TO_PCM),
+        (AudioFamily.DSD_TO_PCM, AudioFamily.DOP),
+    ],
+)
+def test_playback_marks_all_family_directions_with_receipt(source, target):
+    from tests.conftest import FakeAudioPort
+
+    output = _Output(evidence=_receipt(), source=source, target=target)
+    playback = PlaybackService(FakeAudioPort(), volume_port=object(), output_tx=output)
+    accepted: list[Path] = []
+    playback.load_and_play(Path("/tmp/transition.dsf"), on_accepted=accepted.append)
+    assert accepted
+    assert playback.family_transition_receipts
+    receipt = playback.family_transition_receipts[-1]
+    assert receipt.source_family is source
+    assert receipt.target_family is target
+    assert receipt.predecessor_released is True

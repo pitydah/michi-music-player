@@ -1260,7 +1260,7 @@ class OutputSessionService:
             "dop": AudioFamily.DOP,
             "native_dsd": AudioFamily.NATIVE_DSD,
             "direct": AudioFamily.PCM_DIRECT,
-            "managed": AudioFamily.PCM_DIRECT,
+            "managed": AudioFamily.PCM_MANAGED,
         }.get(self._mode)
 
     def preview_family(self, path: Path) -> AudioFamily | None:
