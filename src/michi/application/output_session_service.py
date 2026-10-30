@@ -2217,6 +2217,7 @@ class OutputSessionService:
         if self._executor_receipt == prepared.execution_id:
             self._executor_receipt = None
         self._token_value = None
+        self._dsd_pcm_processing_effective = False
         lost = (
             self._lost_device_id is not None
             and self._lost_device_id == prepared.stable_device_id
@@ -2494,6 +2495,7 @@ class OutputSessionService:
         *,
         record_failure: bool = True,
     ) -> bool:
+        self._dsd_pcm_processing_effective = False
         if self._dsd_pcm_abort is None:
             if record_failure:
                 self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
@@ -2571,6 +2573,7 @@ class OutputSessionService:
         if self._executor_receipt == prepared.execution_id:
             self._executor_receipt = None
         self._token_value = None
+        self._dsd_pcm_processing_effective = False
         lost = (
             self._lost_device_id is not None
             and self._lost_device_id == prepared.stable_device_id
@@ -2609,6 +2612,12 @@ class OutputSessionService:
         if plan is None:
             return
         runtime_identity = dict(current.runtime_identity) if current is not None else {}
+        # The session flag is the ONLY authority for the current snapshot.
+        # A stale prepared.runtime_identity cannot keep DSP observed after
+        # EOS/STOP/abort or a failed EFFECTIVE publication.
+        runtime_identity["processing_effective"] = bool(
+            self._dsd_pcm_processing_effective
+        )
         if current is not None:
             with suppress(Exception):
                 runtime_identity["conversion"] = build_dsd_conversion_evidence(

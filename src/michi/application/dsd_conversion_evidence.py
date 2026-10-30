@@ -58,6 +58,9 @@ class DsdConversionEvidence:
     decoder_caps: str = ""
     output_caps: str = ""
     processing_graph_revision: int | None = None
+    dsp_requested: bool = False
+    dsp_installed: bool = False
+    dsp_effective: bool = False
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -71,11 +74,9 @@ def build_dsd_conversion_evidence(
 ) -> DsdConversionEvidence:
     identity = runtime_identity if isinstance(runtime_identity, dict) else {}
     processing = identity.get("processing")
-    dsp_observed = bool(
-        dsp_active
-        and isinstance(processing, dict)
-        and identity.get("processing_effective") is True
-    )
+    dsp_requested = bool(dsp_active)
+    dsp_installed = isinstance(processing, dict)
+    dsp_effective = bool(dsp_installed and identity.get("processing_effective") is True)
     sink_factory = str(identity.get("sink_factory") or "")
     lab = sink_factory in {"fakesink", "appsink"}
     observed = [
@@ -91,7 +92,9 @@ def build_dsd_conversion_evidence(
         ),
         ObservedConversionNode(
             ConversionNode.PCM_LAYOUT_NORMALIZER,
-            ConversionEvidenceLevel.INSTALLED,
+            ConversionEvidenceLevel.OBSERVED
+            if identity.get("output_caps")
+            else ConversionEvidenceLevel.INSTALLED,
             f"F32LE interleaved channels={plan.channels}",
         ),
     ]
@@ -105,12 +108,14 @@ def build_dsd_conversion_evidence(
                 "kaiser quality=10",
             )
         )
-    if dsp_active:
+    if dsp_requested:
         observed.append(
             ObservedConversionNode(
                 ConversionNode.DSP_NODE,
                 ConversionEvidenceLevel.OBSERVED
-                if dsp_observed
+                if dsp_effective
+                else ConversionEvidenceLevel.INSTALLED
+                if dsp_installed
                 else ConversionEvidenceLevel.PLANNED,
                 "graph_revision="
                 + str(
@@ -145,7 +150,7 @@ def build_dsd_conversion_evidence(
         backend=plan.backend,
         backend_version=plan.backend_version,
         quality_profile=plan.quality_profile,
-        dsp_active=dsp_observed,
+        dsp_active=dsp_requested,
         source_fidelity="DSD",
         output_fidelity="PCM_F32LE",
         bit_perfect_claim="NOT_APPLICABLE",

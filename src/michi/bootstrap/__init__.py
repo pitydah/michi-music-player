@@ -1413,9 +1413,9 @@ def _build_services(
                 "DSD_PCM_DSP_READBACK_MISMATCH",
                 "post-START readback does not match the accepted receipt",
             )
-        prepared.runtime_identity["processing_effective"] = True
-        prepared.runtime_identity["processing"] = processing
         audio_processing_service.publish_effective(receipt)
+        prepared.runtime_identity["processing"] = processing
+        prepared.runtime_identity["processing_effective"] = True
 
     def _dsd_pcm_prepare(plan, path, instance_id):
         port = gstreamer_provider.current_port

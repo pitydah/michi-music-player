@@ -164,6 +164,17 @@ def test_selected_profile_is_effective_on_product_dsd_playback(tmp_path, monkeyp
         assert evidence["capture"]["byte_count"] > 0
         assert evidence["capture"]["sha256"]
         assert graph.audio_processing.effective_state.value != "effective"
+        terminal = next(
+            event.runtime_identity["conversion"]
+            for event in reversed(graph.signal_truth.output_family_events)
+            if event.family == "dsd_pcm"
+            and event.state.value == "unavailable"
+            and "conversion" in event.runtime_identity
+        )
+        terminal_levels = {
+            node["node"]: node["level"] for node in terminal["observed_nodes"]
+        }
+        assert terminal_levels["DSP_NODE"] != "OBSERVED"
         graph.playback.stop()
         assert graph.output_session.state.value == "idle"
     finally:
