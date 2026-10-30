@@ -4,7 +4,7 @@
   "sprint": "AP2-F10-S7",
   "state": "ACTIVE",
   "base_head": "6ba248f",
-  "code_head": "cff29f3",
+  "code_head": "fa14a3c",
   "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
   "verdict": "ACTIVE, VERIFYING — selected F06 profile now reaches the productive DSD→PCM host; transitions, Signal Path and numeric certification remain",
   "implemented": {
@@ -70,7 +70,7 @@
     "product_dsp_e2e": "1 passed — Settings consent, selected ProcessingProfile, graph compile, AudioProcessingService commit, host installation, negotiated readback, EFFECTIVE, stop invalidation",
     "host_processing_integration": "1 passed — AudioProcessingService installs F06 into DsdPcmHostRuntime through the supervised host",
     "host_sample_vertical": "3 passed — real DSD64→F32LE→PEQ capture, bypass differs, direct route rollback",
-    "full_suite": "6303 passed, 22 skipped, 0 failed in 1877.36s (31:17)",
+    "full_suite": "6303 passed, 22 skipped, 0 failed in 1874.30s (31:14)",
     "ci": "PENDING_PUSH",
     "focused": "36 signal-path/evidence tests + async DSD prepare passed",
     "product_capture": "PASS — product E2E reads non-empty F32LE capture and hash after negotiated DSP",
@@ -140,7 +140,9 @@
       "K-S7-04": "post-START readback validates plan_id, graph_revision and execution_id against the accepted receipt",
       "K-S7-05": "conversion evidence separates dsp_requested/installed/effective; SignalPath requires normalizer/resampler/DSP for the selected route; no-DSP observed is OBSERVED_LAB; requested-but-unconfirmed is PARTIAL",
       "K-S7-06": "link results compare against Gst.PadLinkReturn.OK and filter removal is checked with a receipt",
-      "K-S7-01": "processing_effective is session-owned; _record overwrites the snapshot on every event; terminal EOS/STOP/abort publish DSP retired; product test asserts OBSERVED only on RUNNING and not on UNAVAILABLE"
+      "K-S7-01": "processing_effective is session-owned; _record overwrites the snapshot on every event; terminal EOS/STOP/abort publish DSP retired; product test asserts OBSERVED only on RUNNING and not on UNAVAILABLE",
+      "K-S7-07": "release_active retires _dsd_pcm_processing_effective at RELEASING; RELEASED/UNAVAILABLE snapshots cannot keep DSP observed",
+      "K-S7-08": "DsdConversionEvidence now passes dsp_requested/dsp_installed/dsp_effective into the dataclass; requested-but-uninstalled is not reported as effective"
     },
     "partial": {
       "K-S7-03": "canonical profile selection exists in ServiceGraph.set_processing_profile; no QML selection surface"
@@ -149,6 +151,13 @@
       "AudioFamilyTransitionService not wired",
       "numeric §274.4 oracle/corpus absent"
     ],
-    "local_tests": "6303 passed, 22 skipped, 0 failed"
+    "local_tests": "6303 passed, 22 skipped, 0 failed",
+    "s8_status": {
+      "S8-A": "PASS",
+      "S8-B": "NOT_RUN",
+      "S8-C": "NOT_RUN",
+      "S8-D": "PARTIAL",
+      "S8-E": "BLOCKED_NO_PROFILE_CATALOG"
+    }
   }
 }
