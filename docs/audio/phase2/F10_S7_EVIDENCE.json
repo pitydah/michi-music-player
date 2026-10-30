@@ -4,7 +4,7 @@
   "sprint": "AP2-F10-S7",
   "state": "ACTIVE",
   "base_head": "6ba248f",
-  "code_head": "5511c10",
+  "code_head": "f83ba53",
   "spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
   "verdict": "ACTIVE, VERIFYING — selected F06 profile now reaches the productive DSD→PCM host; transitions, Signal Path and numeric certification remain",
   "implemented": {
@@ -70,7 +70,7 @@
     "product_dsp_e2e": "1 passed — Settings consent, selected ProcessingProfile, graph compile, AudioProcessingService commit, host installation, negotiated readback, EFFECTIVE, stop invalidation",
     "host_processing_integration": "1 passed — AudioProcessingService installs F06 into DsdPcmHostRuntime through the supervised host",
     "host_sample_vertical": "3 passed — real DSD64→F32LE→PEQ capture, bypass differs, direct route rollback",
-    "full_suite": "6305 passed, 22 skipped, 0 failed in 1858.67s (30:58)",
+    "full_suite": "6313 passed, 23 skipped, 0 failed in 1861.98s (31:01)",
     "ci": "PENDING_PUSH",
     "focused": "36 signal-path/evidence tests + async DSD prepare passed",
     "product_capture": "PASS — product E2E reads non-empty F32LE capture and hash after negotiated DSP",

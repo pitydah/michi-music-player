@@ -15,8 +15,9 @@
     "T01": {
       "source": "PCM_DIRECT",
       "target": "DSD_TO_PCM",
-      "status": "NOT_RUN",
-      "reason": "PCM Direct release has no SUPERVISED_HOST receipt"
+      "status": "PARTIAL",
+      "reason": "PCM Direct release has no SUPERVISED_HOST receipt",
+      "service_path": "PASS with exact fixture receipt via PlaybackService; supervised-host receipt not executed"
     },
     "T02": {
       "source": "DSD_TO_PCM",
@@ -31,26 +32,30 @@
     "T03": {
       "source": "PCM_MANAGED",
       "target": "DSD_TO_PCM",
-      "status": "NOT_RUN",
-      "reason": "Managed release adapter not implemented"
+      "status": "PARTIAL",
+      "reason": "Managed release adapter not implemented",
+      "service_path": "PASS with exact fixture receipt via PlaybackService; supervised-host receipt not executed"
     },
     "T04": {
       "source": "DSD_TO_PCM",
       "target": "PCM_MANAGED",
-      "status": "NOT_RUN",
-      "reason": "Managed destination not yet exercised"
+      "status": "PARTIAL",
+      "reason": "Managed destination not yet exercised",
+      "service_path": "PASS with exact fixture receipt via PlaybackService; supervised-host receipt not executed"
     },
     "T05": {
       "source": "NATIVE_DSD",
       "target": "DSD_TO_PCM",
-      "status": "NOT_RUN",
-      "reason": "Native DSD host receipt adapter not wired"
+      "status": "PARTIAL",
+      "reason": "Native DSD host receipt adapter not wired",
+      "service_path": "PASS with exact fixture receipt via PlaybackService; supervised-host receipt not executed"
     },
     "T06": {
       "source": "DSD_TO_PCM",
       "target": "NATIVE_DSD",
-      "status": "NOT_RUN",
-      "reason": "Native DSD destination not yet exercised"
+      "status": "PARTIAL",
+      "reason": "Native DSD destination not yet exercised",
+      "service_path": "PASS with exact fixture receipt via PlaybackService; supervised-host receipt not executed"
     },
     "T07": {
       "source": "DOP",
@@ -63,7 +68,8 @@
       "source": "DSD_TO_PCM",
       "target": "DOP",
       "status": "PARTIAL",
-      "see": "T02"
+      "see": "T02",
+      "service_path": "PASS with exact fixture receipt via PlaybackService; supervised-host receipt not executed"
     },
     "T09": {
       "source": "DSD_TO_PCM DSP OFF",
@@ -105,5 +111,10 @@
     "status": "PASS local",
     "coverage": "real DSD→PCM stop receipt marks DSD→DOP; real DoP stop receipt marks DOP→DSD→PCM",
     "limits": "planner only; Playback transition itself still service-double"
+  },
+  "summary": {
+    "directions_service_path": "8/8 PASS with controlled receipt",
+    "host_receipts": "2/2 PASS (DSD→DoP, DoP→DSD)",
+    "same_family_reconfigs": "0/4 NOT_RUN"
   }
 }
