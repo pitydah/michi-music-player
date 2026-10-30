@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from michi.application.audio_family_transition import AudioFamily
 from michi.application.playback_service import PlaybackService
 
@@ -99,11 +101,6 @@ def test_playback_rejects_target_when_release_receipt_is_missing():
     assert output.aborted == ["tok:target"]
     assert rejected
     assert playback.family_transition_receipts == []
-
-
-import pytest
-
-from michi.application.audio_family_transition import AudioFamily
 
 
 @pytest.mark.parametrize(
