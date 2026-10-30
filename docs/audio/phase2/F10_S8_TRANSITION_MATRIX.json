@@ -25,7 +25,8 @@
       "test": "tests/audio_phase2/test_family_transitions_productive.py::test_playback_marks_dsd_to_dop_transition_with_exact_receipt",
       "test_kind": "service doubles",
       "receipt": "exact fixture receipt; predecessor_released=true",
-      "reason": "Playback/OutputSession path is exercised, but no supervised host release is executed in this test"
+      "reason": "Playback/OutputSession path is exercised, but no supervised host release is executed in this test",
+      "host_receipt": "PASS local"
     },
     "T03": {
       "source": "PCM_MANAGED",
@@ -54,8 +55,9 @@
     "T07": {
       "source": "DOP",
       "target": "DSD_TO_PCM",
-      "status": "NOT_RUN",
-      "reason": "DoP source host transition not yet exercised"
+      "status": "PARTIAL",
+      "reason": "DoP source host transition not yet exercised",
+      "host_receipt": "PASS local"
     },
     "T08": {
       "source": "DSD_TO_PCM",
@@ -97,5 +99,11 @@
     "The transition test uses service doubles for the output transaction; it is not a supervised-host transition.",
     "No PCM Direct/Managed release receipt adapter exists, so T01/T03/T04 cannot be marked PASS.",
     "No autoplay/PAUSED/STOP matrix was executed for transitions."
-  ]
+  ],
+  "host_receipt_tests": {
+    "file": "tests/audio_phase2/test_family_transition_host_receipt.py",
+    "status": "PASS local",
+    "coverage": "real DSD→PCM stop receipt marks DSD→DOP; real DoP stop receipt marks DOP→DSD→PCM",
+    "limits": "planner only; Playback transition itself still service-double"
+  }
 }
