@@ -3715,6 +3715,9 @@ class OutputSessionService:
         )
         self._last_release_invalidated_media = was_specific
         if self._mode == "dsd_pcm":
+            # From this point the session is releasing; no DSP observation may
+            # survive any release, confirmed or unconfirmed.
+            self._dsd_pcm_processing_effective = False
             prepared = self._dsd_pcm_prepared
             if self._state not in (
                 OutputSessionState.IDLE,

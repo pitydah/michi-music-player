@@ -84,6 +84,9 @@ def test_observed_conversion_path_marks_lab_dac_and_dsp():
     assert levels[ConversionNode.DSP_NODE].value == "OBSERVED"
     assert levels[ConversionNode.OUTPUT_NEGOTIATION].value == "OBSERVED"
     assert levels[ConversionNode.DAC].value == "LAB"
+    assert evidence.dsp_requested is True
+    assert evidence.dsp_installed is True
+    assert evidence.dsp_effective is True
     path = SignalPathService().project_dsd_conversion(evidence)
     assert path["verdict"] == "OBSERVED_LAB"
     assert path["plan_id"] == plan.plan_id

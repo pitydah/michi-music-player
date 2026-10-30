@@ -165,4 +165,7 @@ def build_dsd_conversion_evidence(
             and processing.get("graph_revision") is not None
             else None
         ),
+        dsp_requested=dsp_requested,
+        dsp_installed=dsp_installed,
+        dsp_effective=dsp_effective,
     )
