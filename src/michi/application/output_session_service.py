@@ -19,6 +19,7 @@ from dataclasses import dataclass, replace
 from enum import StrEnum
 from pathlib import Path
 
+from michi.application.audio_family_transition import AudioFamily
 from michi.application.audio_output_planner import (
     EXACT_TUPLE_UNKNOWN,
     OutputPlanner,
@@ -986,6 +987,7 @@ class OutputSessionService:
         self._dsd_pcm_invalidate_processing = dsd_pcm_invalidate_processing
         # ADDITIVE: the ONE canonical recorder (never a second one).
         self._truth_recorder = truth_recorder
+        self._last_release_evidence: dict | None = None
         self._execution_instance_epoch = next(_EXECUTION_INSTANCE_SEQ)
         self._async_prepare_generation = 0
         self._pending_prepare_device_id: str | None = None
@@ -1250,6 +1252,63 @@ class OutputSessionService:
         self._dop_terminal_execution = execution_id
         self._record_dop_family(OutputFamilyState.UNAVAILABLE, prepared, detail="eos")
         return True
+
+    @property
+    def current_family(self) -> AudioFamily | None:
+        return {
+            "dsd_pcm": AudioFamily.DSD_TO_PCM,
+            "dop": AudioFamily.DOP,
+            "native_dsd": AudioFamily.NATIVE_DSD,
+            "direct": AudioFamily.PCM_DIRECT,
+            "managed": AudioFamily.PCM_DIRECT,
+        }.get(self._mode)
+
+    def preview_family(self, path: Path) -> AudioFamily | None:
+        """Resolve the target family without mutating output ownership."""
+        request = self._request_provider(path)
+        if getattr(request, "dsd_pcm_plan", None) is not None:
+            return AudioFamily.DSD_TO_PCM
+        if getattr(request, "dop_plan", None) is not None:
+            return AudioFamily.DOP
+        if getattr(request, "native_dsd_plan", None) is not None:
+            return AudioFamily.NATIVE_DSD
+        return AudioFamily.PCM_DIRECT
+
+    def transition_snapshot(self) -> dict:
+        prepared = (
+            self._dsd_pcm_prepared or self._dop_prepared or self._native_dsd_prepared
+        )
+        plan = (
+            prepared.plan
+            if prepared is not None
+            else self._dsd_pcm_plan or self._dop_plan or self._native_dsd_plan
+        )
+        return {
+            "family": self.current_family,
+            "state": self._state.value,
+            "generation": self._generation,
+            "plan_id": str(getattr(plan, "plan_id", "") or ""),
+            "execution_id": str(getattr(prepared, "execution_id", "") or ""),
+            "stable_device_id": str(
+                getattr(prepared, "stable_device_id", "")
+                or getattr(plan, "stable_device_id", "")
+                or self._selected_device_id
+                or ""
+            ),
+            "binding_generation": int(getattr(plan, "binding_generation", 0) or 0),
+            "host_generation": int(
+                getattr(prepared, "host_generation", 0)
+                or getattr(plan, "host_generation", 0)
+                or 0
+            ),
+            "processing_generation": 0,
+        }
+
+    @property
+    def last_release_evidence(self) -> dict | None:
+        return (
+            dict(self._last_release_evidence) if self._last_release_evidence else None
+        )
 
     def notify_dsd_pcm_playing(self, execution_id: str) -> bool:
         prepared = self._dsd_pcm_prepared
@@ -2340,6 +2399,8 @@ class OutputSessionService:
                 code,
                 "current DoP execution was not released",
             )
+        if isinstance(result, dict) and isinstance(result.get("release"), dict):
+            self._last_release_evidence = dict(result["release"])
         self._record_dop_family(OutputFamilyState.UNAVAILABLE, prepared, detail=reason)
         self._clear_pending_cleanup("dop", prepared)
         self._dop_prepared = None
@@ -2525,6 +2586,8 @@ class OutputSessionService:
                 )
             self._retain_pending_cleanup("dsd_pcm", prepared)
             return False
+        if isinstance(result, dict) and isinstance(result.get("release"), dict):
+            self._last_release_evidence = dict(result["release"])
         self._clear_pending_cleanup("dsd_pcm", prepared)
         return True
 
@@ -3765,6 +3828,8 @@ class OutputSessionService:
                     self._error_code, "host did not confirm release"
                 )
             if prepared is not None:
+                if isinstance(result, dict) and isinstance(result.get("release"), dict):
+                    self._last_release_evidence = dict(result["release"])
                 self._clear_pending_cleanup("dsd_pcm", prepared)
                 self._record_dsd_pcm_family(
                     OutputFamilyState.RELEASED, prepared, detail=str(reason)

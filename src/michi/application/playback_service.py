@@ -13,6 +13,13 @@ from michi.application.audio_engine_selection import (
     MediaRequestTerminalResult,
     MediaRequestTerminalStatus,
 )
+from michi.application.audio_family_transition import (
+    AudioFamilyTransitionService,
+    FamilyTransitionRequest,
+)
+from michi.application.audio_family_transition import (
+    PlaybackStatus as TransitionPlaybackStatus,
+)
 from michi.application.audio_output_ports import (
     AppliedVolume,
     PlaybackVolumePort,
@@ -170,6 +177,9 @@ class PlaybackService:
             output_tx if output_tx is not None else SharedOutputTransaction()
         )
         self._output_token: str | None = None
+        self._family_transition = AudioFamilyTransitionService()
+        self._pending_family_transition = None
+        self.family_transition_receipts: list[object] = []
         # PRE-050 lifecycle: aceptación temprana del backend para USER_PLAY
         # (durante load/play) latched hasta que play() retorne con éxito.
         # NO es una autoridad de media: _pending_path/epoch siguen mandando.
@@ -381,6 +391,11 @@ class PlaybackService:
             previous_accepted = self._accepted
             self._request_epoch += 1
             my_epoch = self._request_epoch
+            before = None
+            snapshot = getattr(self._output_tx, "transition_snapshot", None)
+            if callable(snapshot):
+                before = snapshot()
+            self._pending_family_transition = None
             self._pending_path = file_path
             self._pending_purpose = MediaRequestPurpose.USER_PLAY
             self._pending_on_accepted = on_accepted
@@ -392,6 +407,63 @@ class PlaybackService:
                 if my_epoch != self._request_epoch:
                     self._output_tx.abort_media(token, "superseded")
                     return
+                target_family = getattr(self._output_tx, "current_family", None)
+                if (
+                    isinstance(before, dict)
+                    and before.get("family") is not None
+                    and target_family is not None
+                    and before["family"] is not target_family
+                ):
+                    status = {
+                        "running": TransitionPlaybackStatus.PLAYING,
+                        "paused": TransitionPlaybackStatus.PAUSED,
+                    }.get(str(before.get("state")), TransitionPlaybackStatus.STOPPED)
+                    try:
+                        planned = self._family_transition.plan(
+                            FamilyTransitionRequest(
+                                media_identity=str(file_path),
+                                source_family=before["family"],
+                                target_family=target_family,
+                                predecessor_status=status,
+                                request_epoch=max(
+                                    my_epoch,
+                                    int(before.get("generation") or 0) + 1,
+                                ),
+                                current_epoch=int(before.get("generation") or 0),
+                                output_generation=int(before.get("generation") or 0),
+                                processing_generation=int(
+                                    before.get("processing_generation") or 0
+                                ),
+                                binding_generation=int(
+                                    before.get("binding_generation") or 0
+                                ),
+                                destructive_boundary=True,
+                                plan_id=str(before.get("plan_id") or ""),
+                                execution_id=str(before.get("execution_id") or ""),
+                                stable_device_id=str(
+                                    before.get("stable_device_id") or ""
+                                ),
+                                host_generation=int(before.get("host_generation") or 0),
+                            )
+                        )
+                        receipt = self._family_transition.mark_released(
+                            planned,
+                            getattr(self._output_tx, "last_release_evidence", None),
+                        )
+                    except Exception as exc:  # noqa: BLE001 - fail closed
+                        try:
+                            self._output_tx.abort_media(
+                                token, "transition_release_unconfirmed"
+                            )
+                        finally:
+                            self._clear_pending()
+                            self._intent = False
+                            self._accepted = False
+                            self._state.status = PlaybackStatus.STOPPED
+                            if on_rejected is not None:
+                                on_rejected(file_path, str(exc))
+                        return
+                    self.family_transition_receipts.append(receipt)
                 self._continue_prepared_load(
                     file_path,
                     token,
