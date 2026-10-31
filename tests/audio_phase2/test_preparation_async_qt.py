@@ -15,7 +15,9 @@ from __future__ import annotations
 import threading
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
+from michi.application.audio_family_transition import AudioFamily
 from michi.application.audio_output_planner import OutputPlanner
 from michi.application.output_session_service import (
     OutputRequest,
@@ -215,6 +217,23 @@ def test_user_play_preparation_is_owner_free_and_then_loads_and_plays(
     executor.deliver()
     assert fake_audio.loaded == Path("/tmp/slow.flac")
     assert fake_audio.state == "playing"  # USER_PLAY plays explicitly
+
+
+def test_output_handover_to_dop_never_calls_the_backend_seek(fake_audio) -> None:
+    playback, _service_obj, _executor = _playback_with_async_service(
+        fake_audio, _BlockingProvider(), _DeferredExecutor()
+    )
+    playback._output_tx = SimpleNamespace(current_family=AudioFamily.DOP)
+    playback._pending_resume_position_ms = 1_234
+    playback._state.file_path = Path("/tmp/handover.dsf")
+    calls: list[int] = []
+    fake_audio.seek = calls.append
+
+    playback._apply_prepare_seek()
+
+    assert calls == []
+    assert playback._pending_resume_position_ms is None
+    assert playback._state.error_message is None
 
 
 def test_startup_restore_is_owner_free_and_never_autoplays(fake_audio) -> None:

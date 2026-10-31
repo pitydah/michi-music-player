@@ -192,6 +192,11 @@ class DsdSignalFormat:
         return DsdSourceBitRate(self.bit_rate_hz)
 
     @property
+    def dop_carrier_frames_per_second(self) -> int:
+        """DoP v1 carrier frame rate derived from the source bit rate."""
+        return self.source_rate.dop_carrier_frames_per_second
+
+    @property
     def presentation_label(self) -> str | None:
         """Derived display label (DSD64...); never the stored authority."""
         if self.bit_rate_hz % _DSD_BASE_BITS_PER_SECOND:

@@ -823,6 +823,11 @@ class GStreamerHostedAudioPort(AudioPort):
             dict(payload),
             deadline_s=self._load_deadline_s,
         )
+        host_generation = int(self._supervisor.host_generation)
+        # The host generation belongs to the prepared execution identity: a
+        # later abort/stop receipt must prove the same generation, not the
+        # supervisor's value at release time.
+        identity = {**identity, "host_generation": host_generation}
         with self._lock:
             self._native_dsd_active = True
             self._native_dsd_state = "PREPARED"
@@ -832,7 +837,7 @@ class GStreamerHostedAudioPort(AudioPort):
                 "stable_device_id": str(identity.get("stable_device_id") or ""),
                 "device": str(identity.get("device") or ""),
                 "binding_generation": int(identity.get("binding_generation") or 0),
-                "host_generation": int(self._supervisor.host_generation),
+                "host_generation": host_generation,
             }
             self._native_dsd_path = str(Path(str(payload.get("path") or "")).resolve())
         return identity

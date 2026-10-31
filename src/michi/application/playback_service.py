@@ -14,6 +14,7 @@ from michi.application.audio_engine_selection import (
     MediaRequestTerminalStatus,
 )
 from michi.application.audio_family_transition import (
+    AudioFamily,
     AudioFamilyTransitionService,
     FamilyTransitionRequest,
 )
@@ -1366,6 +1367,13 @@ class PlaybackService:
         resume_position = self._pending_resume_position_ms
         self._pending_resume_position_ms = None
         if resume_position is None:
+            return
+        family = getattr(self._output_tx, "current_family", None)
+        if family in (AudioFamily.NATIVE_DSD, AudioFamily.DOP):
+            # Native DSD and DoP have no seek command. A handover into these
+            # families restarts at the beginning and must not surface a seek
+            # failure as a playback error.
+            self._resume_prepared_pending = False
             return
         self._resume_prepared_pending = True  # armed BEFORE the backend seek
         try:
