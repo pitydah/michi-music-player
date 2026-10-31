@@ -12,7 +12,8 @@
   "8273927",
   "d292157",
   "cc064eb",
-  "40359b7"
+  "40359b7",
+  "9e0978c"
  ],
  "status": "PARTIAL",
  "integration": {
@@ -101,15 +102,17 @@
   "T12": {
    "source": "DAC A",
    "target": "DAC B",
-   "status": "PASS_SERVICE_PATH",
+   "status": "PASS_PHYSICAL",
    "test": "tests/audio_phase2/test_family_handover_matrix.py::test_t12_dop_dac_change_releases_before_prepare",
-   "reason": "same-family DAC change releases device A with its exact binding before binding device B; no simultaneous ownership"
+   "reason": "same-family DAC change releases device A with its exact binding before binding device B (controlled-host DoP proof), and a physical Direct compatible A<->B switch was executed on SMSL and KINMAX with real alsasink: plan and locator changed and the transition was reacquire. Direct->Direct uses the synchronous reacquire path and publishes no identity-bound release receipt; audibility stays operator-confirmed.",
+   "physical": "scripts/f10_physical_dac_handover.py",
+   "evidence": "evidence/dac-v35-110/2026-10-31-f10-physical-handover/handover_matrix.json"
   }
  },
  "signal_path": {
-  "requested_vs_effective": "PASS \u2014 tests/audio_phase2/test_signal_path_service.py::test_requested_and_effective_are_never_collapsed",
-  "installed": "PASS_MODELED \u2014 SignalPathNode.installed projects the processing commit receipt as a separate stage; a refused install never rewrites EFFECTIVE (tests/audio_phase2/test_signal_path_service.py::test_installed_stage_is_distinct_from_requested_and_effective)",
-  "handover_truth": "PASS \u2014 predecessor RELEASED and target RUNNING events asserted in both E2E tests"
+  "requested_vs_effective": "PASS — tests/audio_phase2/test_signal_path_service.py::test_requested_and_effective_are_never_collapsed",
+  "installed": "PASS_MODELED — SignalPathNode.installed projects the processing commit receipt as a separate stage; a refused install never rewrites EFFECTIVE (tests/audio_phase2/test_signal_path_service.py::test_installed_stage_is_distinct_from_requested_and_effective)",
+  "handover_truth": "PASS — predecessor RELEASED and target RUNNING events asserted in both E2E tests"
  },
  "adversarial": {
   "obsolete_request_cannot_release_newer_execution": "tests/audio_phase2/test_owner_safe_handover.py::test_obsolete_async_request_never_releases_the_current_execution",
@@ -126,9 +129,70 @@
   "paused_no_autoplay": "tests/audio_phase2/test_family_transitions.py (PAUSED/STOPPED resume policy)"
  },
  "limitations": [
-  "Physical DAC certification is not claimed; GStreamer host runs use the laboratory fakesink.",
+  "The physical evidence covers Direct compatible A<->B on two real USB DACs (alsasink) and shared/strict/compatible field-suite cycles; Native DSD and DoP destinations remain laboratory/host proofs.",
   "Native DSD and Managed destinations require real hardware evidence for physical qualification.",
   "T09/T10 prove DSP install/bypass on the live DSD->PCM runtime backed by the laboratory fakesink, not on a physical DAC.",
-  "T11/T12 are transaction and receipt proofs with controlled host fakes; the real host runtime refuses a second prepare while an execution is active, which is why the same-family handover is required."
- ]
+  "T11 and the T12 DoP receipt proof use controlled host fakes; the physical T12 scope is a Direct compatible A<->B switch on real ALSA, with no identity-bound release receipt on that synchronous path."
+ ],
+ "physical_evidence": {
+  "schema": "michi.f10.physical_evidence.v1",
+  "date": "2026-10-31",
+  "dacs": [
+   {
+    "id": "usb:152a:85dd:3-3.3.2",
+    "name": "SMSL USB AUDIO",
+    "locator": "hw:CARD=AUDIO,DEV=0",
+    "formats": [
+     "S32_LE",
+     "DSD_U32_BE"
+    ],
+    "shared": "PASS",
+    "direct_handover": "PASS",
+    "transitions": "PARTIAL: strict S16_LE refused with EXACT_TUPLE_UNSUPPORTED; later shared/compatible cycles in that run failed",
+    "mixer": "none exposed"
+   },
+   {
+    "id": "usb:2fc6:f882:HA01",
+    "name": "KINMAX HA01",
+    "locator": "hw:CARD=HA01,DEV=0",
+    "formats": [
+     "S16_LE",
+     "S24_3LE",
+     "S32_LE",
+     "DSD_U32_BE"
+    ],
+    "shared": "PASS",
+    "direct_handover": "PASS",
+    "transitions": "PASS: shared, strict S16_LE exact, shared, compatible S32_LE exact, shared",
+    "mixer": "PCM 63%"
+   }
+  ],
+  "direct_handover": {
+   "ab": {
+    "source": "usb:152a:85dd:3-3.3.2",
+    "target": "usb:2fc6:f882:HA01",
+    "source_plan": "plan:2784f316aec6ce07",
+    "target_plan": "plan:7ecad0430860fffd",
+    "plan_changed": true,
+    "locator_changed": true,
+    "transition": "reacquire",
+    "result": "PASS"
+   },
+   "ba": {
+    "source": "usb:2fc6:f882:HA01",
+    "target": "usb:152a:85dd:3-3.3.2",
+    "plan_changed": true,
+    "locator_changed": true,
+    "transition": "reacquire",
+    "result": "PASS"
+   }
+  },
+  "audibility": "REQUIRES_OPERATOR_CONFIRMATION",
+  "certification_claim": "NONE",
+  "limitations": [
+   "Direct->Direct uses the synchronous reacquire path and publishes no identity-bound release receipt.",
+   "DoP and Native DSD physical handover were not executed.",
+   "Analog output and audibility were not observed."
+  ]
+ }
 }

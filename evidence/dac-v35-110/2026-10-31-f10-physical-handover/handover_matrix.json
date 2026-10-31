@@ -1,0 +1,22 @@
+{
+  "schema": "michi.f10.physical_dac_handover_matrix.v1",
+  "generated_at": "2026-10-31T19:15:10.613919+00:00",
+  "directions": [
+    {
+      "file": "handover_ab.json",
+      "source": "usb:152a:85dd:3-3.3.2",
+      "target": "usb:2fc6:f882:HA01",
+      "result": "PASS"
+    },
+    {
+      "file": "handover_ba.json",
+      "source": "usb:2fc6:f882:HA01",
+      "target": "usb:152a:85dd:3-3.3.2",
+      "result": "PASS"
+    }
+  ],
+  "result": "PASS",
+  "physical_dac": true,
+  "audibility": "REQUIRES_OPERATOR_CONFIRMATION",
+  "certification_claim": "NONE"
+}
