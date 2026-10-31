@@ -303,6 +303,12 @@ def test_handover_releases_predecessor_before_target_prepare(
     assert session.dop_active is False
     assert session.handover_state is HandoverState.READY
     assert session.handover_target_family == "dsd_pcm"
+    evidence = session.last_handover_release_evidence
+    assert evidence is not None
+    assert evidence["confirmed"] is True
+    assert evidence["execution_id"] == "exec:1"
+    assert evidence["attempt_id"] == session.handover_attempt_id
+    assert evidence["target_family"] == "dsd_pcm"
 
 
 def test_fast_path_keeps_one_worker_one_completion_and_no_release(
