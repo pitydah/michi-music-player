@@ -3,7 +3,7 @@
   "phase": "AP2-F10",
   "sprint": "AP2-F10-S8B",
   "base_sha": "d80c3308c783d27ddf074be22c36c3dab57cb447",
-  "code_sha": "5511c10",
+  "code_sha": "437ebf4",
   "status": "PARTIAL",
   "integration": {
     "playback": "PlaybackService invokes AudioFamilyTransitionService after output preparation and before load/play",
@@ -27,7 +27,8 @@
       "test_kind": "service doubles",
       "receipt": "exact fixture receipt; predecessor_released=true",
       "reason": "Playback/OutputSession path is exercised, but no supervised host release is executed in this test",
-      "host_receipt": "PASS local"
+      "host_receipt": "PASS local",
+      "playback_order": "predecessor released before target prepared; receipt host tested separately"
     },
     "T03": {
       "source": "PCM_MANAGED",
@@ -62,7 +63,8 @@
       "target": "DSD_TO_PCM",
       "status": "PARTIAL",
       "reason": "DoP source host transition not yet exercised",
-      "host_receipt": "PASS local"
+      "host_receipt": "PASS local",
+      "playback_order": "DoP predecessor receipt host tested; target DSD path not E2E"
     },
     "T08": {
       "source": "DSD_TO_PCM",
@@ -116,5 +118,6 @@
     "directions_service_path": "8/8 PASS with controlled receipt",
     "host_receipts": "2/2 PASS (DSD→DoP, DoP→DSD)",
     "same_family_reconfigs": "0/4 NOT_RUN"
-  }
+  },
+  "ownership_fix": "DoP/Native acquisition strictly releases an active DSD→PCM predecessor before READY; ownership uncertainty blocks the new acquisition."
 }
