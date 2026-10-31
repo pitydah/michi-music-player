@@ -1108,14 +1108,24 @@ class AudioOutputBridge(QObject):
         accepted track is re-prepared through the new route with its position
         preserved (handover) instead of silently staying on the old output.
         """
-        self._run_action(
-            lambda: (
-                self._selection_coordinator.select_device_for_playback(stable_device_id)
-                if self._selection_coordinator is not None
-                else self._missing_action()
+        changed = False
+
+        def action() -> None:
+            nonlocal changed
+            if self._selection_coordinator is None:
+                self._missing_action()
+                return
+            changed = bool(
+                self._selection_coordinator.select_device_for_playback(
+                    stable_device_id
+                )
             )
-        )
-        if self._last_action_failure is not None:
+
+        self._run_action(action)
+        if self._last_action_failure is not None or not changed:
+            # Re-selecting the already active output must not schedule a
+            # handover: it would race the next user play against a restore of
+            # the same media (AUDIO-OUTPUT-NOOP-HANDOVER-RACE).
             return
         playback = getattr(self, "_playback", None)
         reroute = getattr(playback, "reroute_accepted_media", None)

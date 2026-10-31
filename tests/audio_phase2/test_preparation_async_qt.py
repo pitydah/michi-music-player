@@ -294,6 +294,36 @@ def test_output_handover_is_owner_free_and_preserves_resume_rule(fake_audio) -> 
     assert fake_audio.state == "stopped"
 
 
+def test_newer_play_supersedes_an_inflight_handover_without_loading_old_media(
+    fake_audio,
+) -> None:
+    provider = _BlockingProvider({"handover.flac"})
+    playback, _service_obj, executor = _playback_with_async_service(
+        fake_audio, provider, _DeferredExecutor()
+    )
+    playback.load_and_play(Path("/tmp/current.flac"))
+    executor.wait_completion()
+    executor.deliver()
+    assert fake_audio.loaded == Path("/tmp/current.flac")
+    assert fake_audio.state == "playing"
+
+    playback.prepare_for_handover(Path("/tmp/handover.flac"), 1_000)
+    assert provider.entered.wait(timeout=2.0)
+
+    # The newer user play wins even while the handover worker is still alive.
+    playback.load_and_play(Path("/tmp/new.flac"))
+    executor.wait_completion()
+    executor.deliver()
+    assert fake_audio.loaded == Path("/tmp/new.flac")
+    assert fake_audio.state == "playing"
+
+    provider.release.set()
+    executor.wait_completion()
+    executor.deliver()
+    assert fake_audio.loaded == Path("/tmp/new.flac")
+    assert fake_audio.state == "playing"
+
+
 def test_shutdown_during_preparation_discards_the_completion(fake_audio) -> None:
     provider = _BlockingProvider()
     cancelled: list[int] = []

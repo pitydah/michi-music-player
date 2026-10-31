@@ -681,6 +681,28 @@ def test_ui90r1_19_shared_playback_selection_reroutes_accepted_media() -> None:
     assert graph.playback.reroute_calls == 1
 
 
+def test_selecting_the_same_output_never_schedules_a_handover() -> None:
+    graph = _graph(
+        initial_observations=(
+            *_observations("/devices/usb1/1-2"),
+            *_observations("/devices/usb2/2-1", card=2, product="DX5B"),
+        )
+    )
+    first, second = graph.devices.available_ids()
+
+    graph.bridge.select_device_for_playback(first)
+    assert graph.playback.reroute_calls == 1
+
+    # Re-selecting the already active output is a no-op intent: scheduling a
+    # handover here would race the next user play against a restore of the
+    # same media.
+    graph.bridge.select_device_for_playback(first)
+    assert graph.playback.reroute_calls == 1
+
+    graph.bridge.select_device_for_playback(second)
+    assert graph.playback.reroute_calls == 2
+
+
 def test_ui90r1_20_multiple_real_profiles_remain_distinct_and_human_named() -> None:
     graph = _graph()
     graph.devices.ingest(

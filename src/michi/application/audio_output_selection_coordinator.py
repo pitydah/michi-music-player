@@ -120,7 +120,7 @@ class AudioOutputSelectionCoordinator:
         with self._profiles.batch_changes():
             self._select_device_policy(stable_device_id, current.path)
 
-    def select_device_for_playback(self, stable_device_id: str) -> None:
+    def select_device_for_playback(self, stable_device_id: str) -> bool:
         """Normal-playback intent: route PCM through this DAC, recommended policy.
 
         Choosing a physical output from the normal (NowPlaying) surface means
@@ -132,22 +132,24 @@ class AudioOutputSelectionCoordinator:
         refusal is never converted into a compatible success silently.
         """
         stable_device_id = stable_device_id.strip()
+        before = self._profiles.load_selection()
         if not stable_device_id:
             self.select_shared_output()
-            return
-        current = self._selected_profile(self._profiles.load_selection())
+            return self._selection_changed(before)
+        current = self._selected_profile(before)
         if current is not None and current.path is OutputPathPreference.MANAGED:
             # Never downgrade a user's Managed intent to Direct on play.
             with self._profiles.batch_changes():
                 self._select_device_policy(
                     stable_device_id, OutputPathPreference.MANAGED
                 )
-            return
+            return self._selection_changed(before)
         with self._profiles.batch_changes():
             self._select_device_policy(
                 stable_device_id,
                 OutputPathPreference.HARDWARE_DIRECT_COMPATIBLE,
             )
+        return self._selection_changed(before)
 
     def select_profile(self, profile_id: str) -> None:
         profile = next(
@@ -174,6 +176,13 @@ class AudioOutputSelectionCoordinator:
         self._require_playback_device(stable_device_id)
         with self._profiles.batch_changes():
             self._select_profile(profile, stable_device_id=stable_device_id)
+
+    def _selection_changed(self, before: AudioOutputSelection) -> bool:
+        after = self._profiles.load_selection()
+        return (
+            before.selected_profile_id,
+            before.selected_device_id,
+        ) != (after.selected_profile_id, after.selected_device_id)
 
     def _supersede_pending_preparation(self) -> None:
         """A successful output-intent mutation supersedes any pending prepare.
