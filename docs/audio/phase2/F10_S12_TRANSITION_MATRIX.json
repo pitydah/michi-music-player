@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "phase": "AP2-F10",
+  "sprint": "AP2-F10-S12",
+  "base_sha": "be5fbb2414aa5277228305bcb0bd589e51c9bd91",
+  "generated_from_commits": ["f2f774b", "7ea0f40", "c78e895", "dff8b76"],
+  "status": "PARTIAL",
+  "integration": {
+    "playback": "PlaybackService plans the transition with its own request epoch and only accepts attempt-scoped release evidence",
+    "output_session": "PREFLIGHT -> VALIDATE -> RELEASE -> RECONCILE -> PREPARE -> READY owner transaction with frozen predecessor identities",
+    "receipt_validation": "confirmed/RELEASED/SUPERVISED_HOST plus exact plan/execution/device/binding/host identity, attempt id and target family",
+    "host_release": "DoP and DSD->PCM host receipts are native; Native DSD abort and Managed stop publish supervised receipts from the identity the host validated"
+  },
+  "matrix": {
+    "T01": {
+      "source": "PCM_DIRECT",
+      "target": "DSD_TO_PCM",
+      "status": "PARTIAL",
+      "reason": "PCM Direct release has no SUPERVISED_HOST receipt adapter; service-level receipt fixture only"
+    },
+    "T02": {
+      "source": "DSD_TO_PCM",
+      "target": "DOP",
+      "status": "PASS",
+      "test": "tests/audio_phase2/test_family_handover_product_e2e.py::test_e2e_a_dsd_pcm_running_to_dop_running",
+      "evidence": "real PlaybackService -> OutputSessionService -> GStreamerHostedAudioPort -> GStreamerHostSupervisor; exact release evidence; START confirmed by notify_dop_playing"
+    },
+    "T03": {
+      "source": "PCM_MANAGED",
+      "target": "DSD_TO_PCM",
+      "status": "PASS_SERVICE_PATH",
+      "test": "tests/audio_phase2/test_family_handover_matrix.py::test_t03_managed_to_dsd_pcm_releases_before_prepare",
+      "reason": "transaction and receipt proof with a controlled host receipt; no physical DAC execution"
+    },
+    "T04": {
+      "source": "DSD_TO_PCM",
+      "target": "PCM_MANAGED",
+      "status": "PASS_SERVICE_PATH",
+      "test": "tests/audio_phase2/test_family_handover_matrix.py::test_t04_dsd_pcm_to_managed_releases_before_prepare",
+      "reason": "transaction proof; Managed destination requires a real DAC qualification"
+    },
+    "T05": {
+      "source": "NATIVE_DSD",
+      "target": "DSD_TO_PCM",
+      "status": "PASS_SERVICE_PATH",
+      "test": "tests/audio_phase2/test_family_handover_matrix.py::test_t05_native_to_dsd_pcm_releases_before_prepare",
+      "reason": "transaction proof with Native abort receipt; physical Native DSD requires hardware"
+    },
+    "T06": {
+      "source": "DSD_TO_PCM",
+      "target": "NATIVE_DSD",
+      "status": "PASS_SERVICE_PATH",
+      "test": "tests/audio_phase2/test_family_handover_matrix.py::test_t06_dsd_pcm_to_native_releases_before_prepare",
+      "reason": "transaction proof; physical Native DSD requires hardware"
+    },
+    "T07": {
+      "source": "DOP",
+      "target": "DSD_TO_PCM",
+      "status": "PASS",
+      "test": "tests/audio_phase2/test_family_handover_product_e2e.py::test_e2e_b_dop_running_to_dsd_pcm_running",
+      "evidence": "real supervised host; exact DoP release evidence; DSD->PCM start confirmed by notify_dsd_pcm_playing"
+    },
+    "T08": {
+      "source": "DSD_TO_PCM",
+      "target": "DOP",
+      "status": "PASS",
+      "see": "T02"
+    },
+    "T09": {
+      "source": "DSD_TO_PCM DSP OFF",
+      "target": "DSD_TO_PCM DSP ON",
+      "status": "NOT_RUN",
+      "reason": "same-family reconfiguration, not a family transition; requires the DSP install slice"
+    },
+    "T10": {
+      "source": "DSD_TO_PCM DSP ON",
+      "target": "DSD_TO_PCM DSP OFF",
+      "status": "NOT_RUN",
+      "reason": "same-family reconfiguration, not a family transition"
+    },
+    "T11": {
+      "source": "DSD_TO_PCM quality A",
+      "target": "DSD_TO_PCM quality B",
+      "status": "NOT_RUN",
+      "reason": "same-family quality reconfiguration"
+    },
+    "T12": {
+      "source": "DAC A",
+      "target": "DAC B",
+      "status": "NOT_RUN",
+      "reason": "same-family device reconfiguration"
+    }
+  },
+  "signal_path": {
+    "requested_vs_effective": "PASS — tests/audio_phase2/test_signal_path_service.py::test_requested_and_effective_are_never_collapsed",
+    "installed": "NOT_MODELED — Signal Path currently distinguishes requested and effective; INSTALLED is not published as a separate stage",
+    "handover_truth": "PASS — predecessor RELEASED and target RUNNING events asserted in both E2E tests"
+  },
+  "adversarial": {
+    "obsolete_request_cannot_release_newer_execution": "tests/audio_phase2/test_owner_safe_handover.py::test_obsolete_async_request_never_releases_the_current_execution",
+    "preflight_failure_before_release": "tests/audio_phase2/test_owner_safe_handover.py::test_preflight_failure_never_releases_the_predecessor",
+    "release_rejected": "tests/audio_phase2/test_owner_safe_handover_adversarial.py::test_release_rejected_never_prepares_the_target",
+    "foreign_receipt": "tests/audio_phase2/test_owner_safe_handover_adversarial.py::test_foreign_release_receipt_never_prepares_the_target",
+    "host_restart_receipt": "tests/audio_phase2/test_owner_safe_handover_adversarial.py::test_host_restart_receipt_mismatch_rejects_the_release",
+    "stop_during_release": "tests/audio_phase2/test_owner_safe_handover_adversarial.py::test_stop_during_release_never_prepares_the_target",
+    "stop_during_prepare": "tests/audio_phase2/test_owner_safe_handover_adversarial.py::test_stop_during_prepare_aborts_the_prepared_candidate",
+    "device_selection_aba": "tests/audio_phase2/test_owner_safe_handover_adversarial.py::test_device_selection_aba_during_prepare_aborts_the_target",
+    "prepare_failure_after_release": "tests/audio_phase2/test_owner_safe_handover_adversarial.py::test_prepare_failure_after_release_is_terminal",
+    "a_to_b_to_c": "tests/audio_phase2/test_owner_safe_handover_adversarial.py::test_a_to_b_to_c_keeps_each_handover_independent",
+    "qt_responsiveness": "tests/audio_phase2/test_owner_safe_handover_adversarial.py::test_qt_loop_stays_free_during_release_and_prepare",
+    "paused_no_autoplay": "tests/audio_phase2/test_family_transitions.py (PAUSED/STOPPED resume policy)"
+  },
+  "limitations": [
+    "Physical DAC certification is not claimed; GStreamer host runs use the laboratory fakesink.",
+    "PCM Direct (T01) still has no supervised release receipt adapter.",
+    "Native DSD and Managed destinations require real hardware evidence for physical qualification.",
+    "Same-family DSP/quality/device reconfigurations (T09-T12) remain NOT_RUN."
+  ]
+}
