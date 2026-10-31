@@ -3734,7 +3734,12 @@ class OutputSessionService:
                 ) from exc
         if previous_direct is not None:
             try:
-                previous_direct.executor.release("switch_to_dsd_pcm")
+                release_result = previous_direct.executor.release(
+                    "switch_to_dsd_pcm"
+                )
+                self._record_direct_release_evidence(
+                    previous_direct, release_result, "switch_to_dsd_pcm"
+                )
             except Exception as exc:  # noqa: BLE001 - preserve owner
                 raise OutputSessionError(
                     "OUTPUT_OWNERSHIP_UNCONFIRMED",
@@ -3852,7 +3857,10 @@ class OutputSessionService:
                 ) from exc
         if previous_direct is not None:
             try:
-                previous_direct.executor.release("switch_to_dop")
+                release_result = previous_direct.executor.release("switch_to_dop")
+                self._record_direct_release_evidence(
+                    previous_direct, release_result, "switch_to_dop"
+                )
             except Exception as exc:  # noqa: BLE001 - preserve current owner
                 self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
                     reason="switch_to_dop",
@@ -3945,7 +3953,12 @@ class OutputSessionService:
                 ) from exc
         if previous_direct is not None:
             try:
-                previous_direct.executor.release("switch_to_native_dsd")
+                release_result = previous_direct.executor.release(
+                    "switch_to_native_dsd"
+                )
+                self._record_direct_release_evidence(
+                    previous_direct, release_result, "switch_to_native_dsd"
+                )
             except Exception as exc:  # noqa: BLE001 - preserve current owner
                 self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
                     reason="switch_to_native_dsd",
@@ -4048,7 +4061,12 @@ class OutputSessionService:
                 ) from exc
         if previous_direct is not None:
             try:
-                previous_direct.executor.release("switch_to_managed")
+                release_result = previous_direct.executor.release(
+                    "switch_to_managed"
+                )
+                self._record_direct_release_evidence(
+                    previous_direct, release_result, "switch_to_managed"
+                )
             except Exception as exc:  # noqa: BLE001 - preserve current owner
                 self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
                     reason="switch_to_managed",
@@ -4436,7 +4454,12 @@ class OutputSessionService:
             assert self._shared_receipt is not None
             self._shared.commit_media(self._shared_receipt, path)
             if self._previous_direct is not None:
-                self._previous_direct.executor.release("switch_to_shared")
+                release_result = self._previous_direct.executor.release(
+                    "switch_to_shared"
+                )
+                self._record_direct_release_evidence(
+                    self._previous_direct, release_result, "switch_to_shared"
+                )
                 self._previous_direct = None
             self._plan = None
             self._state = OutputSessionState.IDLE
@@ -5199,6 +5222,39 @@ class OutputSessionService:
             self._notify()
 
     # ── internos ──────────────────────────────────────────────────────
+    def _record_direct_release_evidence(
+        self,
+        previous: _DirectSessionSnapshot,
+        result: object,
+        reason: str,
+    ) -> None:
+        """Keep the release receipt of the exact Direct execution we replaced.
+
+        Only a host-confirmed discard may claim ``SUPERVISED_HOST``. A pure
+        in-process teardown or a host that is already closing stays
+        unconfirmed, so no caller can mistake it for a physical release.
+        """
+        if not isinstance(result, dict):
+            return
+        if result.get("command_confirmed") is not True:
+            return
+        if result.get("plan_id") != previous.plan.plan_id:
+            return
+        if result.get("execution_id") != previous.receipt:
+            return
+        self._last_release_evidence = {
+            "confirmed": True,
+            "operation": "release",
+            "plan_id": previous.plan.plan_id,
+            "execution_id": previous.receipt,
+            "stable_device_id": previous.plan.stable_device_id,
+            "device": previous.plan.binding.locator,
+            "binding_generation": previous.plan.binding.generation,
+            "host_generation": int(result.get("host_generation") or 0),
+            "terminal_state": "RELEASED",
+            "provenance": "SUPERVISED_HOST",
+        }
+
     def _committed_direct_snapshot(self) -> _DirectSessionSnapshot | None:
         # A second/third candidate never becomes rollback authority. While a
         # candidate is READY, `_previous_direct` still identifies committed A.

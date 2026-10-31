@@ -14,7 +14,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
-from typing import Protocol
+from typing import Any, Protocol
 
 from michi.application.audio_output_ports import OutputExecutorAbortDisposition
 from michi.domain.audio_engine import AudioEngineId
@@ -539,22 +539,30 @@ class GStreamerDirectOutputExecutor:
         return self._evidence
 
     # ── terminación ───────────────────────────────────────────────────
-    def release(self, reason: str) -> None:
+    def release(self, reason: str) -> dict[str, Any] | None:
         """Invalidate execution truth even when physical teardown fails.
 
         The caller may retain the raised cleanup error for diagnostics, but a
         missing device can never leave this executor or Signal Truth claiming
         that the old generation is still active.
+
+        A hosted discard returns an identity-bound release receipt. The
+        receipt is only ``SUPERVISED_HOST``/``RELEASED`` when the host
+        confirmed the command; an in-process or shutting-down teardown stays
+        explicitly unconfirmed.
         """
         handle = self._handle
+        plan = self._plan
+        receipt = self._receipt
         signal_identity = self._signal_identity
         committed_signal_identity = (
             self._committed.signal_identity if self._committed is not None else None
         )
         cleanup_error: Exception | None = None
+        command_confirmed = False
         try:
             if handle is not None:
-                self._discard_staged_load(handle)
+                command_confirmed = self._discard_staged_load(handle)
         except Exception as exc:  # noqa: BLE001 - re-raised after invalidation
             cleanup_error = exc
         finally:
@@ -566,14 +574,33 @@ class GStreamerDirectOutputExecutor:
             self._clear()
         if cleanup_error is not None:
             raise cleanup_error
+        if handle is None or plan is None:
+            return None
+        return {
+            "released": True,
+            "command_confirmed": bool(command_confirmed),
+            "reason": str(reason),
+            "operation": "release",
+            "plan_id": plan.plan_id,
+            "execution_id": receipt or f"direct:{plan.plan_id}:{handle.generation}",
+            "stable_device_id": plan.stable_device_id,
+            "device": plan.binding.locator,
+            "binding_generation": plan.binding.generation,
+            "host_generation": 0,
+            "terminal_state": "RELEASED" if command_confirmed else "UNCONFIRMED",
+            "provenance": (
+                "SUPERVISED_HOST" if command_confirmed else "IN_PROCESS"
+            ),
+        }
 
-    def _discard_staged_load(self, handle: DirectExecutionHandle) -> None:
+    def _discard_staged_load(self, handle: DirectExecutionHandle) -> bool:
         provider = self._port_provider
         if provider is None:
-            return
+            return False
         port = provider()
-        if port is not None:
-            port.discard_direct_load(handle, executor=self)
+        if port is None:
+            return False
+        return bool(port.discard_direct_load(handle, executor=self))
 
     def _clear(self) -> None:
         self._handle = None

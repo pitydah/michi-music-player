@@ -1,9 +1,10 @@
 """AP2-F10 C6 — remaining family matrix directions at the transaction level.
 
 T03 Managed→DSD→PCM, T04 DSD→PCM→Managed, T05 Native→DSD→PCM,
-T06 DSD→PCM→Native. These are transaction/receipt proofs with controlled host
-receipts; they are NOT physical DAC certification. PCM Direct (T01/T07) still
-lacks a supervised release receipt adapter and is not claimed here.
+T06 DSD→PCM→Native, plus T01 Direct→DSD→PCM. These are transaction/receipt
+proofs with controlled host receipts; they are NOT physical DAC certification.
+T01 asserts the exact Direct release receipt the executor receives from the
+hosted discard command.
 """
 
 from __future__ import annotations
@@ -447,3 +448,95 @@ def test_same_family_reconfigurations_are_not_family_transitions() -> None:
         with pytest.raises(TransitionError) as info:
             service.plan(request)
         assert info.value.code == "TRANSITION_SAME_FAMILY"
+
+
+class _DirectExecutor:
+    """Minimal committed Direct execution for the T01 release proof."""
+
+    def __init__(self) -> None:
+        self.plan = None
+        self.receipt = "exec:direct:matrix"
+        self.release_reasons: list[str] = []
+
+    def prepare(self, plan) -> str:
+        self.plan = plan
+        return self.receipt
+
+    def commit(self, receipt: str) -> None:
+        self.receipt = receipt
+
+    def abort(self, receipt: str, reason: str):
+        from michi.application.audio_output_ports import (
+            OutputExecutorAbortDisposition,
+        )
+
+        return OutputExecutorAbortDisposition.CANDIDATE_DISCARDED
+
+    def owns_committed_receipt(self, receipt: str) -> bool:
+        return receipt == self.receipt
+
+    def release(self, reason: str) -> dict[str, Any]:
+        self.release_reasons.append(reason)
+        assert self.plan is not None
+        return {
+            "released": True,
+            "command_confirmed": True,
+            "reason": reason,
+            "operation": "release",
+            "plan_id": self.plan.plan_id,
+            "execution_id": self.receipt,
+            "stable_device_id": self.plan.stable_device_id,
+            "device": self.plan.binding.locator,
+            "binding_generation": self.plan.binding.generation,
+            "host_generation": 0,
+            "terminal_state": "RELEASED",
+            "provenance": "SUPERVISED_HOST",
+        }
+
+
+def test_t01_direct_to_dsd_pcm_records_the_host_release(tmp_path: Path) -> None:
+    """T01: a committed Direct execution releases with exact identity."""
+    from tests.dac.test_v34_output_planner import DEVICE, _facts
+
+    dsd = _dsd_plan()
+    direct_facts = _facts()
+    executor = _DirectExecutor()
+    tx = _Tx()
+    requests = {
+        "direct.flac": OutputRequest(direct_facts, DEVICE, "profile:direct"),
+        "target.dsf": OutputRequest.dsd_to_pcm(
+            dsd, dsd.stable_device_id, "profile:direct"
+        ),
+    }
+    service = OutputSessionService(
+        OutputPlanner(),
+        facts_provider=lambda _path: direct_facts,
+        request_provider=lambda path: requests[path.name],
+        executors={"gstreamer": executor},
+        plan_still_current=lambda _plan: True,
+        dsd_pcm_prepare=tx.dsd_prepare,
+        dsd_pcm_commit=lambda _p: None,
+        dsd_pcm_abort=tx.dsd_abort,
+        dsd_pcm_stop=tx.dsd_abort,
+        dsd_pcm_plan_still_current=lambda _plan: True,
+    )
+
+    direct_token = service.prepare_for_media(Path("direct.flac"))
+    service.commit_media(direct_token, Path("direct.flac"))
+    assert service.mode == "direct"
+    direct_plan = executor.plan
+    assert direct_plan is not None
+
+    service.prepare_for_media(Path("target.dsf"))
+
+    assert executor.release_reasons == ["switch_to_dsd_pcm"]
+    evidence = service.last_release_evidence
+    assert evidence is not None
+    assert evidence["plan_id"] == direct_plan.plan_id
+    assert evidence["execution_id"] == "exec:direct:matrix"
+    assert evidence["stable_device_id"] == direct_plan.stable_device_id
+    assert evidence["binding_generation"] == direct_plan.binding.generation
+    assert evidence["terminal_state"] == "RELEASED"
+    assert evidence["provenance"] == "SUPERVISED_HOST"
+    assert service.mode == "dsd_pcm"
+    assert service.dsd_pcm_active is True
