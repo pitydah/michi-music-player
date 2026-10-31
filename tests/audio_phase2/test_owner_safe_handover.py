@@ -17,6 +17,7 @@ from michi.application.dsd_to_pcm_plan import DsdToPcmPlanner
 from michi.application.output_session_service import (
     DopSessionPrepared,
     DsdPcmSessionPrepared,
+    HandoverState,
     OutputRequest,
     OutputSessionService,
 )
@@ -47,6 +48,11 @@ class _Deferred:
             completed(None, exc)
         else:
             completed(value, None)
+
+    def drive(self, limit: int = 8) -> None:
+        while self.pending and limit > 0:
+            self.run_one()
+            limit -= 1
 
 
 class _Tx:
@@ -252,10 +258,10 @@ def test_obsolete_async_request_never_releases_the_current_execution(
     assert tokens == []
 
 
-def test_worker_never_releases_or_prepares_an_incompatible_predecessor(
+def test_handover_releases_predecessor_before_target_prepare(
     tmp_path: Path,
 ) -> None:
-    """Phase one may qualify the request, never execute the destructive path."""
+    """Phase one only characterizes; the owner drives RELEASE before PREPARE."""
     dop_one = _dop_plan(execution_id="exec:1")
     dsd_plan = _dsd_pcm_plan()
     requests = {
@@ -276,19 +282,27 @@ def test_worker_never_releases_or_prepares_an_incompatible_predecessor(
     session.prepare_for_media_async(
         tmp_path / "target.dsf", tokens.append, failures.append
     )
-    deferred.run_one()
 
-    # No destructive work happened in the worker phase.
+    # Phase one: characterization only, nothing destructive.
+    deferred.run_one()
     assert tx.aborted == []
     assert tx.dsd_pcm_prepare_calls == 0
-    # The predecessor still owns the device.
     assert session._dop_prepared is not None
     assert session.mode == "dop"
-    # The request did not report success.
     assert tokens == []
-    assert [getattr(error, "code", None) for error in failures] == [
-        "OUTPUT_HANDOVER_REQUIRED"
-    ]
+    assert failures == []
+
+    # Owner transaction: RELEASE → RECONCILE → PREPARE → READY.
+    deferred.drive()
+    assert tx.aborted == [("dop", "exec:1", "handover_to_dsd_pcm")]
+    assert tx.dsd_pcm_prepare_calls == 1
+    assert failures == []
+    assert len(tokens) == 1
+    assert session.state is OutputSessionState.READY
+    assert session.mode == "dsd_pcm"
+    assert session.dop_active is False
+    assert session.handover_state is HandoverState.READY
+    assert session.handover_target_family == "dsd_pcm"
 
 
 def test_fast_path_keeps_one_worker_one_completion_and_no_release(
@@ -321,6 +335,7 @@ def test_fast_path_keeps_one_worker_one_completion_and_no_release(
     assert tx.dsd_pcm_prepare_calls == 1
     assert session.state is OutputSessionState.READY
     assert session.mode == "dsd_pcm"
+    assert session.handover_state is None
 
 
 def test_same_family_async_replacement_stays_on_the_fast_path(
@@ -351,3 +366,95 @@ def test_same_family_async_replacement_stays_on_the_fast_path(
     assert session._dop_prepared.execution_id == "exec:2"
     assert ("dop", "exec:1", "superseded") in tx.aborted
     assert tx.dsd_pcm_prepare_calls == 0
+
+
+def test_reverse_handover_from_dsd_pcm_to_dop(tmp_path: Path) -> None:
+    """E2E-B direction at the transaction boundary: DSD→PCM → DoP."""
+    dop_target = _dop_plan(execution_id="exec:dop")
+    dsd_plan = _dsd_pcm_plan()
+    requests = {
+        "predecessor.dsf": OutputRequest.dsd_to_pcm(
+            dsd_plan, dsd_plan.stable_device_id, "profile:dsd"
+        ),
+        "target.dsf": OutputRequest.dop(dop_target, "profile:dop"),
+    }
+    tx = _Tx()
+    deferred = _Deferred()
+    session = _session(requests, tx, deferred)
+
+    session.prepare_for_media(tmp_path / "predecessor.dsf")
+    predecessor = session._dsd_pcm_prepared
+    assert predecessor is not None
+    assert session.mode == "dsd_pcm"
+
+    tokens: list[str] = []
+    failures: list[Exception] = []
+    session.prepare_for_media_async(
+        tmp_path / "target.dsf", tokens.append, failures.append
+    )
+    deferred.run_one()
+    assert tx.aborted == []
+    assert tx.dop_prepare_calls == 0
+    assert session._dsd_pcm_prepared is predecessor
+
+    deferred.drive()
+    assert tx.aborted == [
+        ("dsd_pcm", predecessor.execution_id, "handover_to_dop")
+    ]
+    assert tx.dop_prepare_calls == 1
+    assert failures == []
+    assert len(tokens) == 1
+    assert session.state is OutputSessionState.READY
+    assert session.mode == "dop"
+    assert session.dsd_pcm_active is False
+    assert session.handover_state is HandoverState.READY
+
+
+def test_preflight_failure_never_releases_the_predecessor(
+    tmp_path: Path,
+) -> None:
+    """Missing target backend rejects BEFORE the destructive boundary."""
+    dop_one = _dop_plan(execution_id="exec:1")
+    dsd_plan = _dsd_pcm_plan()
+    requests = {
+        "predecessor.dsf": OutputRequest.dop(dop_one, "profile:dop"),
+        "target.dsf": OutputRequest.dsd_to_pcm(
+            dsd_plan, dsd_plan.stable_device_id, "profile:dsd"
+        ),
+    }
+    tx = _Tx()
+    deferred = _Deferred()
+
+    def request_for(path: Path) -> OutputRequest:
+        return requests[path.name]
+
+    session = OutputSessionService(
+        OutputPlanner(),
+        request_provider=request_for,
+        async_submit=deferred.submit,
+        dop_prepare=tx.dop_prepare,
+        dop_commit=tx.dop_commit,
+        dop_abort=tx.dop_abort,
+        dop_stop=tx.dop_stop,
+        dop_plan_still_current=lambda _plan: True,
+        # No DSD→PCM preparation authority is composed.
+        dsd_pcm_plan_still_current=lambda _plan: True,
+    )
+    session.prepare_for_media(tmp_path / "predecessor.dsf")
+    assert session._dop_prepared is not None
+
+    tokens: list[str] = []
+    failures: list[Exception] = []
+    session.prepare_for_media_async(
+        tmp_path / "target.dsf", tokens.append, failures.append
+    )
+    deferred.drive()
+
+    assert tx.aborted == []
+    assert session._dop_prepared is not None
+    assert session.mode == "dop"
+    assert tokens == []
+    assert [getattr(error, "code", None) for error in failures] == [
+        "DSD_PCM_OUTPUT_UNAVAILABLE"
+    ]
+    assert session.handover_state is HandoverState.FAILED

@@ -82,6 +82,8 @@ logger = logging.getLogger(__name__)
 #: Process-wide execution-instance sequence: a NEW instance id is issued
 #: for every managed preparation attempt, never derived from the plan hash.
 _EXECUTION_INSTANCE_SEQ = itertools.count(1)
+#: Process-wide handover-attempt sequence (one destructive transition = one id).
+_HANDOVER_SEQ = itertools.count(1)
 
 
 def _new_execution_instance(epoch: int) -> str:
@@ -444,6 +446,41 @@ class _PrepareCandidate:
     preparation_path: PreparationPath
     target_family: str | None
     predecessors: tuple[_PredecessorSnapshot, ...]
+
+
+class HandoverState(StrEnum):
+    """Owner-visible state of the current cross-family handover attempt."""
+
+    PREFLIGHT = "preflight"
+    VALIDATE = "validate"
+    RELEASE = "release"
+    RECONCILE = "reconcile"
+    PREPARE = "prepare"
+    READY = "ready"
+    SUPERSEDED = "superseded"
+    FAILED = "failed"
+    OWNERSHIP_UNCONFIRMED = "ownership_unconfirmed"
+
+
+@dataclass(frozen=True, slots=True)
+class _HandoverAttempt:
+    """Immutable identity of one destructive cross-family transition.
+
+    Every physical command receives these exact identities; no worker reads
+    live owner state and no continuation may act on a newer attempt.
+    """
+
+    attempt_id: str
+    prepare_generation: int
+    output_generation: int
+    processing_revision: int
+    source_family: str | None
+    target_family: str
+    predecessors: tuple[_PredecessorSnapshot, ...]
+    intent: object | None
+    path: Path
+    request: OutputRequest
+    managed_instance_id: str
 
 
 #: Families whose execution names ONE specific DAC (never Shared/desktop).
@@ -1000,6 +1037,7 @@ class OutputSessionService:
             Callable[[DsdPcmSessionPrepared], None] | None
         ) = None,
         dsd_pcm_invalidate_processing: Callable[[str], None] | None = None,
+        managed_invalidate_processing: Callable[[str], None] | None = None,
         truth_recorder=None,
     ) -> None:
         self._planner = planner
@@ -1030,6 +1068,7 @@ class OutputSessionService:
         self._dsd_pcm_plan_still_current = dsd_pcm_plan_still_current
         self._dsd_pcm_finalize_processing = dsd_pcm_finalize_processing
         self._dsd_pcm_invalidate_processing = dsd_pcm_invalidate_processing
+        self._managed_invalidate_processing = managed_invalidate_processing
         # ADDITIVE: the ONE canonical recorder (never a second one).
         self._truth_recorder = truth_recorder
         self._last_release_evidence: dict | None = None
@@ -1073,6 +1112,8 @@ class OutputSessionService:
         self._last_transition_kind: DirectTransitionKind | None = None
         self._last_cleanup_diagnostic: OutputCleanupDiagnostic | None = None
         self._unconfirmed_cleanup: tuple[str, object] | None = None
+        self._handover_attempt: _HandoverAttempt | None = None
+        self._handover_state: HandoverState | None = None
         self._subscribers: list[Callable[[], None]] = []
 
     # ── lectura ───────────────────────────────────────────────────────
@@ -1734,6 +1775,547 @@ class OutputSessionService:
         elif isinstance(prepared, ManagedOutputPrepared):
             self._managed_abort_quietly(prepared, reason)
 
+    def _abort_candidate_physically(self, prepared: object, reason: str) -> None:
+        """Best-effort physical abort of an uncommitted candidate.
+
+        Safe to call from a worker: it only invokes the composed adapter and
+        never records evidence, pending cleanup, or session state.
+        """
+        if isinstance(prepared, DopSessionPrepared):
+            abort = self._dop_abort
+        elif isinstance(prepared, DsdPcmSessionPrepared):
+            abort = self._dsd_pcm_abort
+        elif isinstance(prepared, NativeDsdSessionPrepared):
+            abort = self._native_dsd_abort
+        elif isinstance(prepared, ManagedOutputPrepared):
+            abort = self._managed_abort
+        else:
+            return
+        if abort is None:
+            return
+        with contextlib.suppress(Exception):
+            abort(prepared, reason)
+
+    # ── owner-safe cross-family handover ──────────────────────────────
+    @property
+    def handover_state(self) -> HandoverState | None:
+        return self._handover_state
+
+    @property
+    def handover_attempt_id(self) -> str | None:
+        attempt = self._handover_attempt
+        return attempt.attempt_id if attempt is not None else None
+
+    @property
+    def handover_target_family(self) -> str | None:
+        attempt = self._handover_attempt
+        return attempt.target_family if attempt is not None else None
+
+    def _submit_async_work(self, work, completed) -> None:
+        """Submit one phase boundary; inline when no executor is composed."""
+        if self._async_submit is None:
+            try:
+                value = work()
+            except Exception as exc:  # noqa: BLE001 - phase boundary
+                completed(None, exc)
+                return
+            completed(value, None)
+            return
+        self._async_submit(work, completed)
+
+    def _begin_handover(
+        self,
+        *,
+        path: Path,
+        candidate: _PrepareCandidate,
+        generation: int,
+        intent: object,
+        output_generation: int,
+        processing_revision: int,
+        source_family: str | None,
+        on_prepared: Callable[[str], None],
+        on_failed: Callable[[Exception], None],
+    ) -> None:
+        """PREFLIGHT → VALIDATE → RELEASE → RECONCILE → PREPARE → READY.
+
+        Only the owner performs the destructive decisions. The release worker
+        receives frozen predecessor identities and pure physical callables; the
+        prepare worker receives a frozen request. Neither can read or mutate
+        committed owner state, so a superseded attempt can never release or
+        commit over a newer execution.
+        """
+        target = candidate.target_family
+        if target is None:
+            on_failed(
+                OutputSessionError(
+                    "OUTPUT_HANDOVER_TARGET_UNKNOWN",
+                    "a handover requires one explicit target family",
+                )
+            )
+            return
+        attempt = _HandoverAttempt(
+            attempt_id=f"handover:{next(_HANDOVER_SEQ)}",
+            prepare_generation=generation,
+            output_generation=output_generation,
+            processing_revision=processing_revision,
+            source_family=source_family,
+            target_family=target,
+            predecessors=candidate.predecessors,
+            intent=intent,
+            path=path,
+            request=candidate.request,
+            managed_instance_id=self._new_managed_instance(),
+        )
+        self._handover_attempt = attempt
+        self._handover_state = HandoverState.PREFLIGHT
+        try:
+            self._preflight_handover(attempt)
+            self._handover_state = HandoverState.VALIDATE
+            release_plan = self._handover_release_plan(attempt)
+        except Exception as exc:  # noqa: BLE001 - preflight boundary
+            self._handover_state = (
+                HandoverState.OWNERSHIP_UNCONFIRMED
+                if getattr(exc, "code", "") == "OUTPUT_OWNERSHIP_UNCONFIRMED"
+                else HandoverState.FAILED
+            )
+            on_failed(exc)
+            return
+        self._handover_state = HandoverState.RELEASE
+
+        def release_work():
+            results = []
+            for snapshot, abort in release_plan:
+                try:
+                    result = abort(
+                        snapshot.prepared, f"handover_to_{attempt.target_family}"
+                    )
+                except Exception as exc:  # noqa: BLE001 - physical boundary
+                    results.append((snapshot, None, exc))
+                else:
+                    results.append((snapshot, result, None))
+            return results
+
+        def release_completed(results, error) -> None:
+            self._complete_handover_release(
+                attempt, results, error, on_prepared, on_failed
+            )
+
+        self._submit_async_work(release_work, release_completed)
+
+    def _preflight_handover(self, attempt: _HandoverAttempt) -> None:
+        """Validate the whole target BEFORE the destructive boundary."""
+        if self._unconfirmed_cleanup is not None:
+            raise OutputSessionError(
+                "OUTPUT_OWNERSHIP_UNCONFIRMED",
+                "an unconfirmed cleanup still retains the output device",
+            )
+        request = attempt.request
+        family = attempt.target_family
+        if family == "dsd_pcm":
+            plan = request.dsd_pcm_plan
+            if self._dsd_pcm_prepare is None:
+                raise OutputSessionError(
+                    "DSD_PCM_OUTPUT_UNAVAILABLE",
+                    "no DSD→PCM preparation is composed for this session",
+                )
+            if plan is None:
+                raise OutputSessionError("DSD_PCM_PLAN_MISSING", "no plan")
+            if request.selected_device_id is None:
+                raise OutputSessionError(
+                    "DSD_PCM_DEVICE_MISSING", "DSD→PCM requires a selected device"
+                )
+            if not plan.stable_device_id or not plan.binding_locator:
+                raise OutputSessionError(
+                    "DSD_PCM_PLAN_IDENTITY_MISSING",
+                    "DSD→PCM plan lacks stable device/locator identity",
+                )
+            if request.selected_device_id != plan.stable_device_id:
+                raise OutputSessionError(
+                    "DSD_PCM_DEVICE_MISMATCH",
+                    "selected device does not match the DSD→PCM plan",
+                )
+            checker = self._dsd_pcm_plan_still_current
+            if checker is not None and not bool(checker(plan)):
+                raise OutputSessionError(
+                    "DSD_PCM_BINDING_STALE", "the DSD→PCM plan is stale"
+                )
+            return
+        if family == "dop":
+            plan = request.dop_plan
+            if self._dop_prepare is None:
+                raise OutputSessionError(
+                    "DOP_OUTPUT_UNAVAILABLE",
+                    "no DoP preparation is composed for this session",
+                )
+            if plan is None:
+                raise OutputSessionError("DOP_PLAN_MISSING", "no plan")
+            if not plan.stable_device_id or not plan.binding_locator:
+                raise OutputSessionError(
+                    "DOP_PLAN_IDENTITY_MISSING",
+                    "DoP plan lacks stable device/locator identity",
+                )
+            checker = self._dop_plan_still_current
+            if checker is not None and not bool(checker(plan)):
+                raise OutputSessionError("DOP_BINDING_STALE", "the DoP plan is stale")
+            return
+        if family == "native_dsd":
+            plan = request.native_dsd_plan
+            if self._native_dsd_prepare is None:
+                raise OutputSessionError(
+                    "NATIVE_DSD_OUTPUT_UNAVAILABLE",
+                    "no Native DSD preparation is composed for this session",
+                )
+            if plan is None:
+                raise OutputSessionError("NATIVE_DSD_PLAN_MISSING", "no plan")
+            checker = self._native_dsd_plan_still_current
+            if checker is not None and not bool(checker(plan)):
+                raise OutputSessionError(
+                    "OUTPUT_BINDING_STALE", "the Native DSD plan is stale"
+                )
+            return
+        if family == "managed":
+            if self._managed_prepare is None:
+                raise OutputSessionError(
+                    "MANAGED_OUTPUT_UNAVAILABLE",
+                    "no Managed preparation is composed for this session",
+                )
+            return
+        raise OutputSessionError(
+            "OUTPUT_HANDOVER_TARGET_UNKNOWN", f"unknown target family {family!r}"
+        )
+
+    def _handover_release_plan(
+        self, attempt: _HandoverAttempt
+    ) -> tuple[tuple[_PredecessorSnapshot, Callable[..., dict]], ...]:
+        plan: list[tuple[_PredecessorSnapshot, Callable[..., dict]]] = []
+        for snapshot in attempt.predecessors:
+            abort = {
+                "dsd_pcm": self._dsd_pcm_abort,
+                "dop": self._dop_abort,
+                "native_dsd": self._native_dsd_abort,
+                "managed": self._managed_abort,
+            }.get(snapshot.family)
+            if abort is None:
+                raise OutputSessionError(
+                    "OUTPUT_OWNERSHIP_UNCONFIRMED",
+                    f"no {snapshot.family} release authority is composed; "
+                    "refusing to cross the destructive boundary",
+                )
+            plan.append((snapshot, abort))
+        return tuple(plan)
+
+    def _handover_identity_is_current(self, snapshot: _PredecessorSnapshot) -> bool:
+        current: object | None
+        if snapshot.family == "dsd_pcm":
+            current = self._dsd_pcm_prepared
+        elif snapshot.family == "dop":
+            current = self._dop_prepared
+        elif snapshot.family == "native_dsd":
+            current = self._native_dsd_prepared
+        elif snapshot.family == "managed":
+            current = self._managed_prepared
+        else:
+            current = None
+        if current is None:
+            return False
+        if current is snapshot.prepared:
+            return True
+        return getattr(current, "execution_id", None) == snapshot.execution_id
+
+    def _handover_family_confirmed(
+        self, snapshot: _PredecessorSnapshot, result
+    ) -> tuple[bool, str]:
+        if snapshot.family == "dop":
+            return (
+                self._dop_cleanup_confirmed(result, snapshot.prepared),
+                "DOP_ABORT_UNCONFIRMED",
+            )
+        if snapshot.family == "dsd_pcm":
+            return (
+                self._dsd_pcm_cleanup_confirmed(result, snapshot.prepared),
+                "DSD_PCM_ABORT_UNCONFIRMED",
+            )
+        if snapshot.family == "native_dsd":
+            if not isinstance(result, dict):
+                return False, "NATIVE_DSD_CLEANUP_UNCONFIRMED"
+            if result.get("aborted") is True and result.get("stale") is not True:
+                return True, ""
+            if result.get("already") is True:
+                return True, ""
+            return False, "NATIVE_DSD_CLEANUP_UNCONFIRMED"
+        if snapshot.family == "managed":
+            if not isinstance(result, dict):
+                return False, "MANAGED_CLEANUP_UNCONFIRMED"
+            if result.get("stopped") is True and result.get("stale") is not True:
+                return True, ""
+            return False, "MANAGED_CLEANUP_UNCONFIRMED"
+        return False, "OUTPUT_CLEANUP_UNCONFIRMED"
+
+    def _handover_release_confirmed(
+        self, snapshot: _PredecessorSnapshot, result
+    ) -> tuple[bool, str]:
+        confirmed, code = self._handover_family_confirmed(snapshot, result)
+        if confirmed:
+            return True, ""
+        # A stale host answer means "this exact execution is no longer owned
+        # by the host". It only proves release when the owner also no longer
+        # references that identity (a newer authority retired it).
+        if (
+            isinstance(result, dict)
+            and result.get("stale") is True
+            and not self._handover_identity_is_current(snapshot)
+        ):
+            return True, ""
+        return False, code
+
+    def _reconcile_handover_release(self, snapshot: _PredecessorSnapshot) -> None:
+        """Retire exactly the released identity; never touch a newer one."""
+        if snapshot.family == "dsd_pcm":
+            self._reconcile_confirmed_dsd_pcm_cleanup(snapshot.prepared)
+            self._invalidate_dsd_pcm_processing("handover_release")
+            return
+        if snapshot.family == "dop":
+            self._reconcile_confirmed_dop_cleanup(snapshot.prepared)
+            return
+        if not self._handover_identity_is_current(snapshot):
+            return
+        if snapshot.family == "native_dsd":
+            self._native_dsd_prepared = None
+            self._native_dsd_plan = None
+            if self._native_eos_execution == snapshot.execution_id:
+                self._native_eos_execution = None
+            if self._native_terminal_execution == snapshot.execution_id:
+                self._native_terminal_execution = None
+            self._record_native_dsd_family(
+                OutputFamilyState.RELEASED, snapshot.prepared, detail="handover_release"
+            )
+        elif snapshot.family == "managed":
+            self._managed_prepared = None
+            self._managed_plan = None
+            self._invalidate_managed_processing("handover_release")
+            self._record_output_family(
+                OutputFamilyState.RELEASED, snapshot.prepared
+            )
+        if self._executor_receipt == snapshot.execution_id:
+            self._executor_receipt = None
+        self._token_value = None
+        self._executor = None
+        self._path = None
+        self._error_code = None
+        if self._state in (
+            OutputSessionState.READY,
+            OutputSessionState.RUNNING,
+            OutputSessionState.PAUSED,
+            OutputSessionState.RECONFIGURING,
+        ):
+            if self._state is OutputSessionState.RECONFIGURING:
+                self._transition(OutputSessionState.READY)
+            self._transition(OutputSessionState.RELEASING)
+            self._transition(OutputSessionState.IDLE)
+        self._notify()
+
+    def _invalidate_dsd_pcm_processing(self, reason: str) -> None:
+        self._dsd_pcm_processing_effective = False
+        hook = self._dsd_pcm_invalidate_processing
+        if hook is not None:
+            with contextlib.suppress(Exception):
+                hook(reason)
+
+    def _invalidate_managed_processing(self, reason: str) -> None:
+        hook = self._managed_invalidate_processing
+        if hook is not None:
+            with contextlib.suppress(Exception):
+                hook(reason)
+
+    def _complete_handover_release(
+        self,
+        attempt: _HandoverAttempt,
+        results,
+        error,
+        on_prepared: Callable[[str], None],
+        on_failed: Callable[[Exception], None],
+    ) -> None:
+        stale = (
+            self._handover_attempt is not attempt
+            or attempt.prepare_generation != self._async_prepare_generation
+        )
+        # Physical releases already happened: retire exactly the identities
+        # this attempt released, even when the attempt itself is superseded.
+        confirmed: list[_PredecessorSnapshot] = []
+        unconfirmed: list[tuple[_PredecessorSnapshot, str]] = []
+        if isinstance(results, list):
+            for snapshot, result, failure in results:
+                if failure is not None:
+                    unconfirmed.append((snapshot, "OUTPUT_CLEANUP_FAILED"))
+                    continue
+                ok, code = self._handover_release_confirmed(snapshot, result)
+                if ok:
+                    confirmed.append(snapshot)
+                elif self._handover_identity_is_current(snapshot):
+                    unconfirmed.append((snapshot, code))
+                else:
+                    # The owner no longer references it: a newer authority
+                    # retired this exact execution; nothing is still leased.
+                    confirmed.append(snapshot)
+        for snapshot in confirmed:
+            self._reconcile_handover_release(snapshot)
+        if stale:
+            self._handover_state = HandoverState.SUPERSEDED
+            on_failed(
+                OutputSessionError(
+                    "OUTPUT_PREPARATION_STALE",
+                    "the handover attempt was superseded before PREPARE",
+                )
+            )
+            return
+        self._handover_state = HandoverState.RECONCILE
+        if error is not None or unconfirmed:
+            first = unconfirmed[0] if unconfirmed else None
+            if first is not None:
+                snapshot, code = first
+                self._retain_pending_cleanup(snapshot.family, snapshot.prepared)
+                self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
+                    reason=f"{snapshot.family}_handover_release",
+                    code=code,
+                    detail="host did not confirm the predecessor release",
+                )
+            self._handover_state = HandoverState.OWNERSHIP_UNCONFIRMED
+            on_failed(
+                OutputSessionError(
+                    "OUTPUT_OWNERSHIP_UNCONFIRMED",
+                    "the predecessor release was not confirmed; "
+                    "the target was never prepared",
+                )
+            )
+            return
+        self._handover_state = HandoverState.PREPARE
+        request = attempt.request
+
+        def prepare_work():
+            family = attempt.target_family
+            if family == "dsd_pcm":
+                return self._run_dsd_pcm_prepare(
+                    attempt.path,
+                    request.dsd_pcm_plan,
+                    attempt.managed_instance_id,
+                )
+            if family == "dop":
+                return self._run_dop_prepare(
+                    attempt.path, request.dop_plan, attempt.managed_instance_id
+                )
+            if family == "native_dsd":
+                return self._run_native_dsd_prepare(
+                    attempt.path, request.native_dsd_plan, attempt.managed_instance_id
+                )
+            return self._run_managed_prepare(
+                attempt.path, request.facts, attempt.managed_instance_id
+            )
+
+        def prepare_completed(value, prepare_error) -> None:
+            self._complete_handover_prepare(
+                attempt, value, prepare_error, on_prepared, on_failed
+            )
+
+        self._submit_async_work(prepare_work, prepare_completed)
+
+    def _complete_handover_prepare(
+        self,
+        attempt: _HandoverAttempt,
+        prepared,
+        error,
+        on_prepared: Callable[[str], None],
+        on_failed: Callable[[Exception], None],
+    ) -> None:
+        stale = (
+            self._handover_attempt is not attempt
+            or attempt.prepare_generation != self._async_prepare_generation
+        )
+        if stale:
+            self._abort_uncommitted_candidate(prepared, "superseded_before_commit")
+            self._handover_state = HandoverState.SUPERSEDED
+            on_failed(
+                OutputSessionError(
+                    "OUTPUT_PREPARATION_STALE",
+                    "the handover attempt was superseded before PREPARE",
+                )
+            )
+            return
+        if error is not None:
+            self._handover_state = HandoverState.FAILED
+            on_failed(error)
+            return
+        if (
+            attempt.intent is not None
+            and self._capture_output_intent() != attempt.intent
+        ):
+            self._abort_uncommitted_candidate(prepared, "intent_changed_before_commit")
+            self._handover_state = HandoverState.SUPERSEDED
+            on_failed(
+                OutputSessionError(
+                    "OUTPUT_PREPARATION_STALE",
+                    "output intent changed while preparing",
+                )
+            )
+            return
+        try:
+            token = self._commit_handover_prepare(attempt, prepared)
+        except Exception as exc:  # noqa: BLE001 - commit boundary
+            self._abort_uncommitted_candidate(prepared, "commit_failed")
+            self._handover_state = HandoverState.FAILED
+            on_failed(exc)
+            return
+        self._handover_state = HandoverState.READY
+        on_prepared(token)
+
+    def _commit_handover_prepare(
+        self, attempt: _HandoverAttempt, prepared
+    ) -> str:
+        request = attempt.request
+        if isinstance(prepared, DsdPcmSessionPrepared):
+            checker = self._dsd_pcm_plan_still_current
+            if checker is not None and not bool(checker(prepared.plan)):
+                raise OutputSessionError(
+                    "DSD_PCM_BINDING_STALE",
+                    "the DSD→PCM plan/binding changed before READY",
+                )
+            return self._begin_dsd_pcm_session(
+                attempt.path,
+                request,
+                prepared,
+                previous_direct=self._committed_direct_snapshot(),
+            )
+        if isinstance(prepared, DopSessionPrepared):
+            checker = self._dop_plan_still_current
+            if checker is not None and not bool(checker(prepared.plan)):
+                raise OutputSessionError(
+                    "DOP_BINDING_STALE",
+                    "the DoP plan/binding changed before READY",
+                )
+            return self._begin_dop_session(
+                attempt.path,
+                request,
+                prepared,
+                previous_direct=self._committed_direct_snapshot(),
+            )
+        if isinstance(prepared, NativeDsdSessionPrepared):
+            return self._begin_native_dsd_session(
+                attempt.path,
+                request,
+                prepared,
+                previous_direct=self._committed_direct_snapshot(),
+            )
+        if isinstance(prepared, ManagedOutputPrepared):
+            return self._begin_managed_session(
+                attempt.path,
+                request,
+                prepared,
+                previous_direct=self._committed_direct_snapshot(),
+            )
+        raise OutputSessionError(
+            "OUTPUT_PREPARATION_INVALID_RESULT",
+            "the handover prepare worker returned an unknown result",
+        )
+
     def prepare_for_media_async(
         self,
         path: Path,
@@ -1773,6 +2355,11 @@ class OutputSessionService:
                 self._pending_prepare_device_id = None
 
         managed_instance_id = self._new_managed_instance()
+        output_generation = self._generation
+        processing_revision = int(
+            self.transition_snapshot().get("processing_generation") or 0
+        )
+        source_family = self.current_family
         # IMMUTABLE owner capture: the worker classifies against this tuple and
         # never reads live ownership. A later request that replaces the current
         # execution is therefore invisible (and unreleasable) to this attempt.
@@ -1918,15 +2505,16 @@ class OutputSessionService:
                 )
                 return
             if candidate.preparation_path is PreparationPath.NEEDS_HANDOVER:
-                # C1 boundary: cross-family preparation is NEVER executed from
-                # the characterization worker. The owner-safe transaction
-                # (C2) owns RELEASE → RECONCILE → PREPARE.
-                on_failed(
-                    OutputSessionError(
-                        "OUTPUT_HANDOVER_REQUIRED",
-                        "cross-family output preparation requires the "
-                        "owner-safe handover transaction",
-                    )
+                self._begin_handover(
+                    path=path,
+                    candidate=candidate,
+                    generation=generation,
+                    intent=intent,
+                    output_generation=output_generation,
+                    processing_revision=processing_revision,
+                    source_family=source_family,
+                    on_prepared=on_prepared,
+                    on_failed=on_failed,
                 )
                 return
             request = candidate.request
@@ -2214,6 +2802,7 @@ class OutputSessionService:
             or prepared.execution_id != plan.execution_id
             or prepared.stable_device_id != plan.stable_device_id
         ):
+            self._abort_candidate_physically(prepared, "identity_mismatch")
             raise OutputSessionError(
                 "NATIVE_DSD_OUTPUT_PREPARE_FAILED",
                 "Native DSD preparation does not match the plan identity",
@@ -2344,7 +2933,7 @@ class OutputSessionService:
             or prepared.execution_id != plan.execution_id
             or prepared.stable_device_id != plan.stable_device_id
         ):
-            self._dop_abort_quietly(prepared, "identity_mismatch")
+            self._abort_candidate_physically(prepared, "identity_mismatch")
             raise OutputSessionError(
                 "DOP_OUTPUT_PREPARE_FAILED",
                 "DoP preparation does not match the plan identity",
@@ -2751,7 +3340,7 @@ class OutputSessionService:
         *,
         record_failure: bool = True,
     ) -> bool:
-        self._dsd_pcm_processing_effective = False
+        self._invalidate_dsd_pcm_processing(reason)
         if self._dsd_pcm_abort is None:
             if record_failure:
                 self._last_cleanup_diagnostic = OutputCleanupDiagnostic(
@@ -3018,7 +3607,7 @@ class OutputSessionService:
             or not prepared.binding_locator
             or prepared.plan.binding_generation != plan.binding_generation
         ):
-            self._dsd_pcm_abort_quietly(prepared, "identity_mismatch")
+            self._abort_candidate_physically(prepared, "identity_mismatch")
             raise OutputSessionError(
                 "DSD_PCM_OUTPUT_PREPARE_FAILED",
                 "DSD→PCM preparation does not match the plan identity",
@@ -3538,6 +4127,8 @@ class OutputSessionService:
             )
             self._unconfirmed_cleanup = ("managed", prepared)
             return
+        if result.get("stopped") is True or not result.get("stale"):
+            self._invalidate_managed_processing(reason)
         if result.get("stopped") or result.get("stale") or result.get("already"):
             self._clear_pending_cleanup("managed", prepared)
             return
@@ -3999,7 +4590,7 @@ class OutputSessionService:
         if self._mode == "dsd_pcm":
             # From this point the session is releasing; no DSP observation may
             # survive any release, confirmed or unconfirmed.
-            self._dsd_pcm_processing_effective = False
+            self._invalidate_dsd_pcm_processing(reason)
             prepared = self._dsd_pcm_prepared
             if self._state not in (
                 OutputSessionState.IDLE,

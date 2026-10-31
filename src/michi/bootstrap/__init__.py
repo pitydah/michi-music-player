@@ -1143,12 +1143,8 @@ def _build_services(
                 "device": prepared.plan.device_locator,
             }
         )
-        # Retire EFFECTIVE when the execution was stopped OR when cleanup
-        # failed/unknown (the graph may still be alive: never keep a
-        # current-effective claim for an execution we no longer own). A
-        # STALE result belongs to a NEWER execution and must not touch truth.
-        if result.get("stopped") or not result.get("stale"):
-            audio_processing_service.invalidate_effective(f"managed_{reason}")
+        # Pure physical command: the owner applies EFFECTIVE invalidation
+        # after validating the exact receipt.
         return result
 
     def _managed_plan_still_current(plan: ManagedPcmOutputPlan) -> bool:
@@ -1495,22 +1491,16 @@ def _build_services(
         gstreamer_provider.current_port.commit_dsd_pcm(prepared.handle)
 
     def _dsd_pcm_abort(prepared: DsdPcmSessionPrepared, reason: str) -> dict:
-        try:
-            if prepared.handle is None:
-                return {"aborted": True, "already": True}
-            return gstreamer_provider.current_port.abort_dsd_pcm(prepared.handle)
-        finally:
-            # DSP evidence belongs to the execution being retired. Even an
-            # unconfirmed physical abort must not leave EFFECTIVE published.
-            audio_processing_service.invalidate_effective(f"dsd_pcm_abort:{reason}")
+        # Pure physical command: the OWNER retires the EFFECTIVE DSP claim
+        # (it owns the processing authority), never this adapter.
+        if prepared.handle is None:
+            return {"aborted": True, "already": True}
+        return gstreamer_provider.current_port.abort_dsd_pcm(prepared.handle)
 
     def _dsd_pcm_stop(prepared: DsdPcmSessionPrepared, reason: str) -> dict:
-        try:
-            if prepared.handle is None:
-                return {"stopped": True, "already": True}
-            return gstreamer_provider.current_port.stop_dsd_pcm(prepared.handle)
-        finally:
-            audio_processing_service.invalidate_effective(f"dsd_pcm_stop:{reason}")
+        if prepared.handle is None:
+            return {"stopped": True, "already": True}
+        return gstreamer_provider.current_port.stop_dsd_pcm(prepared.handle)
 
     def _dsd_pcm_plan_still_current(plan) -> bool:
         state = settings_service.state
@@ -1561,6 +1551,9 @@ def _build_services(
         dsd_pcm_plan_still_current=_dsd_pcm_plan_still_current,
         dsd_pcm_finalize_processing=_dsd_pcm_finalize_processing,
         dsd_pcm_invalidate_processing=(audio_processing_service.invalidate_effective),
+        managed_invalidate_processing=(
+            audio_processing_service.invalidate_effective
+        ),
         truth_recorder=signal_truth,
     )
     from michi.application.volume_policy_service import VolumePolicyService
