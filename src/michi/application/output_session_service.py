@@ -2133,10 +2133,20 @@ class OutputSessionService:
         """Retire exactly the released identity; never touch a newer one."""
         if snapshot.family == "dsd_pcm":
             self._reconcile_confirmed_dsd_pcm_cleanup(snapshot.prepared)
+            self._record_dsd_pcm_family(
+                OutputFamilyState.RELEASED,
+                snapshot.prepared,
+                detail="handover_release",
+            )
             self._invalidate_dsd_pcm_processing("handover_release")
             return
         if snapshot.family == "dop":
             self._reconcile_confirmed_dop_cleanup(snapshot.prepared)
+            self._record_dop_family(
+                OutputFamilyState.RELEASED,
+                snapshot.prepared,
+                detail="handover_release",
+            )
             return
         if not self._handover_identity_is_current(snapshot):
             return

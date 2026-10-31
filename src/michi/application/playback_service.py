@@ -486,7 +486,7 @@ class PlaybackService:
                         return
                     planned_receipt = receipt
                     self.family_transition_receipts.append(receipt)
-                self._continue_prepared_load(
+                started = self._continue_prepared_load(
                     file_path,
                     token,
                     my_epoch,
@@ -497,8 +497,8 @@ class PlaybackService:
                     on_cancelled,
                 )
                 if (
-                    planned_receipt is not None
-                    and self._state.status is PlaybackStatus.PLAYING
+                    started is True
+                    and planned_receipt is not None
                     and self.family_transition_receipts
                     and self.family_transition_receipts[-1] is planned_receipt
                 ):
@@ -689,28 +689,31 @@ class PlaybackService:
         # de la ejecución parcial de play()).
         self._user_play_play_phase_complete = True
         execution_id = getattr(self._output_tx, "active_execution_id", None)
+        started = False
         if bool(getattr(self._output_tx, "dsd_pcm_active", False)):
             notify_dsd_pcm_playing = getattr(
                 self._output_tx, "notify_dsd_pcm_playing", None
             )
             if callable(notify_dsd_pcm_playing):
-                notify_dsd_pcm_playing(execution_id)
+                started = bool(notify_dsd_pcm_playing(execution_id))
         elif bool(getattr(self._output_tx, "dop_active", False)):
             notify_dop_playing = getattr(self._output_tx, "notify_dop_playing", None)
             if callable(notify_dop_playing):
-                notify_dop_playing(execution_id)
+                started = bool(notify_dop_playing(execution_id))
         else:
             notify_playing = getattr(self._output_tx, "notify_native_dsd_playing", None)
             if callable(notify_playing) and bool(
                 getattr(self._output_tx, "native_dsd_active", False)
             ):
-                notify_playing(execution_id)
+                started = bool(notify_playing(execution_id))
         latched = self._user_play_acceptance_latched
         if latched is not None:
             self._finalize_media_acceptance(latched)
         self._state.status = PlaybackStatus.STOPPED
         self._state.error_message = None
         self._notify()
+        # START is confirmed by the output authority, never assumed here.
+        return started
 
     def publish_preparation_refusal(self, code: str) -> None:
         """Publish one typed preparation refusal to the playback authority.
