@@ -407,11 +407,13 @@ class PreparationPath(StrEnum):
     """Classification of one async preparation request.
 
     FAST_PATH is the historical one-worker/one-completion preparation: no
-    incompatible predecessor owns the device, so the worker may prepare the
+    predecessor owns a managed-host execution, so the worker may prepare the
     target directly and the owner commits on completion.
-    NEEDS_HANDOVER is the destructive cross-family path: the worker may only
+    NEEDS_HANDOVER is the destructive path: the worker may only
     characterize/qualify the request; the owner reserves the transition and
-    drives RELEASE → RECONCILE → PREPARE.
+    drives RELEASE → RECONCILE → PREPARE. It covers a cross-family change and
+    also a same-family replacement that the host would otherwise refuse while
+    the predecessor execution is still active.
     """
 
     FAST_PATH = "fast_path"
@@ -2449,15 +2451,12 @@ class OutputSessionService:
         def work():
             request = self._request_for(path)
             target_family = self._target_family(request)
-            incompatible = (
-                tuple(
-                    snapshot
-                    for snapshot in predecessors
-                    if snapshot.family != target_family
-                )
-                if target_family is not None
-                else ()
-            )
+            # Every host-managed family owns its execution exclusively. Even a
+            # same-family replacement (new quality, rate, or device) must
+            # release the predecessor before the host accepts the new prepare.
+            # The capture is immutable, so an obsolete attempt can only ever
+            # release the execution it observed, never a newer one.
+            incompatible = predecessors if target_family is not None else ()
             if incompatible:
                 # NEEDS_HANDOVER: characterize only. The owner reserves the
                 # destructive transition; no physical prepare happens here.

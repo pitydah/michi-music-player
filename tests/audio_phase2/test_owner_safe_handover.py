@@ -344,10 +344,15 @@ def test_fast_path_keeps_one_worker_one_completion_and_no_release(
     assert session.handover_state is None
 
 
-def test_same_family_async_replacement_stays_on_the_fast_path(
+def test_same_family_async_replacement_releases_the_active_execution(
     tmp_path: Path,
 ) -> None:
-    """A same-family replacement is not a cross-family handover."""
+    """A new quality/device plan must release the active same-family execution.
+
+    The host refuses a second prepare while an execution is active
+    (``DSD_PCM_HOST_SUPERSESSION_UNAUTHORIZED``), so a same-family replacement
+    is a destructive handover too, not a fast-path prepare.
+    """
     dop_one = _dop_plan(execution_id="exec:1")
     dop_two = _dop_plan(execution_id="exec:2")
     requests = {
@@ -364,14 +369,26 @@ def test_same_family_async_replacement_stays_on_the_fast_path(
     session.prepare_for_media_async(
         tmp_path / "two.dsf", tokens.append, failures.append
     )
-    deferred.run_one()
 
+    # Phase one only characterizes: the active execution stays untouched.
+    deferred.run_one()
+    assert tx.aborted == []
+    assert tx.dop_prepare_calls == 1
+    assert tokens == []
+    assert failures == []
+
+    # The owner releases execution 1 before preparing execution 2.
+    deferred.drive()
+    assert tx.aborted == [("dop", "exec:1", "handover_to_dop")]
+    assert tx.dop_prepare_calls == 2
     assert failures == []
     assert len(tokens) == 1
     assert session._dop_prepared is not None
     assert session._dop_prepared.execution_id == "exec:2"
-    assert ("dop", "exec:1", "superseded") in tx.aborted
-    assert tx.dsd_pcm_prepare_calls == 0
+    assert session.state is OutputSessionState.READY
+    assert session.mode == "dop"
+    assert session.handover_state is HandoverState.READY
+    assert session.handover_target_family == "dop"
 
 
 def test_reverse_handover_from_dsd_pcm_to_dop(tmp_path: Path) -> None:

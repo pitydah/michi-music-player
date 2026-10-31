@@ -9,6 +9,7 @@ hosted discard command.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -37,11 +38,19 @@ from michi.domain.audio_output import (
     OutputPathPreference,
     OutputSessionState,
 )
+from michi.domain.dop import DopInterpretationState
 from michi.domain.dsd_signal import (
     DsdBitOrder,
     DsdOrganization,
     DsdPacking,
     DsdSignalFormat,
+)
+from tests.dop.test_dop_planner import (
+    _carrier,
+    _interp,
+)
+from tests.dop.test_dop_planner import (
+    _plan as _dop_plan,
 )
 
 
@@ -214,7 +223,14 @@ class _Tx:
         )
 
 
-def _dsd_plan():
+def _dsd_plan(
+    *,
+    quality: str = "FAST",
+    rates: tuple[int, ...] = (88_200,),
+    stable_device_id: str = "dev:matrix",
+    binding_locator: str = "hw:0,0",
+    binding_generation: int = 1,
+):
     return DsdToPcmPlanner().plan(
         source_identity="track:matrix",
         source_format=DsdSignalFormat(
@@ -225,13 +241,13 @@ def _dsd_plan():
             organization=DsdOrganization.PLANAR,
             layout=("FL", "FR"),
         ),
-        quality_profile="FAST",
-        binding_generation=1,
-        available_output_rates=(88_200,),
+        quality_profile=quality,
+        binding_generation=binding_generation,
+        available_output_rates=rates,
         decoder_available=True,
         target_qualified=True,
-        stable_device_id="dev:matrix",
-        binding_locator="hw:0,0",
+        stable_device_id=stable_device_id,
+        binding_locator=binding_locator,
         host_generation=1,
     )
 
@@ -540,3 +556,126 @@ def test_t01_direct_to_dsd_pcm_records_the_host_release(tmp_path: Path) -> None:
     assert evidence["provenance"] == "SUPERVISED_HOST"
     assert service.mode == "dsd_pcm"
     assert service.dsd_pcm_active is True
+
+
+def test_t11_dsd_pcm_quality_change_releases_before_prepare(tmp_path: Path) -> None:
+    """T11: same-family quality A→B is a destructive host reconfiguration.
+
+    The host refuses a second DSD→PCM prepare while the first execution is
+    active, so the transaction must release the predecessor (exact identity)
+    before preparing the new quality/rate plan.
+    """
+    plan_a = _dsd_plan(quality="FAST", rates=(88_200,))
+    plan_b = _dsd_plan(quality="HIGH", rates=(88_200, 176_400))
+    assert plan_a.plan_id != plan_b.plan_id
+    requests = {
+        "quality-a.dsf": OutputRequest.dsd_to_pcm(
+            plan_a, plan_a.stable_device_id, "profile:dsd"
+        ),
+        "quality-b.dsf": OutputRequest.dsd_to_pcm(
+            plan_b, plan_b.stable_device_id, "profile:dsd"
+        ),
+    }
+    tx = _Tx()
+    executor = _Deferred()
+    session = _service(requests, tx, executor)
+
+    session.prepare_for_media(tmp_path / "quality-a.dsf")
+    prepared_a = session._dsd_pcm_prepared
+    assert prepared_a is not None
+    assert prepared_a.plan.plan_id == plan_a.plan_id
+
+    tokens: list[str] = []
+    failures: list[Exception] = []
+    session.prepare_for_media_async(
+        tmp_path / "quality-b.dsf", tokens.append, failures.append
+    )
+
+    executor.run_one()
+    assert tx.aborts == []
+    assert tx.dsd_prepare_calls == 1
+    assert session._dsd_pcm_prepared is prepared_a
+
+    executor.drive()
+    assert failures == []
+    assert len(tokens) == 1
+    assert tx.aborts == [f"dsd_pcm:{prepared_a.execution_id}"]
+    assert tx.dsd_prepare_calls == 2
+    assert session._dsd_pcm_prepared is not None
+    assert session._dsd_pcm_prepared.plan.plan_id == plan_b.plan_id
+    assert session._dsd_pcm_prepared.plan.quality_profile == "HIGH"
+    assert session.state is OutputSessionState.READY
+    assert session.mode == "dsd_pcm"
+    assert session.handover_state is HandoverState.READY
+    evidence = session.last_handover_release_evidence
+    assert evidence is not None
+    assert evidence["execution_id"] == prepared_a.execution_id
+    assert evidence["device"] == prepared_a.binding_locator
+
+
+def test_t12_dop_dac_change_releases_before_prepare(tmp_path: Path) -> None:
+    """T12: same-family DoP DAC A→B releases device A before binding device B."""
+    plan_a = _dop_plan(execution_id="exec:dac-a")
+    carrier_b = replace(
+        _carrier(),
+        stable_device_id="dev:dac-b",
+        binding_locator="hw:1,0",
+        binding_generation=4,
+        environment_fingerprint="env:2",
+    )
+    interpretation_b = replace(
+        _interp(DopInterpretationState.USER_CONFIRMED),
+        stable_device_id="dev:dac-b",
+        device_revision="rev:2",
+    )
+    plan_b = _dop_plan(
+        execution_id="exec:dac-b",
+        stable_device_id="dev:dac-b",
+        binding_locator="hw:1,0",
+        binding_generation=4,
+        environment_fingerprint="env:2",
+        current_device_revision="rev:2",
+        carrier_qualifications=(carrier_b,),
+        interpretation=(interpretation_b,),
+    )
+    assert plan_a.plan_id != plan_b.plan_id
+    requests = {
+        "dac-a.dsf": OutputRequest.dop(plan_a, "profile:dop"),
+        "dac-b.dsf": OutputRequest.dop(plan_b, "profile:dop"),
+    }
+    tx = _Tx()
+    executor = _Deferred()
+    session = _service(requests, tx, executor)
+
+    session.prepare_for_media(tmp_path / "dac-a.dsf")
+    prepared_a = session._dop_prepared
+    assert prepared_a is not None
+    assert prepared_a.plan.stable_device_id == "usb:152a:85dd"
+
+    tokens: list[str] = []
+    failures: list[Exception] = []
+    session.prepare_for_media_async(
+        tmp_path / "dac-b.dsf", tokens.append, failures.append
+    )
+
+    executor.run_one()
+    assert tx.aborts == []
+    assert tx.dop_prepare_calls == 1
+    assert session._dop_prepared is prepared_a
+
+    executor.drive()
+    assert failures == []
+    assert len(tokens) == 1
+    assert tx.aborts == [f"dop:{prepared_a.execution_id}"]
+    assert tx.dop_prepare_calls == 2
+    assert session._dop_prepared is not None
+    assert session._dop_prepared.plan.stable_device_id == "dev:dac-b"
+    assert session._dop_prepared.plan.binding_locator == "hw:1,0"
+    assert session.state is OutputSessionState.READY
+    assert session.mode == "dop"
+    assert session.handover_state is HandoverState.READY
+    evidence = session.last_handover_release_evidence
+    assert evidence is not None
+    assert evidence["execution_id"] == "exec:dac-a"
+    assert evidence["device"] == "hw:3,0"
+    assert evidence["stable_device_id"] == "usb:152a:85dd"

@@ -87,14 +87,16 @@
   "T11": {
    "source": "DSD_TO_PCM quality A",
    "target": "DSD_TO_PCM quality B",
-   "status": "NOT_RUN",
-   "reason": "same-family quality reconfiguration"
+   "status": "PASS_SERVICE_PATH",
+   "test": "tests/audio_phase2/test_family_handover_matrix.py::test_t11_dsd_pcm_quality_change_releases_before_prepare",
+   "reason": "same-family reconfiguration is a destructive handover: exact-identity RELEASE before the host accepts the new quality/rate prepare"
   },
   "T12": {
    "source": "DAC A",
    "target": "DAC B",
-   "status": "NOT_RUN",
-   "reason": "same-family device reconfiguration"
+   "status": "PASS_SERVICE_PATH",
+   "test": "tests/audio_phase2/test_family_handover_matrix.py::test_t12_dop_dac_change_releases_before_prepare",
+   "reason": "same-family DAC change releases device A with its exact binding before binding device B; no simultaneous ownership"
   }
  },
  "signal_path": {
