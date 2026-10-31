@@ -77,6 +77,8 @@ class ManagedPcmExecutor:
             "plan_id": plan.plan_id,
             "execution_id": instance_id,
             "plan_execution_id": plan.execution_id,
+            "stable_device_id": plan.stable_device_id,
+            "binding_generation": plan.binding_generation,
             "sink_factory": "alsasink",
             "device": plan.device_locator,
             "media_type": "audio/x-raw",

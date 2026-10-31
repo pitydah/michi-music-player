@@ -748,6 +748,33 @@ class GStreamerHostedAudioPort(AudioPort):
                 "OUTPUT_HOST_INVALID_RESULT",
                 "stop_managed result is not an object",
             )
+        if result.get("stopped") is True and result.get("stale") is not True:
+            expected = payload.get("expected")
+            if not isinstance(expected, dict):
+                expected = {}
+            release = {
+                "confirmed": True,
+                "operation": "stop",
+                "plan_id": str(result.get("plan_id") or expected.get("plan_id") or ""),
+                "execution_id": str(
+                    result.get("execution_id") or expected.get("execution_id") or ""
+                ),
+                "stable_device_id": str(
+                    result.get("stable_device_id")
+                    or expected.get("stable_device_id")
+                    or ""
+                ),
+                "device": str(result.get("device") or expected.get("device") or ""),
+                "binding_generation": int(
+                    result.get("binding_generation")
+                    or expected.get("binding_generation")
+                    or 0
+                ),
+                "host_generation": int(self._supervisor.host_generation),
+                "terminal_state": "RELEASED",
+                "provenance": "SUPERVISED_HOST",
+            }
+            return {**result, "release": release}
         return result
 
     def query_managed_identity(self) -> dict[str, Any]:

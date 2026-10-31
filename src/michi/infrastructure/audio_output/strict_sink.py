@@ -81,6 +81,10 @@ class StrictSinkRecipe:
     #: the pinned output caps. Never implied by the sink itself.
     container_conversion: bool = False
     resync_delay_ms: int = 0
+    #: Owner binding identity for the managed execution. The host validates
+    #: these on stop so a release receipt can name the exact device/binding.
+    stable_device_id: str = ""
+    binding_generation: int = 0
 
     def caps_string(self) -> str:
         return (

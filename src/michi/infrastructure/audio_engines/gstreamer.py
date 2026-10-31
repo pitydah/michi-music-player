@@ -1896,6 +1896,26 @@ class GStreamerAudioPort(AudioPort):
                 "code": "MANAGED_STOP_STALE",
                 "reason": "the managed execution identity does not match",
             }
+        expected_stable = str(expected.get("stable_device_id") or "")
+        if expected_stable and expected_stable != str(
+            identity.get("stable_device_id") or ""
+        ):
+            return {
+                "stopped": False,
+                "stale": True,
+                "code": "MANAGED_STOP_STALE",
+                "reason": "the managed stable device identity does not match",
+            }
+        expected_binding = int(expected.get("binding_generation") or 0)
+        if expected_binding and expected_binding != int(
+            identity.get("binding_generation") or 0
+        ):
+            return {
+                "stopped": False,
+                "stale": True,
+                "code": "MANAGED_STOP_STALE",
+                "reason": "the managed binding generation does not match",
+            }
         # Clear ownership BEFORE the fallible stop: a later abort cannot
         # match a route that is already being torn down.
         self._managed_identity = None
@@ -1910,7 +1930,16 @@ class GStreamerAudioPort(AudioPort):
                 "code": "MANAGED_STOP_FAILED",
                 "reason": str(exc),
             }
-        return {"stopped": True, "stale": False, "reason": ""}
+        return {
+            "stopped": True,
+            "stale": False,
+            "reason": "",
+            "plan_id": str(identity.get("plan_id") or ""),
+            "execution_id": str(identity.get("execution_id") or ""),
+            "stable_device_id": str(identity.get("stable_device_id") or ""),
+            "device": str(identity.get("device") or ""),
+            "binding_generation": int(identity.get("binding_generation") or 0),
+        }
 
     def managed_identity(self) -> dict:
         """Primitive identity of the CURRENT managed load (or managed=False).
@@ -3049,6 +3078,12 @@ class GStreamerAudioPort(AudioPort):
                     "managed": True,
                     "plan_id": str(getattr(managed_recipe, "plan_id", "")),
                     "execution_id": managed_execution_id,
+                    "stable_device_id": str(
+                        getattr(managed_recipe, "stable_device_id", "") or ""
+                    ),
+                    "binding_generation": int(
+                        getattr(managed_recipe, "binding_generation", 0) or 0
+                    ),
                     "device": str(getattr(managed_recipe, "device", "")),
                     "format": str(getattr(managed_recipe, "gst_format", "")),
                     "rate_hz": int(getattr(managed_recipe, "rate_hz", 0) or 0),

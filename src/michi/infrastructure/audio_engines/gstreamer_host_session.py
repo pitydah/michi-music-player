@@ -1037,6 +1037,8 @@ class HostEngineSession:
             layout=str(data.get("layout") or "interleaved"),
             container_conversion=False,
             resync_delay_ms=0,
+            stable_device_id=str(data.get("stable_device_id") or ""),
+            binding_generation=int(data.get("binding_generation") or 0),
         )
         port = self._require_port()
         port.stage_managed_load(
