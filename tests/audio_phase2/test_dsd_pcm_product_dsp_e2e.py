@@ -179,3 +179,94 @@ def test_selected_profile_is_effective_on_product_dsd_playback(tmp_path, monkeyp
         assert graph.output_session.state.value == "idle"
     finally:
         _close(graph)
+
+
+def test_dsp_on_to_off_while_dsd_pcm_is_running(tmp_path, monkeypatch):
+    """T10: a proven bypass removes the installed DSP node from the live DSD run."""
+    from michi.application.settings_service import SettingsService
+    from michi.domain.audio_evidence import (
+        CapabilityEvidence,
+        EvidenceStrength,
+        PcmTuple,
+    )
+    from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository
+    from tests.audio_phase2.test_managed_productive_flow import _Metadata
+    from tests.audio_phase2.test_processing_productive_composition import (
+        _InlineExecutor,
+    )
+
+    monkeypatch.setenv("MICHI_GST_LAB_SINK", "fakesink")
+    monkeypatch.setenv("MICHI_DSD_PCM_CAPTURE", "400000")
+    from michi.domain.library import TrackMetadata
+
+    monkeypatch.setattr(
+        _Metadata,
+        "extract",
+        lambda _self, _path: TrackMetadata(
+            title="dsd", sample_rate_hz=2_822_400, bit_depth=1, channels=2
+        ),
+    )
+    db = tmp_path / "michi.db"
+    settings = SettingsService(SQLiteSettingsRepository.open_for_startup(db))
+    settings.set_dsd_pcm_conversion_consent(True)
+    settings.set_dsd_pcm_dsp_consent(True)
+    graph, coordinator = _build_graph(tmp_path, settings_service=settings)
+    source = tmp_path / "product-dsp-off.dsf"
+    source.write_bytes(build_dsf(sample_count=8_192))
+    try:
+        graph.dac_qualification.cache_evidence(
+            DEVICE_ID,
+            (
+                CapabilityEvidence(
+                    stable_device_id=DEVICE_ID,
+                    tuple=PcmTuple(88_200, "F32LE", 2, 32),
+                    supported=True,
+                    strength=EvidenceStrength.OPENED,
+                    source="michi-alsa-probe",
+                    observed_at_ns=1,
+                    environment_fingerprint=(
+                        graph.dac_qualification.current_environment_fingerprint(
+                            DEVICE_ID
+                        )
+                    ),
+                    evidence_refs=("probe:dsd-pcm-f32",),
+                ),
+            ),
+        )
+        graph.set_processing_profile(_profile())
+        coordinator.select_device(DEVICE_ID)
+        coordinator.select_path_mode("strict")
+        accepted: list[Path] = []
+        graph.playback.load_and_play(source, on_accepted=accepted.append)
+        assert accepted == [source]
+        port = graph.gstreamer_engine_provider.current_port
+        deadline = time.monotonic() + 10.0
+        while time.monotonic() < deadline:
+            if graph.output_session.state.value == "running":
+                break
+            port.dispatch_pending()
+            time.sleep(0.02)
+        assert graph.output_session.state.value == "running"
+        assert graph.audio_processing.effective_state.value == "effective"
+
+        disabled: list[bool] = []
+        failures: list[Exception] = []
+        graph.audio_processing.disable_processing_async(
+            on_done=disabled.append,
+            on_failed=failures.append,
+            async_submit=_InlineExecutor().submit,
+        )
+        bypass_deadline = time.monotonic() + 10.0
+        while time.monotonic() < bypass_deadline and not (disabled or failures):
+            port.dispatch_pending()
+            time.sleep(0.02)
+        assert failures == []
+        assert disabled == [True]
+        assert graph.audio_processing.effective_state.value == "bypassed"
+        # The runtime must have proven the filter removal on the live run.
+        identity = port.query_dsd_pcm_identity()
+        assert identity.get("processing") is None
+        graph.playback.stop()
+        assert graph.output_session.state.value == "idle"
+    finally:
+        _close(graph)
