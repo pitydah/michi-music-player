@@ -278,9 +278,7 @@ def _managed_plan():
 
 
 def _managed_request():
-    facts = SimpleNamespace(
-        profile=SimpleNamespace(path=OutputPathPreference.MANAGED)
-    )
+    facts = SimpleNamespace(profile=SimpleNamespace(path=OutputPathPreference.MANAGED))
     return OutputRequest(facts, "dev:matrix", "profile:managed")
 
 
@@ -314,9 +312,7 @@ def _service(requests: dict[str, OutputRequest], tx: _Tx, executor: _Deferred):
 def test_t03_managed_to_dsd_pcm_releases_before_prepare(tmp_path: Path) -> None:
     dsd = _dsd_plan()
     requests = {
-        "target.dsf": OutputRequest.dsd_to_pcm(
-            dsd, dsd.stable_device_id, "profile:dsd"
-        )
+        "target.dsf": OutputRequest.dsd_to_pcm(dsd, dsd.stable_device_id, "profile:dsd")
     }
     tx = _Tx()
     executor = _Deferred()
@@ -378,9 +374,7 @@ def test_t04_dsd_pcm_to_managed_releases_before_prepare(tmp_path: Path) -> None:
 def test_t05_native_to_dsd_pcm_releases_before_prepare(tmp_path: Path) -> None:
     dsd = _dsd_plan()
     requests = {
-        "target.dsf": OutputRequest.dsd_to_pcm(
-            dsd, dsd.stable_device_id, "profile:dsd"
-        )
+        "target.dsf": OutputRequest.dsd_to_pcm(dsd, dsd.stable_device_id, "profile:dsd")
     }
     tx = _Tx()
     executor = _Deferred()

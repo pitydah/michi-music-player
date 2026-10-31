@@ -188,14 +188,10 @@ class AudioFamilyTransitionService:
     ) -> FamilyTransitionReceipt:
         return replace(receipt, phase=TransitionPhase.TARGET_PREPARED)
 
-    def mark_started(
-        self, receipt: FamilyTransitionReceipt
-    ) -> FamilyTransitionReceipt:
+    def mark_started(self, receipt: FamilyTransitionReceipt) -> FamilyTransitionReceipt:
         return replace(receipt, phase=TransitionPhase.TARGET_STARTED)
 
-    def mark_failed(
-        self, receipt: FamilyTransitionReceipt
-    ) -> FamilyTransitionReceipt:
+    def mark_failed(self, receipt: FamilyTransitionReceipt) -> FamilyTransitionReceipt:
         return replace(receipt, phase=TransitionPhase.TARGET_FAILED)
 
     def mark_ownership_unconfirmed(

@@ -81,9 +81,7 @@ class _Tx:
         }
 
     @staticmethod
-    def _dsd_receipt(
-        prepared: DsdPcmSessionPrepared, operation: str
-    ) -> dict[str, Any]:
+    def _dsd_receipt(prepared: DsdPcmSessionPrepared, operation: str) -> dict[str, Any]:
         plan = prepared.plan
         return {
             "confirmed": True,
@@ -421,9 +419,7 @@ def test_reverse_handover_from_dsd_pcm_to_dop(tmp_path: Path) -> None:
     assert session._dsd_pcm_prepared is predecessor
 
     deferred.drive()
-    assert tx.aborted == [
-        ("dsd_pcm", predecessor.execution_id, "handover_to_dop")
-    ]
+    assert tx.aborted == [("dsd_pcm", predecessor.execution_id, "handover_to_dop")]
     assert tx.dop_prepare_calls == 1
     assert failures == []
     assert len(tokens) == 1

@@ -2166,9 +2166,7 @@ class OutputSessionService:
             self._managed_prepared = None
             self._managed_plan = None
             self._invalidate_managed_processing("handover_release")
-            self._record_output_family(
-                OutputFamilyState.RELEASED, snapshot.prepared
-            )
+            self._record_output_family(OutputFamilyState.RELEASED, snapshot.prepared)
         if self._executor_receipt == snapshot.execution_id:
             self._executor_receipt = None
         self._token_value = None
@@ -2349,9 +2347,7 @@ class OutputSessionService:
         self._handover_state = HandoverState.READY
         on_prepared(token)
 
-    def _commit_handover_prepare(
-        self, attempt: _HandoverAttempt, prepared
-    ) -> str:
+    def _commit_handover_prepare(self, attempt: _HandoverAttempt, prepared) -> str:
         request = attempt.request
         if isinstance(prepared, DsdPcmSessionPrepared):
             checker = self._dsd_pcm_plan_still_current
@@ -3733,9 +3729,7 @@ class OutputSessionService:
                 ) from exc
         if previous_direct is not None:
             try:
-                release_result = previous_direct.executor.release(
-                    "switch_to_dsd_pcm"
-                )
+                release_result = previous_direct.executor.release("switch_to_dsd_pcm")
                 self._record_direct_release_evidence(
                     previous_direct, release_result, "switch_to_dsd_pcm"
                 )
@@ -4060,9 +4054,7 @@ class OutputSessionService:
                 ) from exc
         if previous_direct is not None:
             try:
-                release_result = previous_direct.executor.release(
-                    "switch_to_managed"
-                )
+                release_result = previous_direct.executor.release("switch_to_managed")
                 self._record_direct_release_evidence(
                     previous_direct, release_result, "switch_to_managed"
                 )

@@ -1553,9 +1553,7 @@ def _build_services(
         dsd_pcm_plan_still_current=_dsd_pcm_plan_still_current,
         dsd_pcm_finalize_processing=_dsd_pcm_finalize_processing,
         dsd_pcm_invalidate_processing=(audio_processing_service.invalidate_effective),
-        managed_invalidate_processing=(
-            audio_processing_service.invalidate_effective
-        ),
+        managed_invalidate_processing=(audio_processing_service.invalidate_effective),
         truth_recorder=signal_truth,
     )
     from michi.application.volume_policy_service import VolumePolicyService

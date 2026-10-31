@@ -304,7 +304,6 @@ class SignalPathService:
             evidence_refs=tuple(refs),
         )
 
-
     def _installed_facts(
         self, receipt: object | None
     ) -> tuple[tuple[str, object], ...]:

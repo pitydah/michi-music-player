@@ -7,7 +7,9 @@ import math
 
 import pytest
 
-from tools.audio_phase2.dsd2pcm_conformance import (
+pytest.importorskip("numpy")
+
+from tools.audio_phase2.dsd2pcm_conformance import (  # noqa: E402
     CORPUS_SAMPLE_COUNT,
     DSD64_CORPUS,
     _tone_bits,
@@ -45,9 +47,9 @@ def test_modulator_produces_the_requested_analytic_tone(
 
     bit_count = 282_240
     raw = _tone_bits(frequency_hz=frequency, bit_count=bit_count)
-    bits = np.unpackbits(
-        np.frombuffer(raw, dtype=np.uint8), bitorder="little"
-    ).astype(np.float64)
+    bits = np.unpackbits(np.frombuffer(raw, dtype=np.uint8), bitorder="little").astype(
+        np.float64
+    )
     samples = bits * 2.0 - 1.0
     decimated = samples[: (samples.size // 64) * 64].reshape(-1, 64).mean(axis=1)
     window = np.hanning(decimated.size)

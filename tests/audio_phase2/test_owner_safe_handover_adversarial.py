@@ -89,9 +89,7 @@ class _Tx:
         }
 
     @staticmethod
-    def _dsd_receipt(
-        prepared: DsdPcmSessionPrepared, operation: str
-    ) -> dict[str, Any]:
+    def _dsd_receipt(prepared: DsdPcmSessionPrepared, operation: str) -> dict[str, Any]:
         plan = prepared.plan
         return {
             "confirmed": True,
@@ -236,13 +234,18 @@ def _requests():
     dop_one = _dop_plan(execution_id="exec:1")
     dop_two = _dop_plan(execution_id="exec:2")
     dsd = _dsd_pcm_plan()
-    return {
-        "predecessor.dsf": OutputRequest.dop(dop_one, "profile:dop"),
-        "target.dsf": OutputRequest.dsd_to_pcm(
-            dsd, dsd.stable_device_id, "profile:dsd"
-        ),
-        "second.dsf": OutputRequest.dop(dop_two, "profile:dop"),
-    }, dop_one, dop_two, dsd
+    return (
+        {
+            "predecessor.dsf": OutputRequest.dop(dop_one, "profile:dop"),
+            "target.dsf": OutputRequest.dsd_to_pcm(
+                dsd, dsd.stable_device_id, "profile:dsd"
+            ),
+            "second.dsf": OutputRequest.dop(dop_two, "profile:dop"),
+        },
+        dop_one,
+        dop_two,
+        dsd,
+    )
 
 
 def _start_handover(tmp_path: Path):

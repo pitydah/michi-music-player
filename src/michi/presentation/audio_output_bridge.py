@@ -1116,9 +1116,7 @@ class AudioOutputBridge(QObject):
                 self._missing_action()
                 return
             changed = bool(
-                self._selection_coordinator.select_device_for_playback(
-                    stable_device_id
-                )
+                self._selection_coordinator.select_device_for_playback(stable_device_id)
             )
 
         self._run_action(action)

@@ -1368,7 +1368,11 @@ class TestF42AdapterContract:
         # F06 hotfix 14: continuity probe emits real monotonic observation
         # times and bounds its timeline (diagnostic-only, opt-in).
         # Hash re-sealed after full regression.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "c36fb557256cf5e2",
+        # AP2-F10 S12 (2026-10-31): the managed child records the stable
+        # device id and binding generation so a same-family handover can
+        # prove the exact predecessor before stopping it. Shared transport
+        # semantics remain unchanged; hash re-sealed after full regression.
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "216ab6ab2f31e6da",
         # F06 sprint 11: lazy QtMultimedia objects (open() no longer creates
         # QMediaPlayer/QAudioOutput). Product behavior unchanged on first use;
         # headless engines no longer enumerate devices at open.

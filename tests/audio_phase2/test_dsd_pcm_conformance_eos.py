@@ -13,7 +13,9 @@ import shutil
 
 import pytest
 
-from tools.audio_phase2.dsd2pcm_conformance import (
+pytest.importorskip("numpy")
+
+from tools.audio_phase2.dsd2pcm_conformance import (  # noqa: E402
     CORPUS_SAMPLE_COUNT,
     _dsf_blob,
     run,
@@ -30,9 +32,7 @@ pytestmark = pytest.mark.skipif(
 
 def test_tone_capture_reaches_eos_and_matches_the_reference(tmp_path) -> None:
     source = tmp_path / "tone_1khz.dsf"
-    source.write_bytes(
-        _dsf_blob(sample_count=CORPUS_SAMPLE_COUNT, frequency_hz=1_000)
-    )
+    source.write_bytes(_dsf_blob(sample_count=CORPUS_SAMPLE_COUNT, frequency_hz=1_000))
     result = run(
         fixture=source,
         target_rate=88_200,

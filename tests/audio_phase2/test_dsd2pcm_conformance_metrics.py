@@ -11,10 +11,11 @@ from __future__ import annotations
 
 import math
 
-import numpy as np
 import pytest
 
-from tools.audio_phase2.dsd2pcm_conformance import _tone_metrics
+np = pytest.importorskip("numpy")
+
+from tools.audio_phase2.dsd2pcm_conformance import _tone_metrics  # noqa: E402
 
 
 def _stereo_sine(

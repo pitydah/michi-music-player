@@ -588,9 +588,7 @@ class GStreamerDirectOutputExecutor:
             "binding_generation": plan.binding.generation,
             "host_generation": 0,
             "terminal_state": "RELEASED" if command_confirmed else "UNCONFIRMED",
-            "provenance": (
-                "SUPERVISED_HOST" if command_confirmed else "IN_PROCESS"
-            ),
+            "provenance": ("SUPERVISED_HOST" if command_confirmed else "IN_PROCESS"),
         }
 
     def _discard_staged_load(self, handle: DirectExecutionHandle) -> bool:
