@@ -401,7 +401,8 @@ jobs:
             tests/audio_phase2/test_dop_product_e2e.py \
             tests/audio_phase2/test_dsd_pcm_processing_integration.py \
             tests/audio_phase2/test_dsd_pcm_product_dsp_e2e.py \
-            tests/audio_phase2/test_family_transition_host_receipt.py -q
+            tests/audio_phase2/test_family_transition_host_receipt.py \
+            tests/audio_phase2/test_family_handover_exclusivity.py -q
 
       - name: Build and install platform wheel
         run: |

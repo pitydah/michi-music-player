@@ -2114,6 +2114,7 @@ class OutputSessionService:
                     "OUTPUT_BINDING_STALE",
                     "Native DSD binding changed before preparation",
                 )
+        self._release_incompatible_before_prepare("native_dsd")
         prepared = self._run_native_dsd_prepare(
             path, plan, self._new_managed_instance()
         )
@@ -2746,6 +2747,17 @@ class OutputSessionService:
                 )
             )
 
+    def _release_incompatible_before_prepare(self, target: str) -> None:
+        """Destructive predecessor release must precede the target PREPARE."""
+        if target != "dsd_pcm" and self._dsd_pcm_prepared is not None:
+            self._strict_dsd_pcm_abort(self._dsd_pcm_prepared, f"handover_to_{target}")
+        if target != "dop" and self._dop_prepared is not None:
+            self._strict_dop_abort(self._dop_prepared, f"handover_to_{target}")
+        if target != "native_dsd" and self._native_dsd_prepared is not None:
+            self._strict_native_abort(
+                self._native_dsd_prepared, f"handover_to_{target}"
+            )
+
     def _prepare_dsd_pcm_request(self, path: Path, request: OutputRequest) -> str:
         plan = request.dsd_pcm_plan
         if plan is None:
@@ -2774,6 +2786,7 @@ class OutputSessionService:
             raise OutputSessionError(
                 "DSD_PCM_BINDING_STALE", "the DSD→PCM plan is stale"
             )
+        self._release_incompatible_before_prepare("dsd_pcm")
         prepared = self._run_dsd_pcm_prepare(path, plan, self._new_managed_instance())
         return self._begin_dsd_pcm_session(
             path,
@@ -2922,6 +2935,7 @@ class OutputSessionService:
             raise OutputSessionError(
                 "DOP_BINDING_STALE", "the DoP binding or plan is stale"
             )
+        self._release_incompatible_before_prepare("dop")
         prepared = self._run_dop_prepare(path, plan, self._new_managed_instance())
         return self._begin_dop_session(
             path, request, prepared, previous_direct=self._committed_direct_snapshot()

@@ -1164,6 +1164,10 @@ class GStreamerHostedAudioPort(AudioPort):
                     "DOP_SUPERSESSION_UNAUTHORIZED: release the active "
                     "DoP execution first"
                 )
+            if self._dsd_pcm_active:
+                raise AudioTransportCommandError(
+                    "DOP_DSD_PCM_CONFLICT: release DSD→PCM before DoP"
+                )
             if self._native_dsd_active:
                 raise AudioTransportCommandError(
                     "DOP_NATIVE_DSD_CONFLICT: release Native DSD before DoP"
