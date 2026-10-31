@@ -1114,6 +1114,8 @@ class OutputSessionService:
         self._unconfirmed_cleanup: tuple[str, object] | None = None
         self._handover_attempt: _HandoverAttempt | None = None
         self._handover_state: HandoverState | None = None
+        self._handover_boundary_crossed = False
+        self._last_handover_release_evidence: dict | None = None
         self._subscribers: list[Callable[[], None]] = []
 
     # ── lectura ───────────────────────────────────────────────────────
@@ -1666,6 +1668,7 @@ class OutputSessionService:
         Firma EXACTA del port: PlaybackService nunca ve un OutputPlan.
         """
         self.cancel_pending_prepare()
+        self._reset_handover_evidence()
         if self._state not in (
             OutputSessionState.IDLE,
             OutputSessionState.READY,
@@ -1725,7 +1728,9 @@ class OutputSessionService:
                     execution_id=native.execution_id,
                     stable_device_id=native.stable_device_id,
                     binding_generation=int(plan.binding_generation),
-                    host_generation=0,
+                    host_generation=int(
+                        native.runtime_identity.get("host_generation") or 0
+                    ),
                     device=plan.binding_locator,
                 )
             )
@@ -1740,7 +1745,9 @@ class OutputSessionService:
                     execution_id=managed.execution_id,
                     stable_device_id=plan.stable_device_id,
                     binding_generation=int(plan.binding_generation),
-                    host_generation=0,
+                    host_generation=int(
+                        managed.runtime_identity.get("host_generation") or 0
+                    ),
                     device=plan.device_locator,
                 )
             )
@@ -1810,6 +1817,28 @@ class OutputSessionService:
     def handover_target_family(self) -> str | None:
         attempt = self._handover_attempt
         return attempt.target_family if attempt is not None else None
+
+    @property
+    def handover_boundary_crossed(self) -> bool:
+        """True once this request crossed the destructive release boundary."""
+        return self._handover_boundary_crossed
+
+    @property
+    def last_handover_release_evidence(self) -> dict | None:
+        """Exact release evidence belonging to the last handover attempt.
+
+        Never the open-ended ``last_release_evidence`` slot: consumers must
+        correlate a transition receipt with THIS attempt, not with whichever
+        quiet cleanup happened most recently.
+        """
+        evidence = self._last_handover_release_evidence
+        return dict(evidence) if evidence is not None else None
+
+    def _reset_handover_evidence(self) -> None:
+        self._handover_attempt = None
+        self._handover_state = None
+        self._handover_boundary_crossed = False
+        self._last_handover_release_evidence = None
 
     def _submit_async_work(self, work, completed) -> None:
         """Submit one phase boundary; inline when no executor is composed."""
@@ -1900,6 +1929,7 @@ class OutputSessionService:
                 attempt, results, error, on_prepared, on_failed
             )
 
+        self._handover_boundary_crossed = True
         self._submit_async_work(release_work, release_completed)
 
     def _preflight_handover(self, attempt: _HandoverAttempt) -> None:
@@ -2038,18 +2068,49 @@ class OutputSessionService:
         if snapshot.family == "native_dsd":
             if not isinstance(result, dict):
                 return False, "NATIVE_DSD_CLEANUP_UNCONFIRMED"
-            if result.get("aborted") is True and result.get("stale") is not True:
-                return True, ""
-            if result.get("already") is True:
-                return True, ""
-            return False, "NATIVE_DSD_CLEANUP_UNCONFIRMED"
+            confirmed = (
+                result.get("aborted") is True and result.get("stale") is not True
+            )
+            if not confirmed and result.get("already") is True:
+                confirmed = True
+            if not confirmed:
+                return False, "NATIVE_DSD_CLEANUP_UNCONFIRMED"
+            if not self._handover_receipt_matches(snapshot, result.get("release")):
+                return False, "NATIVE_DSD_RELEASE_RECEIPT_INVALID"
+            return True, ""
         if snapshot.family == "managed":
             if not isinstance(result, dict):
                 return False, "MANAGED_CLEANUP_UNCONFIRMED"
-            if result.get("stopped") is True and result.get("stale") is not True:
-                return True, ""
-            return False, "MANAGED_CLEANUP_UNCONFIRMED"
+            if result.get("stopped") is not True or result.get("stale") is True:
+                return False, "MANAGED_CLEANUP_UNCONFIRMED"
+            if not self._handover_receipt_matches(snapshot, result.get("release")):
+                return False, "MANAGED_RELEASE_RECEIPT_INVALID"
+            return True, ""
         return False, "OUTPUT_CLEANUP_UNCONFIRMED"
+
+    def _handover_receipt_matches(
+        self, snapshot: _PredecessorSnapshot, receipt
+    ) -> bool:
+        if not isinstance(receipt, dict):
+            return False
+        if (
+            receipt.get("confirmed") is not True
+            or receipt.get("terminal_state") != "RELEASED"
+            or receipt.get("provenance") != "SUPERVISED_HOST"
+        ):
+            return False
+        expected = {
+            "plan_id": snapshot.plan_id,
+            "execution_id": snapshot.execution_id,
+            "stable_device_id": snapshot.stable_device_id,
+            "device": snapshot.device,
+            "binding_generation": snapshot.binding_generation,
+            "host_generation": snapshot.host_generation,
+        }
+        return all(
+            str(receipt.get(field) or "") == str(wanted)
+            for field, wanted in expected.items()
+        )
 
     def _handover_release_confirmed(
         self, snapshot: _PredecessorSnapshot, result
@@ -2188,6 +2249,15 @@ class OutputSessionService:
                 )
             )
             return
+        for _snapshot, result, failure in results:
+            if failure is None and isinstance(result, dict):
+                release = result.get("release")
+                if isinstance(release, dict):
+                    selected = dict(release)
+                    selected["attempt_id"] = attempt.attempt_id
+                    selected["target_family"] = attempt.target_family
+                    self._last_handover_release_evidence = selected
+                    break
         self._handover_state = HandoverState.PREPARE
         request = attempt.request
 
@@ -2336,6 +2406,7 @@ class OutputSessionService:
         """
         self._async_prepare_generation += 1
         generation = self._async_prepare_generation
+        self._reset_handover_evidence()
         pending = self._unconfirmed_cleanup
         if pending is not None:
             on_failed(

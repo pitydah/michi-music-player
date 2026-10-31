@@ -1140,7 +1140,9 @@ def _build_services(
             {
                 "plan_id": prepared.plan.plan_id,
                 "execution_id": prepared.execution_id,
+                "stable_device_id": prepared.plan.stable_device_id,
                 "device": prepared.plan.device_locator,
+                "binding_generation": prepared.plan.binding_generation,
             }
         )
         # Pure physical command: the owner applies EFFECTIVE invalidation

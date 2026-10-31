@@ -849,8 +849,22 @@ class GStreamerHostedAudioPort(AudioPort):
             self._dop_state = "RELEASED"
             self._dop_expected = None
             self._dop_path = None
+        release = {
+            "confirmed": True,
+            "operation": "abort",
+            "plan_id": str((expected or {}).get("plan_id") or ""),
+            "execution_id": str((expected or {}).get("execution_id") or ""),
+            "stable_device_id": str((expected or {}).get("stable_device_id") or ""),
+            "device": str((expected or {}).get("device") or ""),
+            "binding_generation": int(
+                (expected or {}).get("binding_generation") or 0
+            ),
+            "host_generation": int(self._supervisor.host_generation),
+            "terminal_state": "RELEASED",
+            "provenance": "SUPERVISED_HOST",
+        }
         self._enqueue(lambda: self._commit_state(PlaybackStatus.STOPPED))
-        return result
+        return {**result, "release": release}
 
     def start_native_dsd(self) -> dict[str, Any]:
         with self._lock:

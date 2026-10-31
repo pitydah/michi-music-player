@@ -402,8 +402,10 @@ class PlaybackService:
             self._pending_on_rejected = on_rejected
             self._pending_on_cancelled = on_cancelled
             self._intent = True
+            planned_receipt = None
 
             def prepared(token: str) -> None:
+                nonlocal planned_receipt
                 if my_epoch != self._request_epoch:
                     self._output_tx.abort_media(token, "superseded")
                     return
@@ -418,6 +420,7 @@ class PlaybackService:
                         "running": TransitionPlaybackStatus.PLAYING,
                         "paused": TransitionPlaybackStatus.PAUSED,
                     }.get(str(before.get("state")), TransitionPlaybackStatus.STOPPED)
+                    planned = None
                     try:
                         planned = self._family_transition.plan(
                             FamilyTransitionRequest(
@@ -425,11 +428,10 @@ class PlaybackService:
                                 source_family=before["family"],
                                 target_family=target_family,
                                 predecessor_status=status,
-                                request_epoch=max(
-                                    my_epoch,
-                                    int(before.get("generation") or 0) + 1,
-                                ),
-                                current_epoch=int(before.get("generation") or 0),
+                                # ONE clock: Playback request epochs are never
+                                # compared with OutputSession generations.
+                                request_epoch=my_epoch,
+                                current_epoch=my_epoch - 1,
                                 output_generation=int(before.get("generation") or 0),
                                 processing_generation=int(
                                     before.get("processing_generation") or 0
@@ -446,12 +448,31 @@ class PlaybackService:
                                 host_generation=int(before.get("host_generation") or 0),
                             )
                         )
-                        receipt = self._family_transition.mark_released(
-                            planned,
-                            getattr(self._output_tx, "last_release_evidence", None),
+                        evidence = getattr(
+                            self._output_tx,
+                            "last_handover_release_evidence",
+                            None,
                         )
+                        if not hasattr(
+                            self._output_tx, "last_handover_release_evidence"
+                        ):
+                            # Legacy output transactions without an
+                            # attempt-scoped slot.
+                            evidence = getattr(
+                                self._output_tx, "last_release_evidence", None
+                            )
+                        receipt = self._family_transition.mark_released(
+                            planned, evidence
+                        )
+                        receipt = self._family_transition.mark_prepared(receipt)
                     except Exception as exc:  # noqa: BLE001 - fail closed
                         try:
+                            if planned is not None:
+                                self.family_transition_receipts.append(
+                                    self._family_transition.mark_ownership_unconfirmed(
+                                        planned
+                                    )
+                                )
                             self._output_tx.abort_media(
                                 token, "transition_release_unconfirmed"
                             )
@@ -463,6 +484,7 @@ class PlaybackService:
                             if on_rejected is not None:
                                 on_rejected(file_path, str(exc))
                         return
+                    planned_receipt = receipt
                     self.family_transition_receipts.append(receipt)
                 self._continue_prepared_load(
                     file_path,
@@ -474,13 +496,36 @@ class PlaybackService:
                     on_rejected,
                     on_cancelled,
                 )
+                if (
+                    planned_receipt is not None
+                    and self._state.status is PlaybackStatus.PLAYING
+                    and self.family_transition_receipts
+                    and self.family_transition_receipts[-1] is planned_receipt
+                ):
+                    self.family_transition_receipts[-1] = (
+                        self._family_transition.mark_started(planned_receipt)
+                    )
 
             def failed(exc: Exception) -> None:
                 if my_epoch != self._request_epoch:
                     return
+                boundary_crossed = bool(
+                    getattr(self._output_tx, "handover_boundary_crossed", False)
+                )
                 self._clear_pending()
-                self._intent = previous_intent
-                self._accepted = previous_accepted
+                if boundary_crossed:
+                    # The predecessor was physically released: it must never
+                    # be restored as if it were still playing.
+                    self._intent = False
+                    self._accepted = False
+                    self._state.status = PlaybackStatus.STOPPED
+                    if planned_receipt is not None:
+                        self.family_transition_receipts.append(
+                            self._family_transition.mark_failed(planned_receipt)
+                        )
+                else:
+                    self._intent = previous_intent
+                    self._accepted = previous_accepted
                 if getattr(exc, "code", None) is None:
                     raise exc
                 failure = playback_action_failure(exc.code)

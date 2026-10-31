@@ -20,6 +20,17 @@ class PlaybackStatus(StrEnum):
     PLAYING = "PLAYING"
 
 
+class TransitionPhase(StrEnum):
+    """Honest progress of one transition; never a full transition on release."""
+
+    PLANNED = "PLANNED"
+    PREDECESSOR_RELEASED = "PREDECESSOR_RELEASED"
+    TARGET_PREPARED = "TARGET_PREPARED"
+    TARGET_STARTED = "TARGET_STARTED"
+    TARGET_FAILED = "TARGET_FAILED"
+    OWNERSHIP_UNCONFIRMED = "OWNERSHIP_UNCONFIRMED"
+
+
 class GaplessClass(StrEnum):
     GAPLESS_EXACT = "GAPLESS_EXACT"
     GAPLESS_SAME_GRAPH = "GAPLESS_SAME_GRAPH"
@@ -72,6 +83,7 @@ class FamilyTransitionReceipt:
     execution_id: str = ""
     stable_device_id: str = ""
     host_generation: int = 0
+    phase: TransitionPhase = TransitionPhase.PLANNED
 
 
 @dataclass(frozen=True, slots=True)
@@ -153,12 +165,43 @@ class AudioFamilyTransitionService:
             "host_generation": receipt.host_generation,
         }
         for field, wanted in expected.items():
-            if not wanted or str(evidence.get(field) or "") != str(wanted):
+            # 0 is a legitimate generation (fresh host/binding); only an
+            # absent/empty identity field is invalid.
+            if wanted is None or wanted == "":
+                raise TransitionError(
+                    "TRANSITION_RELEASE_UNCONFIRMED",
+                    f"release evidence requires {field}",
+                )
+            if str(evidence.get(field) or "") != str(wanted):
                 raise TransitionError(
                     "TRANSITION_RELEASE_UNCONFIRMED",
                     f"release evidence does not match {field}",
                 )
-        return replace(receipt, predecessor_released=True)
+        return replace(
+            receipt,
+            predecessor_released=True,
+            phase=TransitionPhase.PREDECESSOR_RELEASED,
+        )
+
+    def mark_prepared(
+        self, receipt: FamilyTransitionReceipt
+    ) -> FamilyTransitionReceipt:
+        return replace(receipt, phase=TransitionPhase.TARGET_PREPARED)
+
+    def mark_started(
+        self, receipt: FamilyTransitionReceipt
+    ) -> FamilyTransitionReceipt:
+        return replace(receipt, phase=TransitionPhase.TARGET_STARTED)
+
+    def mark_failed(
+        self, receipt: FamilyTransitionReceipt
+    ) -> FamilyTransitionReceipt:
+        return replace(receipt, phase=TransitionPhase.TARGET_FAILED)
+
+    def mark_ownership_unconfirmed(
+        self, receipt: FamilyTransitionReceipt
+    ) -> FamilyTransitionReceipt:
+        return replace(receipt, phase=TransitionPhase.OWNERSHIP_UNCONFIRMED)
 
     def on_failure(
         self,
