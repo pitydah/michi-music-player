@@ -2000,6 +2000,7 @@ class OutputSessionService:
     def _run_native_dsd_prepare(
         self, path: Path, plan: NativeDsdOutputPlan, instance_id: str
     ) -> NativeDsdSessionPrepared:
+        self._release_incompatible_before_prepare("native_dsd")
         if self._native_dsd_prepare is None:
             raise OutputSessionError(
                 "NATIVE_DSD_OUTPUT_UNAVAILABLE",
@@ -2128,6 +2129,7 @@ class OutputSessionService:
     def _run_dop_prepare(
         self, path: Path, plan: DopExecutionPlanV2, instance_id: str
     ) -> DopSessionPrepared:
+        self._release_incompatible_before_prepare("dop")
         if self._dop_prepare is None:
             raise OutputSessionError(
                 "DOP_OUTPUT_UNAVAILABLE",
@@ -2798,6 +2800,7 @@ class OutputSessionService:
     def _run_dsd_pcm_prepare(
         self, path: Path, plan: DsdToPcmPlan, instance_id: str
     ) -> DsdPcmSessionPrepared:
+        self._release_incompatible_before_prepare("dsd_pcm")
         if self._dsd_pcm_prepare is None:
             raise OutputSessionError(
                 "DSD_PCM_OUTPUT_UNAVAILABLE",
