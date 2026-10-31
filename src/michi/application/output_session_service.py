@@ -401,6 +401,51 @@ class ManagedOutputPrepared:
     runtime_identity: dict
 
 
+class PreparationPath(StrEnum):
+    """Classification of one async preparation request.
+
+    FAST_PATH is the historical one-worker/one-completion preparation: no
+    incompatible predecessor owns the device, so the worker may prepare the
+    target directly and the owner commits on completion.
+    NEEDS_HANDOVER is the destructive cross-family path: the worker may only
+    characterize/qualify the request; the owner reserves the transition and
+    drives RELEASE → RECONCILE → PREPARE.
+    """
+
+    FAST_PATH = "fast_path"
+    NEEDS_HANDOVER = "needs_handover"
+
+
+@dataclass(frozen=True, slots=True)
+class _PredecessorSnapshot:
+    """Immutable owner-side image of one committed execution to release.
+
+    The worker receives this tuple instead of reading ``OutputSessionService``
+    fields, so a superseded request can never release a newer execution.
+    """
+
+    family: str
+    prepared: object
+    plan_id: str
+    execution_id: str
+    stable_device_id: str
+    binding_generation: int
+    host_generation: int
+    device: str
+
+
+@dataclass(frozen=True, slots=True)
+class _PrepareCandidate:
+    """Result of one worker phase, classified for owner commit."""
+
+    request: OutputRequest
+    outcome: object | None
+    prepared: object | None
+    preparation_path: PreparationPath
+    target_family: str | None
+    predecessors: tuple[_PredecessorSnapshot, ...]
+
+
 #: Families whose execution names ONE specific DAC (never Shared/desktop).
 _SPECIFIC_DEVICE_FAMILIES = frozenset(
     {
@@ -1591,6 +1636,104 @@ class OutputSessionService:
         request = self._request_for(path)
         return self._prepare_request(path, request)
 
+    def _predecessor_snapshots(self) -> tuple[_PredecessorSnapshot, ...]:
+        """Owner-side immutable images of every committed family execution.
+
+        Captured once, before the async worker starts, so the destructive path
+        receives exact identities instead of reading live owner state.
+        """
+        snapshots: list[_PredecessorSnapshot] = []
+        dsd_pcm = self._dsd_pcm_prepared
+        if dsd_pcm is not None:
+            plan = dsd_pcm.plan
+            snapshots.append(
+                _PredecessorSnapshot(
+                    family="dsd_pcm",
+                    prepared=dsd_pcm,
+                    plan_id=plan.plan_id,
+                    execution_id=dsd_pcm.execution_id,
+                    stable_device_id=dsd_pcm.stable_device_id,
+                    binding_generation=int(plan.binding_generation),
+                    host_generation=int(dsd_pcm.host_generation),
+                    device=dsd_pcm.binding_locator,
+                )
+            )
+        dop = self._dop_prepared
+        if dop is not None:
+            plan = dop.plan
+            snapshots.append(
+                _PredecessorSnapshot(
+                    family="dop",
+                    prepared=dop,
+                    plan_id=plan.plan_id,
+                    execution_id=dop.execution_id,
+                    stable_device_id=dop.stable_device_id,
+                    binding_generation=int(plan.binding_generation),
+                    host_generation=int(plan.host_generation),
+                    device=plan.binding_locator,
+                )
+            )
+        native = self._native_dsd_prepared
+        if native is not None:
+            plan = native.plan
+            snapshots.append(
+                _PredecessorSnapshot(
+                    family="native_dsd",
+                    prepared=native,
+                    plan_id=plan.plan_id,
+                    execution_id=native.execution_id,
+                    stable_device_id=native.stable_device_id,
+                    binding_generation=int(plan.binding_generation),
+                    host_generation=0,
+                    device=plan.binding_locator,
+                )
+            )
+        managed = self._managed_prepared
+        if managed is not None:
+            plan = managed.plan
+            snapshots.append(
+                _PredecessorSnapshot(
+                    family="managed",
+                    prepared=managed,
+                    plan_id=plan.plan_id,
+                    execution_id=managed.execution_id,
+                    stable_device_id=plan.stable_device_id,
+                    binding_generation=int(plan.binding_generation),
+                    host_generation=0,
+                    device=plan.device_locator,
+                )
+            )
+        return tuple(snapshots)
+
+    def _target_family(self, request: OutputRequest) -> str | None:
+        """Family one request commits, or None for Shared/direct PCM."""
+        if getattr(request, "dsd_pcm_plan", None) is not None:
+            return "dsd_pcm"
+        if getattr(request, "dop_plan", None) is not None:
+            return "dop"
+        if getattr(request, "native_dsd_plan", None) is not None:
+            return "native_dsd"
+        if self._is_managed_request(request):
+            return "managed"
+        return None
+
+    def _abort_uncommitted_candidate(
+        self, prepared: object | None, reason: str
+    ) -> None:
+        """Quietly retire a worker-phase candidate that can never commit.
+
+        This is an owner-thread action, but it only touches the candidate
+        adapter; it never consults or mutates another committed execution.
+        """
+        if isinstance(prepared, DopSessionPrepared):
+            self._dop_abort_quietly(prepared, reason)
+        elif isinstance(prepared, DsdPcmSessionPrepared):
+            self._dsd_pcm_abort_quietly(prepared, reason)
+        elif isinstance(prepared, NativeDsdSessionPrepared):
+            self._native_dsd_abort_quietly(prepared, reason)
+        elif isinstance(prepared, ManagedOutputPrepared):
+            self._managed_abort_quietly(prepared, reason)
+
     def prepare_for_media_async(
         self,
         path: Path,
@@ -1630,78 +1773,115 @@ class OutputSessionService:
                 self._pending_prepare_device_id = None
 
         managed_instance_id = self._new_managed_instance()
+        # IMMUTABLE owner capture: the worker classifies against this tuple and
+        # never reads live ownership. A later request that replaces the current
+        # execution is therefore invisible (and unreleasable) to this attempt.
+        predecessors = self._predecessor_snapshots()
 
         def work():
             request = self._request_for(path)
+            target_family = self._target_family(request)
+            incompatible = (
+                tuple(
+                    snapshot
+                    for snapshot in predecessors
+                    if snapshot.family != target_family
+                )
+                if target_family is not None
+                else ()
+            )
+            if incompatible:
+                # NEEDS_HANDOVER: characterize only. The owner reserves the
+                # destructive transition; no physical prepare happens here.
+                return _PrepareCandidate(
+                    request=request,
+                    outcome=None,
+                    prepared=None,
+                    preparation_path=PreparationPath.NEEDS_HANDOVER,
+                    target_family=target_family,
+                    predecessors=incompatible,
+                )
             dsd_pcm_plan = getattr(request, "dsd_pcm_plan", None)
             if dsd_pcm_plan is not None:
                 prepared = self._run_dsd_pcm_prepare(
                     path, dsd_pcm_plan, managed_instance_id
                 )
-                return request, None, prepared
-            dop_plan = getattr(request, "dop_plan", None)
-            if dop_plan is not None:
-                prepared = self._run_dop_prepare(path, dop_plan, managed_instance_id)
-                return request, None, prepared
-            native_plan = getattr(request, "native_dsd_plan", None)
-            if native_plan is not None:
-                prepared = self._run_native_dsd_prepare(
-                    path, native_plan, managed_instance_id
+            elif getattr(request, "dop_plan", None) is not None:
+                prepared = self._run_dop_prepare(
+                    path, request.dop_plan, managed_instance_id
                 )
-                return request, None, prepared
-            if self._is_managed_request(request):
+            elif getattr(request, "native_dsd_plan", None) is not None:
+                prepared = self._run_native_dsd_prepare(
+                    path, request.native_dsd_plan, managed_instance_id
+                )
+            elif self._is_managed_request(request):
                 prepared = self._run_managed_prepare(
                     path, request.facts, managed_instance_id
                 )
-                return request, None, prepared
-            result = (
-                self._planner.plan(request.facts) if request.facts is not None else None
+            else:
+                outcome = None
+                result = (
+                    self._planner.plan(request.facts)
+                    if request.facts is not None
+                    else None
+                )
+                needs_probe = (
+                    isinstance(result, PlannerRefusal)
+                    and result.code == EXACT_TUPLE_UNKNOWN
+                    and hasattr(self._request_provider, "qualify_request")
+                )
+                if needs_probe:
+                    outcome = self._request_provider.probe_request(request)
+                return _PrepareCandidate(
+                    request=request,
+                    outcome=outcome,
+                    prepared=None,
+                    preparation_path=PreparationPath.FAST_PATH,
+                    target_family=None,
+                    predecessors=(),
+                )
+            return _PrepareCandidate(
+                request=request,
+                outcome=None,
+                prepared=prepared,
+                preparation_path=PreparationPath.FAST_PATH,
+                target_family=target_family,
+                predecessors=(),
             )
-            needs_probe = (
-                isinstance(result, PlannerRefusal)
-                and result.code == EXACT_TUPLE_UNKNOWN
-                and hasattr(self._request_provider, "qualify_request")
-            )
-            outcome = (
-                self._request_provider.probe_request(request) if needs_probe else None
-            )
-            return request, outcome, None
 
-        def _prepared_from(value):
+        def _candidate_from(value) -> _PrepareCandidate | None:
+            if isinstance(value, _PrepareCandidate):
+                return value
+            # Legacy tuple shape, kept for inline compositions and old fakes.
             if not isinstance(value, tuple) or len(value) != 3:
                 return None
-            if isinstance(
-                value[2],
-                (
-                    ManagedOutputPrepared,
-                    NativeDsdSessionPrepared,
-                    DopSessionPrepared,
-                    DsdPcmSessionPrepared,
-                ),
-            ):
-                return value[2]
-            return None
+            request = value[0]
+            target = (
+                self._target_family(request)
+                if isinstance(request, OutputRequest)
+                else None
+            )
+            return _PrepareCandidate(
+                request=request,
+                outcome=value[1],
+                prepared=value[2],
+                preparation_path=PreparationPath.FAST_PATH,
+                target_family=target,
+                predecessors=(),
+            )
+
+        def _prepared_from(value):
+            candidate = _candidate_from(value)
+            return candidate.prepared if candidate is not None else None
 
         def completed(value, error) -> None:
             if generation != self._async_prepare_generation:
-                # A worker-phase Managed execution that can no longer commit
-                # MUST be stopped: a superseded preparation never keeps
-                # playing or holds the selected device.
-                prepared_value = _prepared_from(value)
-                if isinstance(prepared_value, DopSessionPrepared):
-                    self._dop_abort_quietly(prepared_value, "superseded_before_commit")
-                elif isinstance(prepared_value, DsdPcmSessionPrepared):
-                    self._dsd_pcm_abort_quietly(
-                        prepared_value, "superseded_before_commit"
-                    )
-                elif isinstance(prepared_value, NativeDsdSessionPrepared):
-                    self._native_dsd_abort_quietly(
-                        prepared_value, "superseded_before_commit"
-                    )
-                else:
-                    self._managed_abort_quietly(
-                        prepared_value, "superseded_before_commit"
-                    )
+                # A worker-phase execution that can no longer commit MUST be
+                # stopped: a superseded preparation never keeps playing or
+                # holds the selected device. It never touches a newer one.
+                self._abort_uncommitted_candidate(
+                    _prepared_from(value), "superseded_before_commit"
+                )
                 on_failed(
                     OutputSessionError(
                         "OUTPUT_PREPARATION_STALE",
@@ -1718,23 +1898,9 @@ class OutputSessionService:
             # media-request generation. The monotonic revision makes value
             # equality (ABA) insufficient to pass.
             if intent is not None and self._capture_output_intent() != intent:
-                prepared_value = _prepared_from(value)
-                if isinstance(prepared_value, DopSessionPrepared):
-                    self._dop_abort_quietly(
-                        prepared_value, "intent_changed_before_commit"
-                    )
-                elif isinstance(prepared_value, DsdPcmSessionPrepared):
-                    self._dsd_pcm_abort_quietly(
-                        prepared_value, "intent_changed_before_commit"
-                    )
-                elif isinstance(prepared_value, NativeDsdSessionPrepared):
-                    self._native_dsd_abort_quietly(
-                        prepared_value, "intent_changed_before_commit"
-                    )
-                else:
-                    self._managed_abort_quietly(
-                        prepared_value, "intent_changed_before_commit"
-                    )
+                self._abort_uncommitted_candidate(
+                    _prepared_from(value), "intent_changed_before_commit"
+                )
                 on_failed(
                     OutputSessionError(
                         "OUTPUT_PREPARATION_STALE",
@@ -1742,7 +1908,30 @@ class OutputSessionService:
                     )
                 )
                 return
-            request, outcome, managed_prepared = value
+            candidate = _candidate_from(value)
+            if candidate is None:
+                on_failed(
+                    OutputSessionError(
+                        "OUTPUT_PREPARATION_INVALID_RESULT",
+                        "the preparation worker returned an unknown result",
+                    )
+                )
+                return
+            if candidate.preparation_path is PreparationPath.NEEDS_HANDOVER:
+                # C1 boundary: cross-family preparation is NEVER executed from
+                # the characterization worker. The owner-safe transaction
+                # (C2) owns RELEASE → RECONCILE → PREPARE.
+                on_failed(
+                    OutputSessionError(
+                        "OUTPUT_HANDOVER_REQUIRED",
+                        "cross-family output preparation requires the "
+                        "owner-safe handover transaction",
+                    )
+                )
+                return
+            request = candidate.request
+            outcome = candidate.outcome
+            managed_prepared = candidate.prepared
             try:
                 if isinstance(managed_prepared, DsdPcmSessionPrepared):
                     checker = self._dsd_pcm_plan_still_current
@@ -2000,7 +2189,9 @@ class OutputSessionService:
     def _run_native_dsd_prepare(
         self, path: Path, plan: NativeDsdOutputPlan, instance_id: str
     ) -> NativeDsdSessionPrepared:
-        self._release_incompatible_before_prepare("native_dsd")
+        # Worker phase: never reads/mutates committed ownership. Cross-family
+        # release is reserved for the owner (sync path) or the owner-safe
+        # handover transaction (async path).
         if self._native_dsd_prepare is None:
             raise OutputSessionError(
                 "NATIVE_DSD_OUTPUT_UNAVAILABLE",
@@ -2129,7 +2320,8 @@ class OutputSessionService:
     def _run_dop_prepare(
         self, path: Path, plan: DopExecutionPlanV2, instance_id: str
     ) -> DopSessionPrepared:
-        self._release_incompatible_before_prepare("dop")
+        # Worker phase: no committed-ownership access (see sync authority
+        # points and the owner-safe async handover transaction).
         if self._dop_prepare is None:
             raise OutputSessionError(
                 "DOP_OUTPUT_UNAVAILABLE",
@@ -2800,7 +2992,8 @@ class OutputSessionService:
     def _run_dsd_pcm_prepare(
         self, path: Path, plan: DsdToPcmPlan, instance_id: str
     ) -> DsdPcmSessionPrepared:
-        self._release_incompatible_before_prepare("dsd_pcm")
+        # Worker phase: no committed-ownership access (see sync authority
+        # points and the owner-safe async handover transaction).
         if self._dsd_pcm_prepare is None:
             raise OutputSessionError(
                 "DSD_PCM_OUTPUT_UNAVAILABLE",
