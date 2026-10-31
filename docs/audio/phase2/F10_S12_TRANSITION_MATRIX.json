@@ -7,7 +7,12 @@
   "f2f774b",
   "7ea0f40",
   "c78e895",
-  "dff8b76"
+  "dff8b76",
+  "eb1518d",
+  "8273927",
+  "d292157",
+  "cc064eb",
+  "40359b7"
  ],
  "status": "PARTIAL",
  "integration": {
@@ -75,14 +80,16 @@
   "T09": {
    "source": "DSD_TO_PCM DSP OFF",
    "target": "DSD_TO_PCM DSP ON",
-   "status": "NOT_RUN",
-   "reason": "same-family reconfiguration, not a family transition; requires the DSP install slice"
+   "status": "PASS_SERVICE_PATH",
+   "test": "tests/audio_phase2/test_dsd_pcm_product_dsp_e2e.py::test_selected_profile_is_effective_on_product_dsd_playback",
+   "reason": "real hosted DSD->PCM run: the processing authority reports EFFECTIVE and the conversion evidence observes DSP_NODE; fakesink laboratory sink, not physical DAC"
   },
   "T10": {
    "source": "DSD_TO_PCM DSP ON",
    "target": "DSD_TO_PCM DSP OFF",
-   "status": "NOT_RUN",
-   "reason": "same-family reconfiguration, not a family transition"
+   "status": "PASS_SERVICE_PATH",
+   "test": "tests/audio_phase2/test_dsd_pcm_product_dsp_e2e.py::test_dsp_on_to_off_while_dsd_pcm_is_running",
+   "reason": "live DSD->PCM run: disable_processing_async proves the bypass, the authority reports BYPASSED and the child identity no longer exposes a processing graph; fakesink laboratory sink"
   },
   "T11": {
    "source": "DSD_TO_PCM quality A",
@@ -101,7 +108,7 @@
  },
  "signal_path": {
   "requested_vs_effective": "PASS \u2014 tests/audio_phase2/test_signal_path_service.py::test_requested_and_effective_are_never_collapsed",
-  "installed": "NOT_MODELED \u2014 Signal Path currently distinguishes requested and effective; INSTALLED is not published as a separate stage",
+  "installed": "PASS_MODELED \u2014 SignalPathNode.installed projects the processing commit receipt as a separate stage; a refused install never rewrites EFFECTIVE (tests/audio_phase2/test_signal_path_service.py::test_installed_stage_is_distinct_from_requested_and_effective)",
   "handover_truth": "PASS \u2014 predecessor RELEASED and target RUNNING events asserted in both E2E tests"
  },
  "adversarial": {
@@ -120,8 +127,8 @@
  },
  "limitations": [
   "Physical DAC certification is not claimed; GStreamer host runs use the laboratory fakesink.",
-  "PCM Direct (T01) still has no supervised release receipt adapter.",
   "Native DSD and Managed destinations require real hardware evidence for physical qualification.",
-  "Same-family DSP/quality/device reconfigurations (T09-T12) remain NOT_RUN."
+  "T09/T10 prove DSP install/bypass on the live DSD->PCM runtime backed by the laboratory fakesink, not on a physical DAC.",
+  "T11/T12 are transaction and receipt proofs with controlled host fakes; the real host runtime refuses a second prepare while an execution is active, which is why the same-family handover is required."
  ]
 }
