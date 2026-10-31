@@ -2603,6 +2603,9 @@ class OutputSessionService:
                 "OUTPUT_OWNERSHIP_UNCONFIRMED",
                 f"DSD→PCM cleanup was not confirmed ({code})",
             )
+        if self._dsd_pcm_prepared is prepared:
+            self._dsd_pcm_prepared = None
+            self._dsd_pcm_plan = None
 
     def _reconcile_confirmed_dsd_pcm_cleanup(
         self, prepared: DsdPcmSessionPrepared
@@ -2945,6 +2948,9 @@ class OutputSessionService:
                 "superseded",
                 code="DOP_SUPERSESSION_UNCONFIRMED",
             )
+        current_dsd = self._dsd_pcm_prepared
+        if current_dsd is not None:
+            self._strict_dsd_pcm_abort(current_dsd, "superseded_by_dop")
         current_native = self._native_dsd_prepared
         if current_native is not None:
             self._strict_native_abort(current_native, "superseded_by_dop")
@@ -3032,6 +3038,9 @@ class OutputSessionService:
         *,
         previous_direct: _DirectSessionSnapshot | None,
     ) -> str:
+        current_dsd = self._dsd_pcm_prepared
+        if current_dsd is not None:
+            self._strict_dsd_pcm_abort(current_dsd, "superseded_by_native_dsd")
         current_dop = self._dop_prepared
         if current_dop is not None:
             self._strict_dop_abort(current_dop, "superseded_by_native_dsd")

@@ -76,6 +76,7 @@ def test_observed_conversion_path_marks_lab_dac_and_dsp():
             "decoder_caps": "audio/x-dsd,format=DSDU8,rate=352800,channels=2",
             "output_caps": "audio/x-raw,format=F32LE,rate=88200,channels=2",
             "sink_factory": "fakesink",
+            "target_rate_hz": 88_200,
             "processing": {"graph_revision": 1},
             "processing_effective": True,
         },
@@ -102,6 +103,7 @@ def test_observed_conversion_without_dsp_is_lab_observed_not_partial():
             "decoder_caps": "audio/x-dsd,format=DSDU8,rate=352800,channels=2",
             "output_caps": "audio/x-raw,format=F32LE,rate=88200,channels=2",
             "sink_factory": "fakesink",
+            "target_rate_hz": 88_200,
         },
     )
     path = SignalPathService().project_dsd_conversion(evidence)

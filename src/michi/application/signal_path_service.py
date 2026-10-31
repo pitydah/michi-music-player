@@ -129,9 +129,12 @@ class SignalPathService:
         required = {
             "SOURCE_DSD",
             "DSD_TO_PCM_DECODER",
+            "PCM_LAYOUT_NORMALIZER",
             "OUTPUT_NEGOTIATION",
         }
-        if getattr(evidence, "dsp_active", False):
+        if any(node["node"] == "RESAMPLER" for node in nodes):
+            required.add("RESAMPLER")
+        if getattr(evidence, "dsp_requested", getattr(evidence, "dsp_active", False)):
             required.add("DSP_NODE")
         complete = all(levels.get(name) == "OBSERVED" for name in required)
         dac = levels.get("DAC")
