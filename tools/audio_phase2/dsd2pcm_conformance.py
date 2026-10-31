@@ -13,7 +13,9 @@ import argparse
 import hashlib
 import json
 import math
+import shutil
 import struct
+import subprocess
 import tempfile
 import time
 from pathlib import Path
@@ -117,6 +119,22 @@ def _tone_payload(*, sample_count: int, frequency_hz: int) -> bytes:
     return _dsf_block_payload(mono)
 
 
+def _dsf_blob(*, sample_count: int, frequency_hz: int) -> bytes:
+    """Build a reproducible DSF for one corpus vector.
+
+    The DSF header stores ``sample_count`` in DSD bits per channel. The data
+    chunk is padded to whole 4096-byte blocks, and the demuxer uses the
+    declared bit count to separate real audio from that padding. Declaring
+    bytes (or the padded size) makes the decoder treat padding as audio and
+    stop before EOS.
+    """
+    payload = _tone_payload(sample_count=sample_count, frequency_hz=frequency_hz)
+    # DSF stores the sample count in DSD bits per channel; the demuxer divides
+    # it by 8 to obtain the real byte count used to separate audio from the
+    # block padding. The payload is already padded to whole 4096-byte blocks.
+    return build_dsf(sample_count=sample_count * 8, payload=payload)
+
+
 def _tone_metrics(
     raw: bytes, *, channels: int, rate: int, expected_hz: int
 ) -> dict[str, Any]:
@@ -139,7 +157,18 @@ def _tone_metrics(
     else:
         index = int(np.argmax(spectrum[1:]) + 1)
     measured_hz = float(freqs[index])
-    measured_amp = float(spectrum[index])
+    # The corpus tones are not FFT-bin centred at 88.2 kHz. Reading the peak
+    # bin of a Hann-windowed spectrum therefore under-reads their amplitude by
+    # the window scalloping loss (up to ~0.8 dB at 20 kHz). Project the
+    # captured signal onto the known analytic frequency instead; that estimate
+    # is unbiased for any fractional bin offset.
+    offsets = np.arange(finite.size)
+    projection = np.sum(
+        finite
+        * window
+        * np.exp(-2j * math.pi * expected_hz * offsets / rate)
+    ) / window.sum()
+    measured_amp = float(2.0 * abs(projection))
     expected_amp = 0.5
     gain_error_db = 20.0 * math.log10(max(measured_amp, 1e-12) / expected_amp)
     exclusion = (freqs >= 20_000.0) & (freqs <= 40_000.0)
@@ -165,6 +194,7 @@ def _tone_metrics(
         "tone_frequency_error_hz": abs(measured_hz - expected_hz)
         if expected_hz
         else 0.0,
+        "tone_amplitude": measured_amp,
         "tone_gain_error_db": gain_error_db,
         "stopband_rejection_db": (
             -20.0 * math.log10(max(stopband, 1e-12)) if expected_hz else None
@@ -173,6 +203,108 @@ def _tone_metrics(
         "rate_hz": rate,
         "channels": channels,
     }
+
+
+def _ffmpeg_version(ffmpeg: str) -> str:
+    try:
+        completed = subprocess.run(
+            [ffmpeg, "-version"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return (completed.stdout or "").splitlines()[0] if completed.stdout else ""
+
+
+def _reference_capture(
+    path: Path, *, channels: int, rate: int, expected_hz: int
+) -> dict[str, Any]:
+    """Decode the same DSF with an independent decoder and measure its tone.
+
+    §274.4 bounds the magnitude error against a versioned reference, not
+    against the pre-modulation analytic amplitude: a sigma-delta modulator has
+    its own passband droop. FFmpeg is an independent DSF decoder; its capture
+    is recorded with a SHA256 so the comparison is traceable.
+    """
+    ffmpeg = shutil.which("ffmpeg")
+    if ffmpeg is None:
+        return {"status": "NOT_RUN", "reason": "ffmpeg not found"}
+    with tempfile.TemporaryDirectory(prefix="michi-dsd2pcm-reference-") as tmp:
+        target = Path(tmp) / "reference.f32"
+        try:
+            completed = subprocess.run(
+                [
+                    ffmpeg,
+                    "-v",
+                    "error",
+                    "-y",
+                    "-i",
+                    str(path),
+                    "-f",
+                    "f32le",
+                    "-acodec",
+                    "pcm_f32le",
+                    "-ar",
+                    str(rate),
+                    str(target),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            return {"status": "NOT_RUN", "reason": f"ffmpeg failed: {exc}"}
+        if completed.returncode != 0 or not target.exists():
+            detail = (completed.stderr or "no reference output").strip()
+            return {"status": "NOT_RUN", "reason": detail[:500]}
+        raw = target.read_bytes()
+    metrics = _tone_metrics(
+        raw, channels=channels, rate=rate, expected_hz=expected_hz
+    )
+    if not metrics.get("sample_count"):
+        return {"status": "NOT_RUN", "reason": "empty reference capture"}
+    return {
+        "status": "PASS",
+        "tool": "ffmpeg",
+        "version": _ffmpeg_version(ffmpeg),
+        "target_rate_hz": rate,
+        "sample_count": metrics["sample_count"],
+        "sha256": hashlib.sha256(raw).hexdigest(),
+        "amplitude": metrics["tone_amplitude"],
+        "gain_db": metrics["tone_gain_error_db"],
+    }
+
+
+def _checks_disposition(checks: dict[str, str]) -> str:
+    values = tuple(checks.values())
+    if any(value == "FAIL" for value in values):
+        return "FAIL"
+    if any(value == "NOT_RUN" for value in values):
+        return "NOT_RUN"
+    return "PASS"
+
+
+def _vector_status(
+    *,
+    sample_count: int,
+    cleanup_confirmed: bool,
+    eos_observed: bool,
+    numeric_checks: dict[str, str],
+) -> str:
+    if sample_count <= 0 or not cleanup_confirmed:
+        return "FAIL"
+    if not eos_observed:
+        return "PARTIAL"
+    disposition = _checks_disposition(numeric_checks) if numeric_checks else "PASS"
+    if disposition == "FAIL":
+        return "FAIL"
+    if disposition == "NOT_RUN":
+        return "PARTIAL"
+    return "PASS"
 
 
 def _metrics(raw: bytes, channels: int, rate: int) -> dict[str, Any]:
@@ -272,7 +404,10 @@ def _request(path: Path, *, target_rate: int, profile: str, execution: str):
         ]
         if target_rate != 352_800
         else [],
-        "sink_factory": "appsink",
+        # fakesink keeps consuming to EOS; appsink (even with drop=true)
+        # can stall the streaming thread. Capture comes from the pad probe.
+        "sink_factory": "fakesink",
+        "capture_max_frames": 1_000_000,
     }
     return DsdPcmHostRuntime(), payload
 
@@ -291,9 +426,9 @@ def run(
         if path is None:
             path = Path(tmp) / "silence.dsf"
             path.write_bytes(
-                build_dsf(
+                _dsf_blob(
                     sample_count=SILENCE_SAMPLE_COUNT,
-                    payload=_silence_payload(SILENCE_SAMPLE_COUNT),
+                    frequency_hz=0,
                 )
             )
             generated = True
@@ -302,7 +437,6 @@ def run(
             path, target_rate=target_rate, profile=profile, execution="exec:conformance"
         )
         identity = runtime.prepare(payload)
-        runtime.enable_capture(1_000_000)
         expected = {
             "plan_id": identity["plan_id"],
             "execution_id": identity["execution_id"],
@@ -317,6 +451,7 @@ def run(
         eos_observed = False
         last_length = -1
         stable_polls = 0
+        stable_since: float | None = None
         while time.monotonic() < deadline:
             if runtime.query_identity().get("eos"):
                 eos_observed = True
@@ -324,11 +459,17 @@ def run(
             length = len(runtime.captured_bytes())
             if length == last_length:
                 stable_polls += 1
-                if stable_polls >= 5 and length > 0:
-                    break
             else:
                 stable_polls = 0
                 last_length = length
+                stable_since = None
+            # Capture can stabilise a few milliseconds before the bus delivers
+            # EOS; keep polling briefly instead of declaring a false failure.
+            if stable_polls >= 5 and length > 0:
+                if stable_since is None:
+                    stable_since = time.monotonic()
+                elif time.monotonic() - stable_since >= 1.0:
+                    break
             time.sleep(0.02)
         raw = runtime.captured_bytes()
         observed = runtime.query_identity()
@@ -345,6 +486,21 @@ def run(
             if expected_frequency_hz
             else {}
         )
+        reference: dict[str, Any] = {}
+        magnitude_error_db: float | None = None
+        if expected_frequency_hz:
+            reference = _reference_capture(
+                path,
+                channels=2,
+                rate=target_rate,
+                expected_hz=expected_frequency_hz,
+            )
+            if reference.get("status") == "PASS":
+                magnitude_error_db = 20.0 * math.log10(
+                    max(tone["tone_amplitude"], 1e-12)
+                    / max(reference["amplitude"], 1e-12)
+                )
+                tone["magnitude_error_vs_reference_db"] = magnitude_error_db
         numeric_checks = {}
         if expected_frequency_hz:
             numeric_checks = {
@@ -355,8 +511,10 @@ def run(
                     else "FAIL"
                 ),
                 "magnitude_error_le_0_10_db": (
-                    "PASS"
-                    if abs(tone.get("tone_gain_error_db", 99.0)) <= 0.10
+                    "NOT_RUN"
+                    if magnitude_error_db is None
+                    else "PASS"
+                    if abs(magnitude_error_db) <= 0.10
                     else "FAIL"
                 ),
                 "inter_channel_gain_le_0_01_db": (
@@ -395,6 +553,7 @@ def run(
             "output_sha256": hashlib.sha256(raw).hexdigest(),
             "metrics": metrics,
             "tone_metrics": tone,
+            "reference": reference,
             "numeric_checks": numeric_checks,
             "informational_metrics": {
                 "stopband_rejection_db": tone.get("stopband_rejection_db"),
@@ -411,14 +570,18 @@ def run(
                 ),
                 "eos": "PASS" if eos_observed else "FAIL",
                 "oracle": (
-                    "PASS"
+                    _checks_disposition(numeric_checks)
                     if numeric_checks
-                    and all(value == "PASS" for value in numeric_checks.values())
-                    else ("NOT_RUN" if not numeric_checks else "FAIL")
+                    else "NOT_RUN"
                 ),
             },
-            "status": "PARTIAL",
-            "environment": {"python": "3.11", "sink": "appsink"},
+            "status": _vector_status(
+                sample_count=metrics.get("sample_count", 0),
+                cleanup_confirmed=bool(release.get("release")),
+                eos_observed=eos_observed,
+                numeric_checks=numeric_checks,
+            ),
+            "environment": {"python": "3.11", "sink": "fakesink"},
             "cleanup_confirmed": bool(release.get("release")),
             "eos_observed": eos_observed,
             "release": release.get("release"),
@@ -431,12 +594,9 @@ def run_corpus(*, target_rate: int, profile: str) -> dict[str, Any]:
         for name, frequency in DSD64_CORPUS:
             path = Path(tmp) / f"{name}.dsf"
             path.write_bytes(
-                build_dsf(
+                _dsf_blob(
                     sample_count=CORPUS_SAMPLE_COUNT,
-                    payload=_tone_payload(
-                        sample_count=CORPUS_SAMPLE_COUNT,
-                        frequency_hz=frequency,
-                    ),
+                    frequency_hz=frequency,
                 )
             )
             vectors.append(
@@ -448,6 +608,11 @@ def run_corpus(*, target_rate: int, profile: str) -> dict[str, Any]:
                     fixture_name=name,
                 )
             )
+    for vector in vectors:
+        # Generated fixtures live in a temporary directory; the SHA256 and the
+        # fixture name are the reproducible identity, not the temp path.
+        vector["fixture"]["path"] = None
+    statuses = {vector["status"] for vector in vectors}
     return {
         "schema_version": 1,
         "phase": "AP2-F10",
@@ -457,20 +622,12 @@ def run_corpus(*, target_rate: int, profile: str) -> dict[str, Any]:
         "vectors": vectors,
         "status": (
             "PASS"
-            if all(
-                vector["sample_count"] > 0
-                and vector["cleanup_confirmed"]
-                and vector["eos_observed"]
-                and (
-                    vector["metric_dispositions"]["oracle"] == "PASS"
-                    if vector["fixture"]["analytic_frequency_hz"]
-                    else True
-                )
-                for vector in vectors
-            )
+            if statuses == {"PASS"}
+            else "PARTIAL"
+            if "FAIL" not in statuses
             else "FAIL"
         ),
-        "environment": {"python": "3.11", "sink": "appsink"},
+        "environment": {"python": "3.11", "sink": "fakesink"},
     }
 
 

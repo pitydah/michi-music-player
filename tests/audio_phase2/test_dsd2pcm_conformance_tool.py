@@ -39,7 +39,8 @@ def test_conformance_harness_captures_real_f32le_and_releases():
     from tools.audio_phase2.dsd2pcm_conformance import run
 
     result = run(fixture=None, target_rate=88_200, profile="FAST")
-    assert result["status"] == "PARTIAL"
+    assert result["status"] == "PASS"
+    assert result["eos_observed"] is True
     assert result["sample_count"] > 0
     assert result["metrics"]["nan_inf"] == 0
     assert result["cleanup_confirmed"] is True

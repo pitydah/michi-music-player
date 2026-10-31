@@ -211,6 +211,13 @@ class DsdPcmHostRuntime:
             raise DsdPcmHostError(
                 "DSD_PCM_HOST_FACTORY_UNAVAILABLE", f"missing {missing}"
             )
+        if request.sink_factory == "appsink":
+            # The measurement sink must consume, not queue: the default
+            # appsink blocks its streaming thread once the queue is full and
+            # then EOS never reaches the bus.
+            sink.set_property("max-buffers", 1)
+            sink.set_property("drop", True)
+            sink.set_property("sync", False)
         filesrc.set_property("location", request.path)
         reversed_bytes = request.bit_order.upper() == "LSBF"
         dsd_caps_obj = gst.Caps.from_string(
@@ -532,6 +539,9 @@ class DsdPcmHostRuntime:
         pad = self._sink.get_static_pad("sink")
         if pad is None:
             raise DsdPcmHostError("DSD_PCM_CAPTURE_NOT_PREPARED", "no sink pad")
+        if self._capture_probe is not None:
+            pad.remove_probe(self._capture_probe)
+            self._capture_probe = None
         self._capture_limit = max(0, int(max_frames))
 
         def _probe(_pad, info):
