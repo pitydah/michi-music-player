@@ -70,6 +70,7 @@ class SignalPathNode:
     effective: tuple[tuple[str, object], ...]
     reason_codes: tuple[str, ...]
     evidence_refs: tuple[str, ...]
+    installed: tuple[tuple[str, object], ...] = ()
 
     def __post_init__(self) -> None:
         if not self.node_id.strip():
@@ -78,6 +79,7 @@ class SignalPathNode:
             raise ValueError("signal path node requires a label")
         _validate_facts(self.requested, "requested")
         _validate_facts(self.effective, "effective")
+        _validate_facts(self.installed, "installed")
 
     def to_dict(self) -> dict:
         return {
@@ -87,6 +89,7 @@ class SignalPathNode:
             "state": str(self.state),
             "requested": {key: value for key, value in self.requested},
             "effective": {key: value for key, value in self.effective},
+            "installed": {key: value for key, value in self.installed},
             "reason_codes": list(self.reason_codes),
             "evidence_refs": list(self.evidence_refs),
         }

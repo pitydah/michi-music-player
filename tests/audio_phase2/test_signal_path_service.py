@@ -618,3 +618,61 @@ def test_projection_has_no_execution_surface() -> None:
         "apply",
     ):
         assert not hasattr(service, name), name
+
+
+def test_installed_stage_is_distinct_from_requested_and_effective() -> None:
+    """A processing commit receipt publishes INSTALLED, never EFFECTIVE."""
+    snapshot = _dsp()
+    receipt = {
+        "installed": True,
+        "candidate": {
+            "candidate_id": "cand:1",
+            "plan_id": "dsp:plan:1",
+            "graph_revision": 7,
+            "processing_generation": 3,
+            "pipeline_generation": 2,
+            "host_generation": 1,
+        },
+        "observed_plan_id": "dsp:plan:1",
+        "observed_graph_revision": 7,
+        "observed_processing_generation": 3,
+        "observed_pipeline_generation": 2,
+        "observed_host_generation": 1,
+        "observed_candidate_id": "cand:1",
+    }
+    projection = SignalPathService().project(snapshot, processing_receipt=receipt)
+    engine = _node(projection, "engine")
+    requested = dict(engine.requested)
+    installed = dict(engine.installed)
+    effective = dict(engine.effective)
+    assert requested
+    assert installed["installed"] is True
+    assert installed["candidate_plan_id"] == "dsp:plan:1"
+    assert installed["candidate_graph_revision"] == 7
+    assert installed["observed_plan_id"] == "dsp:plan:1"
+    assert effective
+    assert requested != installed
+    assert installed != effective
+    serialized = projection.to_dict()
+    engine_dict = next(
+        node for node in serialized["nodes"] if node["node_id"] == "engine"
+    )
+    assert engine_dict["installed"]["installed"] is True
+    assert engine_dict["installed"]["candidate_candidate_id"] == "cand:1"
+
+    # A refused install is visible as INSTALLED=false and never rewrites the
+    # observed EFFECTIVE facts or the verdict.
+    refused = SignalPathService().project(
+        snapshot, processing_receipt={**receipt, "installed": False}
+    )
+    refused_engine = _node(refused, "engine")
+    assert dict(refused_engine.installed)["installed"] is False
+    assert dict(refused_engine.effective) == effective
+    assert refused.verdict == projection.verdict
+
+
+def test_installed_stage_defaults_to_empty_without_a_receipt() -> None:
+    projection = _project(_dsp())
+    for node in projection.nodes:
+        assert node.installed == ()
+        assert "installed" in node.to_dict()

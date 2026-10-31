@@ -13,6 +13,7 @@ none can be duplicated across nodes. Snapshot-level verdict/reasons are carried
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import ClassVar
 
 from michi.domain.audio_evidence import PcmTuple
@@ -150,8 +151,18 @@ class SignalPathService:
             "verdict": verdict,
         }
 
-    def project(self, snapshot: SignalTruthSnapshot) -> SignalPathSnapshot:
-        """Explain one classified snapshot; refuse any foreign generation."""
+    def project(
+        self,
+        snapshot: SignalTruthSnapshot,
+        *,
+        processing_receipt: object | None = None,
+    ) -> SignalPathSnapshot:
+        """Explain one classified snapshot; refuse any foreign generation.
+
+        ``processing_receipt`` is the commit receipt from the processing
+        authority. It feeds the separate INSTALLED stage; it never upgrades
+        REQUESTED or EFFECTIVE, so an uninstalled candidate cannot look active.
+        """
         identity = snapshot.identity
         self._refuse_foreign_identity(snapshot, identity)
         plan = snapshot.plan
@@ -182,6 +193,7 @@ class SignalPathService:
                 snapshot,
                 SignalPathNodeKind.ENGINE,
                 requested=plan_facts,
+                installed=self._installed_facts(processing_receipt),
                 effective=self._engine_facts(snapshot),
                 observed=(
                     snapshot.engine_effective is not None
@@ -251,6 +263,7 @@ class SignalPathService:
         effective: tuple[tuple[str, object], ...],
         observed: bool,
         base_ref: str,
+        installed: tuple[tuple[str, object], ...] = (),
     ) -> SignalPathNode:
         own_reasons = tuple(
             reason.value
@@ -285,10 +298,55 @@ class SignalPathService:
             label=_NODE_LABELS[kind],
             state=state,
             requested=requested,
+            installed=installed,
             effective=effective,
             reason_codes=own_reasons,
             evidence_refs=tuple(refs),
         )
+
+
+    def _installed_facts(
+        self, receipt: object | None
+    ) -> tuple[tuple[str, object], ...]:
+        """Project the processing commit receipt as a separate stage."""
+        if receipt is None:
+            return ()
+
+        def read(name: str, default: object = None) -> object:
+            if isinstance(receipt, Mapping):
+                return receipt.get(name, default)
+            return getattr(receipt, name, default)
+
+        facts: dict[str, object] = {"installed": bool(read("installed", False))}
+        candidate = read("candidate")
+        if candidate is not None:
+            for name in (
+                "candidate_id",
+                "plan_id",
+                "graph_revision",
+                "processing_generation",
+                "pipeline_generation",
+                "host_generation",
+            ):
+                value = (
+                    candidate.get(name)
+                    if isinstance(candidate, Mapping)
+                    else getattr(candidate, name, None)
+                )
+                if isinstance(value, (str, int, bool)) and value != "":
+                    facts[f"candidate_{name}"] = value
+        for name in (
+            "observed_plan_id",
+            "observed_graph_revision",
+            "observed_processing_generation",
+            "observed_pipeline_generation",
+            "observed_host_generation",
+            "observed_candidate_id",
+        ):
+            value = read(name)
+            if isinstance(value, (str, int, bool)) and value != "":
+                facts[name] = value
+        return _facts(**facts)
 
     def _source_facts(
         self, snapshot: SignalTruthSnapshot
