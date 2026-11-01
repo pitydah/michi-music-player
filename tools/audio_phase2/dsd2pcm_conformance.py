@@ -25,12 +25,22 @@ F32LE = "F32LE"
 DSD_BIT_RATE_HZ = 2_822_400
 SILENCE_SAMPLE_COUNT = 44_100
 CORPUS_SAMPLE_COUNT = 17_640
-#: DSD64 conformance corpus (§274.4/§275): (name, analytic tone frequency).
-DSD64_CORPUS: tuple[tuple[str, int], ...] = (
-    ("silence", 0),
-    ("tone_1khz", 1_000),
-    ("tone_10khz", 10_000),
-    ("tone_20khz", 20_000),
+#: §274.4/§275 corpus: (name, analytic tone, source bytes/channel, stopband).
+CORPUS_VECTORS: tuple[tuple[str, int, int, int | None], ...] = (
+    ("silence", 0, SILENCE_SAMPLE_COUNT, None),
+    # Low frequencies need more than one cycle for a stable projection.
+    ("tone_20hz", 20, 70_560, None),
+    ("tone_100hz", 100, 35_280, None),
+    ("tone_1khz", 1_000, CORPUS_SAMPLE_COUNT, None),
+    ("tone_10khz", 10_000, CORPUS_SAMPLE_COUNT, None),
+    ("tone_20khz", 20_000, CORPUS_SAMPLE_COUNT, None),
+    ("tone_30khz", 30_000, CORPUS_SAMPLE_COUNT, None),
+    # 80 kHz folds to 8.2 kHz at 88.2 kHz when the resampler fails to reject
+    # it. A longer capture separates the coherent alias from the DSD noise.
+    ("stopband_80khz", 80_000, 70_560, 80_000),
+)
+DSD64_CORPUS: tuple[tuple[str, int], ...] = tuple(
+    (name, frequency) for name, frequency, _samples, _stopband in CORPUS_VECTORS
 )
 
 
@@ -113,9 +123,7 @@ def _tone_payload(*, sample_count: int, frequency_hz: int) -> bytes:
     if frequency_hz == 0:
         mono = _silence_mono(sample_count)
     else:
-        mono = _tone_bits(
-            frequency_hz=frequency_hz, bit_count=sample_count * 8
-        )
+        mono = _tone_bits(frequency_hz=frequency_hz, bit_count=sample_count * 8)
     return _dsf_block_payload(mono)
 
 
@@ -163,12 +171,77 @@ def _tone_metrics(
     # captured signal onto the known analytic frequency instead; that estimate
     # is unbiased for any fractional bin offset.
     offsets = np.arange(finite.size)
-    projection = np.sum(
-        finite
-        * window
-        * np.exp(-2j * math.pi * expected_hz * offsets / rate)
-    ) / window.sum()
-    measured_amp = float(2.0 * abs(projection))
+
+    def _amplitude(signal: Any) -> float:
+        if not expected_hz or signal.size == 0:
+            return 0.0
+        projection = (
+            np.sum(
+                signal * window * np.exp(-2j * math.pi * expected_hz * offsets / rate)
+            )
+            / window.sum()
+        )
+        return float(2.0 * abs(projection))
+
+    measured_amp = _amplitude(finite)
+    channel_amplitudes = [
+        _amplitude(
+            np.nan_to_num(
+                frames[:, channel].astype(np.float64),
+                nan=0.0,
+                posinf=0.0,
+                neginf=0.0,
+            )
+        )
+        for channel in range(channels)
+    ]
+    mismatch = 0.0
+    if (
+        len(channel_amplitudes) >= 2
+        and min(channel_amplitudes) > 1e-12
+        and max(channel_amplitudes) > 0
+    ):
+        mismatch = 20.0 * math.log10(max(channel_amplitudes) / min(channel_amplitudes))
+
+    def _channel_lag(left_signal, right_signal, max_lag: int = 16) -> int:
+        count = min(left_signal.size, right_signal.size)
+        if count <= max_lag:
+            return 0
+        left_signal = left_signal[:count]
+        right_signal = right_signal[:count]
+        best_lag = 0
+        best_score = -1.0
+        for lag in range(-max_lag, max_lag + 1):
+            if lag >= 0:
+                left_part = left_signal[: count - lag]
+                right_part = right_signal[lag:]
+            else:
+                left_part = left_signal[-lag:]
+                right_part = right_signal[: count + lag]
+            denominator = math.sqrt(
+                float(np.dot(left_part, left_part))
+                * float(np.dot(right_part, right_part))
+            )
+            if denominator <= 1e-12:
+                continue
+            score = abs(float(np.dot(left_part, right_part))) / denominator
+            if score > best_score:
+                best_score = score
+                best_lag = lag
+        return best_lag
+
+    latency_samples = (
+        _channel_lag(
+            np.nan_to_num(
+                frames[:, 0].astype(np.float64), nan=0.0, posinf=0.0, neginf=0.0
+            ),
+            np.nan_to_num(
+                frames[:, 1].astype(np.float64), nan=0.0, posinf=0.0, neginf=0.0
+            ),
+        )
+        if channels >= 2
+        else 0
+    )
     expected_amp = 0.5
     gain_error_db = 20.0 * math.log10(max(measured_amp, 1e-12) / expected_amp)
     exclusion = (freqs >= 20_000.0) & (freqs <= 40_000.0)
@@ -176,30 +249,36 @@ def _tone_metrics(
     stopband = float(
         math.sqrt(float(np.sum(spectrum[exclusion] ** 2))) / max(measured_amp, 1e-12)
     )
-    channel_rms = [
-        float(np.sqrt(np.mean(frames[:, channel].astype(np.float64) ** 2)))
-        for channel in range(channels)
-    ]
-    mismatch = 0.0
-    if len(channel_rms) >= 2 and min(channel_rms) > 0:
-        mismatch = 20.0 * math.log10(max(channel_rms) / min(channel_rms))
     return {
         "sample_count": int(finite.size),
         "nan_inf": nan_inf,
-        "dc": float(np.mean(finite)),
-        "dc_gain_error_db": abs(float(np.mean(finite))),
+        "dc_offset": float(np.mean(finite)),
+        # A linear residual offset is not a dB gain error. The normative DC
+        # gain is NOT_MEASURED by this corpus: a dedicated DC stimulus and a
+        # versioned reference are required to claim it.
+        "dc_gain_error_db": None,
+        "dc_gain_status": "NOT_MEASURED",
+        "dc_gain_reason": (
+            "no DC stimulus; residual offset is linear, not a gain error"
+        ),
         "peak": float(np.max(np.abs(finite))) if finite.size else None,
-        "clipping_samples": int(np.count_nonzero(np.abs(finite) >= 0.999)),
+        "clipping_samples": int(
+            np.count_nonzero(
+                np.isfinite(frames) & (np.abs(np.nan_to_num(frames)) >= 0.999)
+            )
+        ),
         "tone_frequency_hz": measured_hz,
         "tone_frequency_error_hz": abs(measured_hz - expected_hz)
         if expected_hz
         else 0.0,
         "tone_amplitude": measured_amp,
+        "channel_amplitudes": channel_amplitudes,
         "tone_gain_error_db": gain_error_db,
         "stopband_rejection_db": (
             -20.0 * math.log10(max(stopband, 1e-12)) if expected_hz else None
         ),
         "inter_channel_gain_mismatch_db": abs(mismatch),
+        "inter_channel_latency_samples": latency_samples,
         "rate_hz": rate,
         "channels": channels,
     }
@@ -262,9 +341,7 @@ def _reference_capture(
             detail = (completed.stderr or "no reference output").strip()
             return {"status": "NOT_RUN", "reason": detail[:500]}
         raw = target.read_bytes()
-    metrics = _tone_metrics(
-        raw, channels=channels, rate=rate, expected_hz=expected_hz
-    )
+    metrics = _tone_metrics(raw, channels=channels, rate=rate, expected_hz=expected_hz)
     if not metrics.get("sample_count"):
         return {"status": "NOT_RUN", "reason": "empty reference capture"}
     return {
@@ -419,6 +496,7 @@ def run(
     profile: str,
     expected_frequency_hz: int = 0,
     fixture_name: str | None = None,
+    stopband_hz: int | None = None,
 ) -> dict[str, Any]:
     with tempfile.TemporaryDirectory(prefix="michi-dsd2pcm-") as tmp:
         path = fixture
@@ -502,24 +580,82 @@ def run(
                 )
                 tone["magnitude_error_vs_reference_db"] = magnitude_error_db
         numeric_checks = {}
-        if expected_frequency_hz:
-            numeric_checks = {
-                "nan_inf_zero": "PASS" if tone.get("nan_inf") == 0 else "FAIL",
-                "dc_gain_error_le_0_05_db": (
-                    "PASS"
-                    if tone.get("dc_gain_error_db", 1.0) <= 0.05
+        stopband: dict[str, Any] = {}
+        if stopband_hz:
+            alias_hz = abs(target_rate - stopband_hz)
+            alias = (
+                _tone_metrics(
+                    raw,
+                    channels=2,
+                    rate=target_rate,
+                    expected_hz=alias_hz,
+                )
+                if alias_hz < target_rate / 2
+                else {}
+            )
+            reference_stopband = _reference_capture(
+                path,
+                channels=2,
+                rate=max(target_rate * 4, 352_800),
+                expected_hz=stopband_hz,
+            )
+            rejection_db: float | None = None
+            if reference_stopband.get("status") == "PASS" and alias.get(
+                "tone_amplitude"
+            ):
+                rejection_db = 20.0 * math.log10(
+                    max(reference_stopband["amplitude"], 1e-12)
+                    / max(alias["tone_amplitude"], 1e-12)
+                )
+            stopband = {
+                "stimulus_hz": stopband_hz,
+                "alias_hz": alias_hz,
+                "reference": reference_stopband,
+                "alias_amplitude": alias.get("tone_amplitude"),
+                "rejection_db": rejection_db,
+                "clipping_disposition": (
+                    "NOT_APPLICABLE — an out-of-band stimulus may reconstruct "
+                    "above full scale; clipping is not a pass/fail criterion here"
+                ),
+                "status": (
+                    "NOT_RUN"
+                    if rejection_db is None
+                    else "PASS"
+                    if rejection_db >= 80.0
                     else "FAIL"
                 ),
-                "magnitude_error_le_0_10_db": (
+            }
+            numeric_checks = {
+                "resampler_stopband_ge_80_db": stopband["status"],
+                "nan_inf_zero": "PASS" if metrics.get("nan_inf") == 0 else "FAIL",
+                "no_unexpected_clipping": "NOT_APPLICABLE",
+                "eos_observed": "PASS" if eos_observed else "FAIL",
+            }
+        elif expected_frequency_hz:
+            magnitude_key = (
+                "magnitude_error_le_0_25_db"
+                if expected_frequency_hz > 20_000
+                else "magnitude_error_le_0_10_db"
+            )
+            magnitude_limit = 0.25 if expected_frequency_hz > 20_000 else 0.10
+            numeric_checks = {
+                "nan_inf_zero": "PASS" if tone.get("nan_inf") == 0 else "FAIL",
+                "dc_gain_error_le_0_05_db": "NOT_MEASURED",
+                magnitude_key: (
                     "NOT_RUN"
                     if magnitude_error_db is None
                     else "PASS"
-                    if abs(magnitude_error_db) <= 0.10
+                    if abs(magnitude_error_db) <= magnitude_limit
                     else "FAIL"
                 ),
                 "inter_channel_gain_le_0_01_db": (
                     "PASS"
                     if tone.get("inter_channel_gain_mismatch_db", 1.0) <= 0.01
+                    else "FAIL"
+                ),
+                "inter_channel_latency_zero_samples": (
+                    "PASS"
+                    if tone.get("inter_channel_latency_samples", 1) == 0
                     else "FAIL"
                 ),
                 "no_unexpected_clipping": (
@@ -531,6 +667,7 @@ def run(
                     if tone.get("tone_frequency_error_hz", 999.0) <= 20.0
                     else "FAIL"
                 ),
+                "eos_observed": "PASS" if eos_observed else "FAIL",
             }
         return {
             "schema_version": 1,
@@ -554,6 +691,7 @@ def run(
             "metrics": metrics,
             "tone_metrics": tone,
             "reference": reference,
+            "stopband": stopband,
             "numeric_checks": numeric_checks,
             "informational_metrics": {
                 "stopband_rejection_db": tone.get("stopband_rejection_db"),
@@ -570,9 +708,7 @@ def run(
                 ),
                 "eos": "PASS" if eos_observed else "FAIL",
                 "oracle": (
-                    _checks_disposition(numeric_checks)
-                    if numeric_checks
-                    else "NOT_RUN"
+                    _checks_disposition(numeric_checks) if numeric_checks else "NOT_RUN"
                 ),
             },
             "status": _vector_status(
@@ -591,11 +727,11 @@ def run(
 def run_corpus(*, target_rate: int, profile: str) -> dict[str, Any]:
     vectors = []
     with tempfile.TemporaryDirectory(prefix="michi-dsd2pcm-corpus-") as tmp:
-        for name, frequency in DSD64_CORPUS:
+        for name, frequency, sample_count, stopband_hz in CORPUS_VECTORS:
             path = Path(tmp) / f"{name}.dsf"
             path.write_bytes(
                 _dsf_blob(
-                    sample_count=CORPUS_SAMPLE_COUNT,
+                    sample_count=sample_count,
                     frequency_hz=frequency,
                 )
             )
@@ -604,30 +740,63 @@ def run_corpus(*, target_rate: int, profile: str) -> dict[str, Any]:
                     fixture=path,
                     target_rate=target_rate,
                     profile=profile,
-                    expected_frequency_hz=frequency,
+                    expected_frequency_hz=0 if stopband_hz else frequency,
                     fixture_name=name,
+                    stopband_hz=stopband_hz,
                 )
             )
     for vector in vectors:
         # Generated fixtures live in a temporary directory; the SHA256 and the
         # fixture name are the reproducible identity, not the temp path.
         vector["fixture"]["path"] = None
+    rate_rule = _profile_rate_rule(target_rate=target_rate, profile=profile)
     statuses = {vector["status"] for vector in vectors}
     return {
         "schema_version": 1,
         "phase": "AP2-F10",
-        "corpus": "dsd64_v1",
+        "corpus": "dsd64_v2",
         "target_rate_hz": target_rate,
         "profile": profile,
+        "profile_rules": rate_rule,
         "vectors": vectors,
         "status": (
-            "PASS"
+            "FAIL"
+            if rate_rule["status"] == "FAIL" or "FAIL" in statuses
+            else "PASS"
             if statuses == {"PASS"}
             else "PARTIAL"
-            if "FAIL" not in statuses
-            else "FAIL"
         ),
         "environment": {"python": "3.11", "sink": "fakesink"},
+    }
+
+
+def _profile_rate_rule(*, target_rate: int, profile: str) -> dict[str, Any]:
+    manifest = (
+        Path(__file__).resolve().parents[2]
+        / "docs"
+        / "audio"
+        / "phase2"
+        / "dsd2pcm_profiles_v1.json"
+    )
+    try:
+        payload = json.loads(manifest.read_text(encoding="utf-8"))
+        ladder = payload["profiles"][profile]["ladder_hz"]
+    except (OSError, KeyError, TypeError, ValueError) as exc:
+        return {
+            "status": "NOT_RUN",
+            "reason": f"profile manifest unavailable: {exc}",
+        }
+    allowed = int(target_rate) in {int(value) for value in ladder}
+    return {
+        "status": "PASS" if allowed else "FAIL",
+        "profile": profile,
+        "target_rate_hz": target_rate,
+        "ladder_hz": list(ladder),
+        "reason": (
+            "target rate belongs to the profile ladder"
+            if allowed
+            else "target rate is outside the profile ladder"
+        ),
     }
 
 

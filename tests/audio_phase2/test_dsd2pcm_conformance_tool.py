@@ -47,3 +47,26 @@ def test_conformance_harness_captures_real_f32le_and_releases():
     assert result["release"]["terminal_state"] == "RELEASED"
     assert result["output_sha256"]
     assert result["caps_negotiated"]
+
+
+def test_stopband_stimulus_measures_the_resampler_rejection(tmp_path):
+    pytest.importorskip("numpy")
+    from tools.audio_phase2.dsd2pcm_conformance import (
+        _dsf_blob,
+        run,
+    )
+
+    source = tmp_path / "stopband.dsf"
+    source.write_bytes(_dsf_blob(sample_count=70_560, frequency_hz=80_000))
+    result = run(
+        fixture=source,
+        target_rate=88_200,
+        profile="HIGH",
+        expected_frequency_hz=0,
+        fixture_name="stopband_80khz",
+        stopband_hz=80_000,
+    )
+    assert result["stopband"]["alias_hz"] == 8_200
+    assert result["stopband"]["rejection_db"] >= 80.0
+    assert result["numeric_checks"]["resampler_stopband_ge_80_db"] == "PASS"
+    assert result["numeric_checks"]["no_unexpected_clipping"] == "NOT_APPLICABLE"

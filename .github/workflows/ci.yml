@@ -105,6 +105,19 @@ jobs:
           QT_QPA_PLATFORM: offscreen
         run: python -m pytest tests/ -q
 
+      - name: Numeric conformance corpus (mandatory, no skips)
+        run: |
+          set -euo pipefail
+          python -m pytest \
+            tests/audio_phase2/test_dsd2pcm_conformance_metrics.py \
+            tests/audio_phase2/test_dsd2pcm_conformance_corpus.py \
+            -q | tee /tmp/conformance-run.txt
+          grep -Eq '^[0-9]+ passed' /tmp/conformance-run.txt
+          if grep -Eq '[0-9]+ (skipped|error)' /tmp/conformance-run.txt; then
+            echo "numeric conformance must not be skipped" >&2
+            exit 1
+          fi
+
       - name: Build
         run: python -m build
 
@@ -403,6 +416,23 @@ jobs:
             tests/audio_phase2/test_dsd_pcm_product_dsp_e2e.py \
             tests/audio_phase2/test_family_transition_host_receipt.py \
             tests/audio_phase2/test_family_handover_exclusivity.py -q
+
+      - name: Numeric conformance EOS (mandatory, no skips)
+        env:
+          MICHI_GST_LAB_SINK: fakesink
+          MICHI_DOP_PLUGIN_PREFIX: ${{ runner.temp }}/michi-dop-gate-a
+          GST_PLUGIN_PATH: ${{ runner.temp }}/michi-dop-gate-a/lib/gstreamer-1.0
+        run: |
+          set -euo pipefail
+          python -m pytest \
+            tests/audio_phase2/test_dsd_pcm_conformance_eos.py \
+            tests/audio_phase2/test_dsd2pcm_conformance_tool.py \
+            -q | tee /tmp/conformance-eos.txt
+          grep -Eq '^[0-9]+ passed' /tmp/conformance-eos.txt
+          if grep -Eq '[0-9]+ (skipped|error)' /tmp/conformance-eos.txt; then
+            echo "numeric conformance EOS must not be skipped" >&2
+            exit 1
+          fi
 
       - name: Qt + supervised host family handover E2E (fail closed)
         env:

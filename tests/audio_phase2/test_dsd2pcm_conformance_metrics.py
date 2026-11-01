@@ -48,3 +48,40 @@ def test_projection_keeps_the_measured_frequency_near_the_tone() -> None:
         _stereo_sine(1_000), channels=2, rate=88_200, expected_hz=1_000
     )
     assert abs(metrics["tone_frequency_hz"] - 1_000.0) <= 20.0
+
+
+def test_dc_offset_is_linear_and_dc_gain_is_not_measured() -> None:
+    metrics = _tone_metrics(
+        _stereo_sine(1_000, amplitude=0.01),
+        channels=2,
+        rate=88_200,
+        expected_hz=1_000,
+    )
+    assert abs(metrics["dc_offset"]) < 1e-4
+    assert metrics["dc_gain_error_db"] is None
+    assert metrics["dc_gain_status"] == "NOT_MEASURED"
+    assert "no DC stimulus" in metrics["dc_gain_reason"]
+
+
+def test_inter_channel_latency_detects_a_one_sample_delay() -> None:
+    frames = 3_200
+    index = np.arange(frames)
+    left = 0.5 * np.sin(2.0 * math.pi * 1_000 * index / 88_200)
+    right = np.roll(left, 1)
+    raw = np.stack([left, right], axis=1).astype("<f4").tobytes()
+    metrics = _tone_metrics(raw, channels=2, rate=88_200, expected_hz=1_000)
+    assert abs(metrics["inter_channel_latency_samples"]) == 1
+
+
+def test_non_finite_and_clipping_samples_are_counted() -> None:
+    frames = 64
+    left = np.zeros(frames)
+    right = np.zeros(frames)
+    left[0] = math.nan
+    right[0] = math.inf
+    left[1] = 1.0
+    right[1] = -1.0
+    raw = np.stack([left, right], axis=1).astype("<f4").tobytes()
+    metrics = _tone_metrics(raw, channels=2, rate=88_200, expected_hz=1_000)
+    assert metrics["nan_inf"] == 2
+    assert metrics["clipping_samples"] == 2
