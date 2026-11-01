@@ -1,0 +1,117 @@
+{
+  "schema_version": "michi.f10.s16.evidence.v1",
+  "phase": "AP2-F10",
+  "sprint": "S16",
+  "base_sha": "8504d1e046682f0bd3cb4f47f12dcde2a57d37f9",
+  "code_sha": "2218301",
+  "test_sha": "2218301",
+  "ci_sha": "PENDING",
+  "generated_at": "2026-11-01",
+  "commits": [
+    "02ac5f2",
+    "8c9267a",
+    "b082e58",
+    "ddd1e5a",
+    "2626d25",
+    "481760d",
+    "d072136",
+    "7f53a74",
+    "2218301"
+  ],
+  "cuts": {
+    "A_claim_identity": {
+      "status": "PASS",
+      "evidence": "prepared_transport_claim exact identity, positive host/pipeline generation, single use."
+    },
+    "B_host_atomic_claim": {
+      "status": "PASS",
+      "evidence": "CLAIM_PRELOADED_MANAGED requires exact positive pipeline generation; host remains the atomic authority."
+    },
+    "C_router_playback_adoption": {
+      "status": "PASS",
+      "evidence": "asynchronous adoption; commit and acceptance split; managed START confirmed before acceptance."
+    },
+    "D_t03_t04_e2e": {
+      "status": "PASS",
+      "evidence": "T03/T04 pass on the real Qt+host chain; early MEDIA_ACCEPTED suppression verified."
+    },
+    "E_adversarial": {
+      "status": "PARTIAL",
+      "evidence": "Qt non-blocking, STOP during adoption, PLAY/COMMIT/START refusal, A->B->C supersession, claim tamper/host-generation tests. Remaining: DAC disconnect and PAUSED/EOS cycles."
+    },
+    "F_dsp_quality": {
+      "status": "PARTIAL",
+      "evidence": "Live DSD-PCM OFF->ON->OFF->ON with negotiated caps; QUALITY A->B->A with fresh output snapshots. Remaining: PAUSED/EOS/host-restart/stale-binding cycles."
+    },
+    "G_certification": {
+      "status": "PARTIAL",
+      "evidence": "Targeted S16 batch 48 passed; full suite and exact-SHA CI pending."
+    }
+  },
+  "e2e": {
+    "T02": "PASS",
+    "T03": "PASS",
+    "T04": "PASS",
+    "T05": "PASS",
+    "T06": "PASS",
+    "T07": "PASS",
+    "T08": "ALIAS_OF_T02",
+    "six_qt_host": "6 passed in 3.03 s",
+    "environment": "fakesink lab sink, Gate A DoP prefix, offscreen Qt"
+  },
+  "managed_transport": {
+    "first_physical_load": "ManagedPcmExecutor.execute -> GStreamerHostedAudioPort.load",
+    "later_load": "CLAIM_PRELOADED_MANAGED, zero HostOperation.LOAD",
+    "adoption": "Prepared Managed Transport Adoption",
+    "early_acceptance": "Managed PREPARE MEDIA_ACCEPTED suppressed until exact claim confirmation",
+    "single_use_claim": true
+  },
+  "commands": [
+    {
+      "command": "python -m pytest tests/audio_phase2/test_f10_s14_managed_qt_host_e2e.py -q",
+      "result": "2 passed in 1.84 s"
+    },
+    {
+      "command": "python -m pytest tests/audio_phase2/test_f10_s13_qt_host_e2e.py tests/audio_phase2/test_f10_s14_managed_qt_host_e2e.py -q",
+      "result": "6 passed in 3.03 s"
+    },
+    {
+      "command": "python -m pytest tests/audio_phase2/test_managed_preloaded_claim.py -q",
+      "result": "5 passed in 3.48 s"
+    },
+    {
+      "command": "targeted managed/adoption/owner-safe batch",
+      "result": "59 passed in 19.88 s"
+    }
+  ],
+  "section_196_7": {
+    "complete_decision_table": "PASS",
+    "new_snapshot_per_transition": "PASS",
+    "policy_runtime_coherence_after_failures": "PASS",
+    "stop_pause_replay_convergence": "PARTIAL",
+    "verdict": "PARTIAL"
+  },
+  "section_415": {
+    "request_freshness": "PASS",
+    "no_autoplay_after_non_playing_predecessor": "PASS",
+    "no_false_restore": "PASS",
+    "explicit_dsd_pcm_conversion": "PASS",
+    "target_family_and_generation_checked": "PASS",
+    "transition_receipts_exact_identity": "PASS"
+  },
+  "closure_review": "NOT_READY",
+  "open_items": [
+    "DAC disconnect during managed adoption",
+    "PAUSED/EOS/host-restart/stale-binding quality cycles",
+    "physical T03/T04 qualification",
+    "F14 remains NOT_RUN"
+  ],
+  "f14": "NOT_RUN",
+  "locked_phases": [
+    "F11",
+    "F12",
+    "F13",
+    "F14",
+    "F15"
+  ]
+}
