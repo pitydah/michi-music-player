@@ -49,9 +49,7 @@ def test_claim_carries_the_exact_managed_identity_and_is_single_use(
         assert claim.host_generation > 0
         assert claim.output_generation > 0
 
-        with pytest.raises(
-            OutputSessionError, match="MANAGED_CLAIM_ALREADY_CONSUMED"
-        ):
+        with pytest.raises(OutputSessionError, match="MANAGED_CLAIM_ALREADY_CONSUMED"):
             graph.output_session.prepared_transport_claim(token, FIXTURE)
     finally:
         _close(graph)
@@ -70,9 +68,7 @@ def test_claim_rejects_a_different_media_path(tmp_path: Path) -> None:
     graph, token = _prepared_managed(tmp_path)
     try:
         with pytest.raises(OutputSessionError, match="MANAGED_CLAIM_PATH_MISMATCH"):
-            graph.output_session.prepared_transport_claim(
-                token, tmp_path / "other.wav"
-            )
+            graph.output_session.prepared_transport_claim(token, tmp_path / "other.wav")
     finally:
         _close(graph)
 
