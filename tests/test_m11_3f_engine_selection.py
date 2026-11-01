@@ -1372,7 +1372,11 @@ class TestF42AdapterContract:
         # device id and binding generation so a same-family handover can
         # prove the exact predecessor before stopping it. Shared transport
         # semantics remain unchanged; hash re-sealed after full regression.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "216ab6ab2f31e6da",
+        # AP2-F10 S15 (2026-11-01): the managed child exposes the loaded
+        # path and atomically verifies CLAIM_PRELOADED_MANAGED without
+        # building a pipeline. Shared transport unchanged; hash re-sealed
+        # after full regression.
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "2b96b211b911f9f2",
         # F06 sprint 11: lazy QtMultimedia objects (open() no longer creates
         # QMediaPlayer/QAudioOutput). Product behavior unchanged on first use;
         # headless engines no longer enumerate devices at open.
@@ -1392,7 +1396,10 @@ class TestF42AdapterContract:
         # open/close or registry semantics changed. Hash re-sealed after full
         # regression.
         "src/michi/infrastructure/audio_engines/providers.py": "bad3de3da0360fab",
-        "src/michi/application/audio_transport_router.py": "937660b9c864e572",  # noqa: E501
+        # AP2-F10 S15 (2026-11-01): the router delegates the verified
+        # preloaded managed adoption to the bound backend without owning
+        # policy; existing transport behavior is unchanged.
+        "src/michi/application/audio_transport_router.py": "f55db33123f62232",  # noqa: E501
         # M4-R1/M9-R2.1 authorized additive change: ports.py gained the
         # PlaylistArtworkStorePort boundary (never touches AudioPort).
         # AUDIO RUNTIME RELIABILITY SEAL authorized reopening: ports.py
