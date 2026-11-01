@@ -661,6 +661,7 @@ def test_t11_dsd_pcm_quality_change_releases_before_prepare(tmp_path: Path) -> N
     prepared_a = session._dsd_pcm_prepared
     assert prepared_a is not None
     assert prepared_a.plan.plan_id == plan_a.plan_id
+    snapshot_a = session.transition_snapshot()
 
     tokens: list[str] = []
     failures: list[Exception] = []
@@ -688,12 +689,16 @@ def test_t11_dsd_pcm_quality_change_releases_before_prepare(tmp_path: Path) -> N
     assert evidence is not None
     assert evidence["execution_id"] == prepared_a.execution_id
     assert evidence["device"] == prepared_a.binding_locator
+    snapshot_b = session.transition_snapshot()
+    prepared_b = session._dsd_pcm_prepared
+    assert prepared_b is not None
+    assert snapshot_b["generation"] > snapshot_a["generation"]
+    assert snapshot_b["plan_id"] == plan_b.plan_id
+    assert snapshot_b["execution_id"] == prepared_b.execution_id
 
     requests["quality-a2.dsf"] = OutputRequest.dsd_to_pcm(
         plan_a, plan_a.stable_device_id, "profile:dsd"
     )
-    prepared_b = session._dsd_pcm_prepared
-    assert prepared_b is not None
     tokens_again: list[str] = []
     failures_again: list[Exception] = []
     session.prepare_for_media_async(
@@ -717,6 +722,10 @@ def test_t11_dsd_pcm_quality_change_releases_before_prepare(tmp_path: Path) -> N
     evidence = session.last_handover_release_evidence
     assert evidence is not None
     assert evidence["execution_id"] == prepared_b.execution_id
+    snapshot_a2 = session.transition_snapshot()
+    assert snapshot_a2["generation"] > snapshot_b["generation"]
+    assert snapshot_a2["plan_id"] == plan_a.plan_id
+    assert snapshot_a2["execution_id"] == session._dsd_pcm_prepared.execution_id
 
 
 def test_t12_dop_dac_change_releases_before_prepare(tmp_path: Path) -> None:
