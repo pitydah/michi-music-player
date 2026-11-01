@@ -3,13 +3,14 @@
   "phase": "AP2-F10",
   "sprint": "AP2-F10-S14",
   "base_sha": "6d1a8fb64897969c75ee2df6ee967fc2d8171b54",
-  "code_sha": "d4bd8ab990c2fccd7ca6f4e54b4345d5d85ab67f",
+  "code_sha": "5e85409b2c66a3c5f08050148bd517536e52b6e7",
   "ci_sha": "TO_BE_RECORDED_AFTER_PUSH",
   "generated_at": "2026-11-01",
   "commits": [
     "e60c3bf",
     "708fae6",
-    "d4bd8ab"
+    "d4bd8ab",
+    "5e85409"
   ],
   "cuts": {
     "1_physical_single_flight": {
@@ -37,16 +38,30 @@
       "blocker": "S13 proves DSP ON/OFF and quality service-path; S14 did not add ON->OFF->ON / A->B->A Qt+host runs"
     },
     "5_numeric_closure": {
-      "status": "NOT_RUN",
-      "blocker": "DC versioned reference and isolated resampler stopband pre/post measurement not implemented in S14; S13 v2 remains informational"
+      "status": "PASS",
+      "evidence": "DSD64 v3 harness: DC measured 0.000019 dB; isolated resampler stopband 143.2/153.3/151.9/151.2/149.4 dB at 40/60/80/100/120/160 kHz; response 20 Hz-40 kHz; decoder latency 4.98 frames (14.1 us); 12/12 mandatory requirements PASS, 16 vectors PASS",
+      "tests": [
+        "tests/audio_phase2/test_dsd2pcm_conformance_metrics.py",
+        "tests/audio_phase2/test_dsd2pcm_conformance_corpus.py",
+        "tests/audio_phase2/test_dsd2pcm_conformance_tool.py",
+        "tests/audio_phase2/test_dsd_pcm_conformance_eos.py"
+      ],
+      "evidence_file": "docs/audio/phase2/dsd2pcm_corpus_dsd64_v3.json",
+      "certification_scope": "HIGH@88200 lab fakesink; other profiles/rates CONDITIONAL or UNAVAILABLE",
+      "limitation": "No physical DAC numeric certification; lab host only"
     },
     "6_adversarial_qt": {
       "status": "NOT_RUN",
       "blocker": "release-pending QTimer barrier and DAC disconnect/host restart matrix not extended in S14"
     },
     "7_physical": {
-      "status": "NOT_RUN",
-      "blocker": "no S14 physical run; S12 physical Direct/DoP<->Native remains the latest hardware evidence"
+      "status": "PASS_ALSA_RUNTIME",
+      "evidence": "S14 physical family handover (DoP SMSL -> Native KINMAX -> DoP SMSL) and Direct A<->B handover both PASS on real alsasink",
+      "evidence_paths": [
+        "evidence/dac-v35-110/2026-11-01-f10-s14-family-handover/family_handover.json",
+        "evidence/dac-v35-110/2026-11-01-f10-s14-direct-handover/handover_matrix.json"
+      ],
+      "limitation": "Audibility REQUIRES_OPERATOR_CONFIRMATION; no bit-perfect or analog certification"
     },
     "8_matrix_evidence": {
       "status": "PARTIAL",
@@ -69,6 +84,22 @@
     {
       "command": "python -m ruff format --check src tests scripts",
       "result": "644 files already formatted"
+    },
+    {
+      "command": "python -m pytest tests/audio_phase2/test_dsd2pcm_conformance_metrics.py tests/audio_phase2/test_dsd2pcm_conformance_corpus.py tests/audio_phase2/test_dsd2pcm_conformance_tool.py tests/audio_phase2/test_dsd_pcm_conformance_eos.py -q",
+      "result": "37 passed, 1 warning"
+    },
+    {
+      "command": "python tools/audio_phase2/dsd2pcm_conformance.py --corpus --target-rate 88200 --profile HIGH --json docs/audio/phase2/dsd2pcm_corpus_dsd64_v3.json",
+      "result": "status PASS, CERTIFIED, 12/12 mandatory, 16 vectors"
+    },
+    {
+      "command": "python scripts/f10_physical_family_handover.py --evidence-dir evidence/dac-v35-110/2026-11-01-f10-s14-family-handover",
+      "result": "PASS dop_on_a, dop_to_native, native_to_dop"
+    },
+    {
+      "command": "python scripts/f10_physical_dac_handover.py --evidence-dir evidence/dac-v35-110/2026-11-01-f10-s14-direct-handover --direction both",
+      "result": "PASS AB and BA"
     }
   ],
   "e2e": {
@@ -80,16 +111,44 @@
     "T04": "NOT_RUN"
   },
   "numeric": {
-    "status": "S13 v2 PASS for its measured checks; DC NOT_MEASURED; stopband end-to-end 86.35 dB; S14 isolated stopband NOT_RUN",
-    "certification": "NOT_CERTIFIED"
+    "status": "PASS for HIGH@88200 lab scope (dsd64_v3)",
+    "certification": "CERTIFIED_LAB_SCOPE",
+    "dc_gain_error_db": 1.9e-05,
+    "isolated_stopband_db": {
+      "40000": 3e-06,
+      "60000": 143.2,
+      "80000": 153.3,
+      "100000": 151.9,
+      "120000": 151.2,
+      "160000": 149.4
+    },
+    "response": "20 Hz-20 kHz <=0.10 dB; 20-40 kHz <=0.25 dB; above Nyquist NOT_APPLICABLE",
+    "latency": {
+      "decoder_native_frames": 4.98,
+      "decoder_us": 14.1,
+      "resampler_frames": -0.077,
+      "block_delta": 0.082
+    },
+    "mandatory_requirements": "12/12 PASS",
+    "vectors": "16/16 PASS",
+    "evidence_file": "docs/audio/phase2/dsd2pcm_corpus_dsd64_v3.json",
+    "profiles": "FAST/BALANCED/HIGH/REFERENCE remain CONDITIONAL or UNAVAILABLE except HIGH@88200 executed",
+    "limitation": "Lab fakesink host evidence only; no physical DAC numeric certification"
   },
   "physical": {
-    "status": "S12 evidence only",
+    "status": "PASS_ALSA_RUNTIME",
     "devices": [
       "usb:152a:85dd:3-3.3.2",
       "usb:2fc6:f882:HA01"
     ],
-    "audibility": "REQUIRES_OPERATOR_CONFIRMATION"
+    "family_handover": "PASS DoP(SMSL) -> Native(KINMAX) -> DoP(SMSL)",
+    "direct_handover": "PASS SMSL -> KINMAX and KINMAX -> SMSL",
+    "evidence": [
+      "evidence/dac-v35-110/2026-11-01-f10-s14-family-handover/family_handover.json",
+      "evidence/dac-v35-110/2026-11-01-f10-s14-direct-handover/handover_matrix.json"
+    ],
+    "audibility": "REQUIRES_OPERATOR_CONFIRMATION",
+    "certification_claim": "NONE"
   },
   "section_196_7": {
     "decision_table_complete": {

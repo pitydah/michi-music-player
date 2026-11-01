@@ -38,7 +38,8 @@
     "987ed18",
     "e60c3bf",
     "708fae6",
-    "d4bd8ab"
+    "d4bd8ab",
+    "5e85409"
   ],
   "integration": {
     "host_release": "DoP and DSD->PCM host receipts are native; Native DSD abort and Managed stop publish supervised receipts from the identity the host validated",
@@ -219,7 +220,7 @@
         "service_integration": "PASS",
         "unit_contract": "PASS"
       },
-      "evidence": "evidence/dac-v35-110/2026-10-31-f10-physical-handover/handover_matrix.json",
+      "evidence": "evidence/dac-v35-110/2026-11-01-f10-s14-direct-handover/handover_matrix.json",
       "physical": "scripts/f10_physical_dac_handover.py",
       "reason": "same-family DAC change releases device A with its exact binding before binding device B (controlled-host DoP proof), and a physical Direct compatible A<->B switch was executed on SMSL and KINMAX with real alsasink: plan and locator changed and the transition was reacquire. Direct->Direct uses the synchronous reacquire path and publishes no identity-bound release receipt; audibility stays operator-confirmed.",
       "source": "DAC A",
@@ -262,7 +263,7 @@
         "transitions": "PASS: shared, strict S16_LE exact, shared, compatible S32_LE exact, shared"
       }
     ],
-    "date": "2026-10-31",
+    "date": "2026-11-01",
     "direct_handover": {
       "ab": {
         "locator_changed": true,
@@ -281,7 +282,8 @@
         "source": "usb:2fc6:f882:HA01",
         "target": "usb:152a:85dd:3-3.3.2",
         "transition": "reacquire"
-      }
+      },
+      "evidence": "evidence/dac-v35-110/2026-11-01-f10-s14-direct-handover/handover_matrix.json"
     },
     "family_handover": {
       "audibility": "REQUIRES_OPERATOR_CONFIRMATION",
@@ -294,7 +296,7 @@
         "locator": "hw:CARD=HA01,DEV=0",
         "stable_device_id": "usb:2fc6:f882:HA01"
       },
-      "evidence": "evidence/dac-v35-110/2026-10-31-f10-physical-family-handover/family_handover.json",
+      "evidence": "evidence/dac-v35-110/2026-11-01-f10-s14-family-handover/family_handover.json",
       "phases": [
         "DOP on device A",
         "NATIVE_DSD on device B",
@@ -302,13 +304,14 @@
       ],
       "release_receipts": "both directions confirmed SUPERVISED_HOST / RELEASED with exact execution and device identity",
       "script": "scripts/f10_physical_family_handover.py",
-      "status": "PASS"
+      "status": "PASS",
+      "sprint": "S14"
     },
     "limitations": [
       "Direct->Direct uses the synchronous reacquire path and publishes no identity-bound release receipt.",
-      "DoP and Native DSD physical handover were not executed.",
-      "Analog output and audibility were not observed.",
-      "DoP<->Native physical handover is proven for runtime identity and release receipts; analog audibility and bit-perfect behaviour still require operator observation."
+      "Analog output and audibility were not observed; operator confirmation is still required.",
+      "DoP<->Native physical handover is proven for runtime identity and release receipts; bit-perfect behaviour is not claimed.",
+      "Native and Managed physical qualification beyond the executed DoP/Native handover remains NOT_RUN."
     ],
     "schema": "michi.f10.physical_evidence.v1"
   },
@@ -344,10 +347,39 @@
   },
   "schema_version": 1,
   "signal_path": {
-    "handover_truth": "PASS — predecessor RELEASED and target RUNNING events asserted in both E2E tests",
-    "installed": "PASS_MODELED — SignalPathNode.installed projects the processing commit receipt as a separate stage; a refused install never rewrites EFFECTIVE (tests/audio_phase2/test_signal_path_service.py::test_installed_stage_is_distinct_from_requested_and_effective)",
-    "requested_vs_effective": "PASS — tests/audio_phase2/test_signal_path_service.py::test_requested_and_effective_are_never_collapsed"
+    "handover_truth": "PASS \u2014 predecessor RELEASED and target RUNNING events asserted in both E2E tests",
+    "installed": "PASS_MODELED \u2014 SignalPathNode.installed projects the processing commit receipt as a separate stage; a refused install never rewrites EFFECTIVE (tests/audio_phase2/test_signal_path_service.py::test_installed_stage_is_distinct_from_requested_and_effective)",
+    "requested_vs_effective": "PASS \u2014 tests/audio_phase2/test_signal_path_service.py::test_requested_and_effective_are_never_collapsed"
   },
   "sprint": "AP2-F10-S14",
-  "status": "PARTIAL"
+  "status": "PARTIAL",
+  "numeric_evidence": {
+    "schema": "michi.f10.numeric_evidence.v1",
+    "corpus": "docs/audio/phase2/dsd2pcm_corpus_dsd64_v3.json",
+    "status": "PASS",
+    "certification": "CERTIFIED_LAB_SCOPE",
+    "scope": "DSD64, target 88200 Hz, HIGH profile, supervised host with fakesink; no physical DAC numeric certification",
+    "dc_gain_error_db": 1.9e-05,
+    "dc_status": "PASS",
+    "stopband_sweep_db": {
+      "40000": 143.2,
+      "60000": 153.3,
+      "80000": 151.9,
+      "100000": 151.2,
+      "120000": 149.4,
+      "160000": 149.4
+    },
+    "stopband_requirement_db": 80,
+    "frequency_response": "PASS 20 Hz-40 kHz against the native-rate decoder reference (<=0.10 dB <=20 kHz, <=0.25 dB 20-40 kHz)",
+    "decoder_latency_native_frames": 4.98,
+    "decoder_latency_us": 14.1,
+    "inter_channel_gain_mismatch_db": 0.0,
+    "inter_channel_latency_samples": 0,
+    "profiles": {
+      "HIGH@88200": "PASS (executed)",
+      "FAST": "CONDITIONAL (not executed)",
+      "BALANCED": "CONDITIONAL (not executed)",
+      "REFERENCE": "UNAVAILABLE (above DSD64 native)"
+    }
+  }
 }

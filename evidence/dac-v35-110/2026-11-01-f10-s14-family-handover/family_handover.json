@@ -1,0 +1,144 @@
+{
+  "schema": "michi.f10.physical_family_handover.v1",
+  "generated_at": "2026-11-01T14:51:19.473416+00:00",
+  "physical_dac": true,
+  "devices": {
+    "a": {
+      "stable_device_id": "usb:152a:85dd:3-3.3.2",
+      "locator": "hw:CARD=AUDIO,DEV=0"
+    },
+    "b": {
+      "stable_device_id": "usb:2fc6:f882:HA01",
+      "locator": "hw:CARD=HA01,DEV=0"
+    }
+  },
+  "fixture": {
+    "path": "/tmp/opencode/f10_physical_family_handover.dsf",
+    "bytes": 14114908,
+    "sha256": "0799d332fd2bedbc49d2bfa41ff037adf4c74d54f21b3f2e858543d67f707fbd",
+    "rate_hz": 2822400,
+    "seconds": 20,
+    "pattern": "0x69"
+  },
+  "result": "PASS",
+  "checks": {
+    "dop_on_a": true,
+    "dop_to_native": true,
+    "native_to_dop": true
+  },
+  "failure": "",
+  "phases": [
+    {
+      "tag": "dop_on_device_a",
+      "status": "playing",
+      "error": null,
+      "mode": "dop",
+      "dop_active": true,
+      "native_dsd_active": false,
+      "dsd_pcm_active": false,
+      "selected_device_id": "usb:152a:85dd:3-3.3.2",
+      "path_mode": "compatible",
+      "generation": 1,
+      "handover_state": null,
+      "handover_target": null,
+      "release": null,
+      "snapshot": {
+        "family": "DOP",
+        "state": "running",
+        "generation": 1,
+        "plan_id": "dop:3372689e3d9cc7b4cc78360468efaa44a031e408b4b2bec7b4ce720a8fd3aee5",
+        "execution_id": "dop-exec:3",
+        "stable_device_id": "usb:152a:85dd:3-3.3.2",
+        "binding_generation": 1,
+        "host_generation": 1,
+        "processing_generation": 0
+      },
+      "output_truth": null,
+      "output_truth_label": null
+    },
+    {
+      "tag": "native_dsd_on_device_b",
+      "status": "playing",
+      "error": null,
+      "mode": "native_dsd",
+      "dop_active": false,
+      "native_dsd_active": true,
+      "dsd_pcm_active": false,
+      "selected_device_id": "usb:2fc6:f882:HA01",
+      "path_mode": "compatible",
+      "generation": 2,
+      "handover_state": "ready",
+      "handover_target": "native_dsd",
+      "release": {
+        "confirmed": true,
+        "operation": "abort",
+        "plan_id": "dop:3372689e3d9cc7b4cc78360468efaa44a031e408b4b2bec7b4ce720a8fd3aee5",
+        "execution_id": "dop-exec:3",
+        "stable_device_id": "usb:152a:85dd:3-3.3.2",
+        "device": "hw:CARD=AUDIO,DEV=0",
+        "binding_generation": 1,
+        "host_generation": 1,
+        "terminal_state": "RELEASED",
+        "provenance": "SUPERVISED_HOST",
+        "attempt_id": "handover:1",
+        "target_family": "native_dsd"
+      },
+      "snapshot": {
+        "family": "NATIVE_DSD",
+        "state": "running",
+        "generation": 2,
+        "plan_id": "native-dsd:aa55f133ebc9937dbc3357029086fa4b",
+        "execution_id": "native-dsd-exec:5",
+        "stable_device_id": "usb:2fc6:f882:HA01",
+        "binding_generation": 2,
+        "host_generation": 1,
+        "processing_generation": 0
+      },
+      "output_truth": null,
+      "output_truth_label": null
+    },
+    {
+      "tag": "dop_on_device_a_again",
+      "status": "playing",
+      "error": null,
+      "mode": "dop",
+      "dop_active": true,
+      "native_dsd_active": false,
+      "dsd_pcm_active": false,
+      "selected_device_id": "usb:152a:85dd:3-3.3.2",
+      "path_mode": "compatible",
+      "generation": 3,
+      "handover_state": "ready",
+      "handover_target": "dop",
+      "release": {
+        "confirmed": true,
+        "operation": "abort",
+        "plan_id": "native-dsd:aa55f133ebc9937dbc3357029086fa4b",
+        "execution_id": "native-dsd-exec:5",
+        "stable_device_id": "usb:2fc6:f882:HA01",
+        "device": "hw:CARD=HA01,DEV=0",
+        "binding_generation": 2,
+        "host_generation": 1,
+        "terminal_state": "RELEASED",
+        "provenance": "SUPERVISED_HOST",
+        "attempt_id": "handover:2",
+        "target_family": "dop"
+      },
+      "snapshot": {
+        "family": "DOP",
+        "state": "running",
+        "generation": 3,
+        "plan_id": "dop:7a3e106f0e523e533767fb312aa1c05abd27ccfaa998efb67e6b68d431bbe8f2",
+        "execution_id": "dop-exec:8",
+        "stable_device_id": "usb:152a:85dd:3-3.3.2",
+        "binding_generation": 1,
+        "host_generation": 1,
+        "processing_generation": 0
+      },
+      "output_truth": null,
+      "output_truth_label": null
+    }
+  ],
+  "audibility": "REQUIRES_OPERATOR_CONFIRMATION",
+  "certification_claim": "NONE"
+}
