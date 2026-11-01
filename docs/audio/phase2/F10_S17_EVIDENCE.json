@@ -1,0 +1,92 @@
+{
+  "schema_version": "michi.f10.s17.evidence.v1",
+  "phase": "AP2-F10",
+  "sprint": "S17",
+  "base_sha": "c283707",
+  "generated_at": "2026-11-01",
+  "purpose": "Close the two open F10 evidence items: PAUSED/EOS live DSD-to-PCM DSP convergence and physical T03/T04 Managed <-> DSD-to-PCM handover.",
+  "production_changes": [
+    {
+      "file": "src/michi/infrastructure/audio_engines/gstreamer_host_dsd_pcm.py",
+      "change": "Track the live DSD-to-PCM pipeline PAUSED state and fail closed (DSP_PAUSED_REQUIRES_RESUME) for DSP install/removal while paused; resume restores the negotiated pipeline before processing changes.",
+      "reason": "A physical DSP reconfiguration must never autoplay a paused source or deadlock the host on a paused filter teardown."
+    }
+  ],
+  "paused_eos": {
+    "tests": [
+      "tests/audio_phase2/test_dsd_pcm_paused_eos.py::test_dsp_reconfiguration_while_paused_never_autoplays",
+      "tests/audio_phase2/test_dsd_pcm_paused_eos.py::test_eos_invalidates_dsp_and_never_autoplays"
+    ],
+    "command": "env -u MICHI_GST_LAB_SINK QT_QPA_PLATFORM=offscreen python -m pytest tests/audio_phase2/test_dsd_pcm_paused_eos.py -q",
+    "result": "2 passed",
+    "facts": {
+      "paused_dsp_install": "typed failure DSP_PAUSED_REQUIRES_RESUME; previous graph remains installed; PlaybackStatus stays PAUSED; no autoplay",
+      "paused_dsp_removal": "typed failure DSP_PAUSED_REQUIRES_RESUME; previous graph remains installed; PlaybackStatus stays PAUSED; no autoplay",
+      "resume": "after resume the processing transaction completes; EFFECTIVE graph revision 3 with negotiated caps",
+      "eos": "output-family event dsd_pcm/UNAVAILABLE detail=eos; processing effective_state=unavailable; no second accepted media; explicit stop reaches IDLE"
+    },
+    "limitation": "DSP changes requested while PAUSED are refused until resume; they are not silently applied to a quiescent pipeline."
+  },
+  "physical_handover": {
+    "tests": [
+      "tests/audio_phase2/test_f10_s17_physical_managed_dsd.py::test_t03_physical_managed_to_dsd_pcm",
+      "tests/audio_phase2/test_f10_s17_physical_managed_dsd.py::test_t04_physical_dsd_pcm_to_managed"
+    ],
+    "command": "env -u MICHI_GST_LAB_SINK MICHI_PHYSICAL_DAC_TESTS=1 QT_QPA_PLATFORM=offscreen python -m pytest tests/audio_phase2/test_f10_s17_physical_managed_dsd.py -q",
+    "result": "2 passed",
+    "device": {
+      "name": "SMSL USB AUDIO",
+      "stable_device_id": "usb:152a:85dd:3-3.3.2",
+      "hw_locator": "hw:CARD=AUDIO,DEV=0",
+      "physical_locator_used": "plughw:CARD=AUDIO,DEV=0",
+      "hw_formats": ["S32_LE", "DSD_U32_BE"],
+      "hw_f32le": false,
+      "plughw_f32le": true,
+      "reason_for_plughw": "The SMSL exposes S32_LE at the hw layer and does not expose F32LE; the DSD-to-PCM terminal contract remains F32LE and ALSA performs the final container conversion through plughw."
+    },
+    "t03": {
+      "direction": "PCM_MANAGED -> DSD_TO_PCM",
+      "predecessor_plan": "captured from transition_snapshot",
+      "release_receipt": "confirmed, terminal_state=RELEASED, provenance=SUPERVISED_HOST, exact predecessor plan/execution, device=plughw:CARD=AUDIO,DEV=0, target_family=dsd_pcm",
+      "result": "PASS",
+      "playback": "real alsasink through plughw; PLAYING; explicit STOP reaches IDLE"
+    },
+    "t04": {
+      "direction": "DSD_TO_PCM -> PCM_MANAGED",
+      "predecessor_plan": "captured from transition_snapshot",
+      "release_receipt": "confirmed, terminal_state=RELEASED, provenance=SUPERVISED_HOST, exact predecessor plan/execution, device=plughw:CARD=AUDIO,DEV=0, target_family=managed",
+      "result": "PASS",
+      "playback": "real alsasink through plughw; PLAYING; explicit STOP reaches IDLE"
+    },
+    "caveats": {
+      "analog_audibility": "REQUIRES_OPERATOR_CONFIRMATION",
+      "bit_perfect": "NOT_CLAIMED",
+      "physical_dac_certification": "NONE",
+      "registry_binding": "The test injects a physical plughw locator into the productive fake-topology device; the host chain, ALSA sink and DAC are real.",
+      "f14": "F14 remains NOT_RUN as a formal independent phase."
+    }
+  },
+  "closure": {
+    "f10_status": "CLOSED",
+    "f11_status": "ACTIVE",
+    "f14": "NOT_RUN",
+    "f12_f13_f15": "LOCKED",
+    "section_196_7": {
+      "decision_table": "PASS",
+      "new_snapshot_per_transition": "PASS",
+      "policy_runtime_coherence": "PASS",
+      "stop_pause_replay_convergence": "PASS"
+    },
+    "section_415": {
+      "freshness": "PASS",
+      "no_autoplay": "PASS",
+      "no_false_restore": "PASS",
+      "explicit_dsd_conversion": "PASS"
+    }
+  },
+  "remaining_non_blocking": [
+    "Analog audibility remains operator-confirmed.",
+    "Hardware-native F32LE is unavailable on the SMSL; physical DSD-to-PCM uses ALSA plughw.",
+    "F14 physical qualification remains a separate NOT_RUN phase."
+  ]
+}

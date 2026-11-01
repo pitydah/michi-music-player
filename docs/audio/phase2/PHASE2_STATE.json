@@ -1,6 +1,6 @@
 {
   "active_phases": [
-    "AP2-F10"
+    "AP2-F11"
   ],
   "baseline": {
     "git_commit": "9c1c2d5fbeb35b20e76cb3a02702bd7666d9b160",
@@ -17,8 +17,8 @@
     "AP2-F07": "CLOSED",
     "AP2-F08": "CLOSED",
     "AP2-F09": "CLOSED",
-    "AP2-F10": "ACTIVE",
-    "AP2-F11": "LOCKED",
+    "AP2-F10": "CLOSED",
+    "AP2-F11": "ACTIVE",
     "AP2-F12": "LOCKED",
     "AP2-F13": "LOCKED",
     "AP2-F14": "LOCKED",
