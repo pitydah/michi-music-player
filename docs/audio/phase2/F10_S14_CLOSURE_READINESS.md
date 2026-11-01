@@ -28,3 +28,18 @@
 - Explicit DSD->PCM representation: PASS.
 
 F14 remains **NOT_RUN**. F11-F15 remain **LOCKED**. F10 is not CLOSED.
+
+## T03/T04 Managed Qt+host — BLOCKED
+
+- Reproducer: `tests/audio_phase2/test_f10_s14_managed_qt_host_e2e.py`, strict xfail.
+- Observed: managed prepare succeeds (44.1 kHz / 2 ch / S16_LE), then
+  `query_managed_identity()` returns `{'managed': False}`; the handover release returns
+  `MANAGED_STOP_STALE` (`no managed execution is current`) and the owner publishes
+  `OUTPUT_OWNERSHIP_UNCONFIRMED`.
+- Root cause: `PlaybackService._continue_prepared_load` calls `AudioTransportRouter.load`
+  before `OutputSessionService.commit_media`; the router has no managed branch, so the
+  managed host execution is not addressable for release.
+- Retained production fixes (`f84c6e5`): managed `transition_snapshot()` publishes
+  plan/execution identity; managed SOFTWARE volume authority is `MICHI_SOFTWARE`.
+- Blocker record: `docs/audio/phase2/F10_S14_BLOCKERS.json`.
+- Verdict remains **NOT_READY**.

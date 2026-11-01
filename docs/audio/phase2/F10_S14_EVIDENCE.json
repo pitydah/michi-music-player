@@ -3,14 +3,16 @@
   "phase": "AP2-F10",
   "sprint": "AP2-F10-S14",
   "base_sha": "6d1a8fb64897969c75ee2df6ee967fc2d8171b54",
-  "code_sha": "5e85409b2c66a3c5f08050148bd517536e52b6e7",
+  "code_sha": "f84c6e518c7e742f499d220656f9c318d673c055",
   "ci_sha": "234a44a1a4f097219edf7cb4bada3cd20cbe6218",
   "generated_at": "2026-11-01",
   "commits": [
     "e60c3bf",
     "708fae6",
     "d4bd8ab",
-    "5e85409"
+    "5e85409",
+    "f84c6e5",
+    "3059eab"
   ],
   "cuts": {
     "1_physical_single_flight": {
@@ -31,7 +33,12 @@
     "3_managed_native_e2e": {
       "status": "PARTIAL",
       "evidence": "T05/T06 Native<->DSD PCM Qt+host PASS with fakesink; T03/T04 Managed cross-family NOT_RUN",
-      "blocker": "managed cross-family requires a real managed plan, terminal evidence and processing authority in the same handover"
+      "blocker": "T03/T04 remain BLOCKED: PlaybackService loads through AudioTransportRouter before OutputSessionService.commit_media, so the managed host execution is not addressable for the handover release (MANAGED_STOP_STALE). Reproducer: tests/audio_phase2/test_f10_s14_managed_qt_host_e2e.py (strict xfail).",
+      "blocker_id": "T03-T04-MANAGED-HOST-ADDRESSABILITY",
+      "blocked_transitions": [
+        "T03",
+        "T04"
+      ]
     },
     "4_dsp_quality": {
       "status": "NOT_RUN",
@@ -69,7 +76,11 @@
     },
     "9_regressions_ci": {
       "status": "PARTIAL",
-      "evidence": "ruff check/format PASS, targeted S14 32 passed, alignment GO; full suite and exact-SHA CI pending push"
+      "evidence": "ruff check/format PASS, targeted S14 32 passed, alignment GO; full suite and exact-SHA CI pending push",
+      "post_ci_fixes": [
+        "f84c6e5",
+        "3059eab"
+      ]
     }
   },
   "commands": [
@@ -185,5 +196,7 @@
     "dac-v35-software-closure": "success",
     "dop-native-gate-a": "success"
   },
-  "ci_verified_at": "2026-11-01"
+  "ci_verified_at": "2026-11-01",
+  "previous_code_sha": "5e85409b2c66a3c5f08050148bd517536e52b6e7",
+  "blockers_file": "docs/audio/phase2/F10_S14_BLOCKERS.json"
 }

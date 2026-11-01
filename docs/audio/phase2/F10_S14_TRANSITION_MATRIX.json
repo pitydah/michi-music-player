@@ -39,7 +39,9 @@
     "e60c3bf",
     "708fae6",
     "d4bd8ab",
-    "5e85409"
+    "5e85409",
+    "f84c6e5",
+    "3059eab"
   ],
   "integration": {
     "host_release": "DoP and DSD->PCM host receipts are native; Native DSD abort and Managed stop publish supervised receipts from the identity the host validated",
@@ -87,29 +89,31 @@
       "coverage": {
         "host_e2e": "NOT_RUN",
         "physical": "NOT_RUN",
-        "qt_host_e2e": "NOT_RUN",
+        "qt_host_e2e": "BLOCKED",
         "service_integration": "PASS",
         "unit_contract": "PASS"
       },
-      "reason": "transaction and receipt proof with a controlled host receipt; no physical DAC execution S14: managed cross-family Qt+host E2E is still NOT_RUN; managed destination requires a real managed plan, terminal evidence and processing authority.",
+      "reason": "transaction and receipt proof with a controlled host receipt; no physical DAC execution S14: managed cross-family Qt+host E2E is still NOT_RUN; managed destination requires a real managed plan, terminal evidence and processing authority. S14 Qt+host reproducer is BLOCKED: PlaybackService loads through the router before the managed commit, so the managed host execution is not addressable for the handover release (MANAGED_STOP_STALE).",
       "source": "PCM_MANAGED",
       "status": "PASS_SERVICE_PATH",
       "target": "DSD_TO_PCM",
-      "test": "tests/audio_phase2/test_family_handover_matrix.py::test_t03_managed_to_dsd_pcm_releases_before_prepare"
+      "test": "tests/audio_phase2/test_family_handover_matrix.py::test_t03_managed_to_dsd_pcm_releases_before_prepare",
+      "blocker_id": "T03-T04-MANAGED-HOST-ADDRESSABILITY"
     },
     "T04": {
       "coverage": {
         "host_e2e": "NOT_RUN",
         "physical": "NOT_RUN",
-        "qt_host_e2e": "NOT_RUN",
+        "qt_host_e2e": "BLOCKED",
         "service_integration": "PASS",
         "unit_contract": "PASS"
       },
-      "reason": "transaction proof; Managed destination requires a real DAC qualification S14: managed cross-family Qt+host E2E is still NOT_RUN; managed destination requires a real managed plan, terminal evidence and processing authority.",
+      "reason": "transaction proof; Managed destination requires a real DAC qualification S14: managed cross-family Qt+host E2E is still NOT_RUN; managed destination requires a real managed plan, terminal evidence and processing authority. S14 Qt+host reproducer is BLOCKED: PlaybackService loads through the router before the managed commit, so the managed host execution is not addressable for the handover release (MANAGED_STOP_STALE).",
       "source": "DSD_TO_PCM",
       "status": "PASS_SERVICE_PATH",
       "target": "PCM_MANAGED",
-      "test": "tests/audio_phase2/test_family_handover_matrix.py::test_t04_dsd_pcm_to_managed_releases_before_prepare"
+      "test": "tests/audio_phase2/test_family_handover_matrix.py::test_t04_dsd_pcm_to_managed_releases_before_prepare",
+      "blocker_id": "T03-T04-MANAGED-HOST-ADDRESSABILITY"
     },
     "T05": {
       "coverage": {
@@ -347,9 +351,9 @@
   },
   "schema_version": 1,
   "signal_path": {
-    "handover_truth": "PASS \u2014 predecessor RELEASED and target RUNNING events asserted in both E2E tests",
-    "installed": "PASS_MODELED \u2014 SignalPathNode.installed projects the processing commit receipt as a separate stage; a refused install never rewrites EFFECTIVE (tests/audio_phase2/test_signal_path_service.py::test_installed_stage_is_distinct_from_requested_and_effective)",
-    "requested_vs_effective": "PASS \u2014 tests/audio_phase2/test_signal_path_service.py::test_requested_and_effective_are_never_collapsed"
+    "handover_truth": "PASS — predecessor RELEASED and target RUNNING events asserted in both E2E tests",
+    "installed": "PASS_MODELED — SignalPathNode.installed projects the processing commit receipt as a separate stage; a refused install never rewrites EFFECTIVE (tests/audio_phase2/test_signal_path_service.py::test_installed_stage_is_distinct_from_requested_and_effective)",
+    "requested_vs_effective": "PASS — tests/audio_phase2/test_signal_path_service.py::test_requested_and_effective_are_never_collapsed"
   },
   "sprint": "AP2-F10-S14",
   "status": "PARTIAL",
@@ -381,5 +385,6 @@
       "BALANCED": "CONDITIONAL (not executed)",
       "REFERENCE": "UNAVAILABLE (above DSD64 native)"
     }
-  }
+  },
+  "blockers_file": "docs/audio/phase2/F10_S14_BLOCKERS.json"
 }

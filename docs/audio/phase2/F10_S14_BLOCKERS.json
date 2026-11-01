@@ -1,0 +1,31 @@
+{
+  "schema_version": "michi.f10.s14.blockers.v1",
+  "phase": "AP2-F10",
+  "sprint": "S14",
+  "generated_at": "2026-11-01",
+  "blockers": [
+    {
+      "id": "T03-T04-MANAGED-HOST-ADDRESSABILITY",
+      "status": "BLOCKED",
+      "transitions": [
+        "T03 PCM_MANAGED -> DSD_TO_PCM",
+        "T04 DSD_TO_PCM -> PCM_MANAGED"
+      ],
+      "evidence": {
+        "test": "tests/audio_phase2/test_f10_s14_managed_qt_host_e2e.py",
+        "marker": "pytest.mark.xfail(strict=True)",
+        "command": "MICHI_GST_LAB_SINK=fakesink MICHI_DOP_PLUGIN_PREFIX=$PWD/build/lib.linux-x86_64-cpython-311/michi/native/gstreamer-1.0 QT_QPA_PLATFORM=offscreen python -m pytest tests/audio_phase2/test_f10_s14_managed_qt_host_e2e.py -q",
+        "result": "2 xfailed in 121.37 s",
+        "observed_query": "query_managed_identity() -> {'managed': False}",
+        "observed_release": "{'stopped': False, 'stale': True, 'code': 'MANAGED_STOP_STALE', 'reason': 'no managed execution is current'}",
+        "owner_result": "OUTPUT_OWNERSHIP_UNCONFIRMED: the predecessor release was not confirmed; the target was never prepared"
+      },
+      "root_cause": "PlaybackService._continue_prepared_load calls AudioTransportRouter.load(file_path) before OutputSessionService.commit_media(token, file_path). The router delegates to the backend and has no managed branch, so the managed host execution is not addressable for the handover release.",
+      "impact": "T03/T04 cannot be certified as Qt+host E2E until the PlaybackService/router load-commit ordering preserves the managed host execution.",
+      "production_fixes_retained": [
+        "f84c6e518c7e742f499d220656f9c318d673c055: managed transition_snapshot publishes plan/execution identity; managed SOFTWARE volume authority is MICHI_SOFTWARE"
+      ],
+      "not_faked": true
+    }
+  ]
+}
