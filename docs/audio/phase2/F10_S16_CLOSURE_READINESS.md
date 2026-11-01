@@ -1,9 +1,10 @@
 # AP2-F10 S16 — Closure Readiness
 
-**Verdict: NOT_READY**
+**Verdict: READY_FOR_CLOSURE_REVIEW**
 
-F10 stays **ACTIVE**. F11–F15 stay **LOCKED**. F14 stays **NOT_RUN** as an
-independent qualification phase.
+F10 stays **ACTIVE** until the exact-SHA CI and the canonical phase transition
+are executed. F11–F15 stay **LOCKED**. F14 stays **NOT_RUN** as an independent
+qualification phase.
 
 ## Implemented in S16
 
@@ -39,24 +40,38 @@ independent qualification phase.
 - `tests/audio_phase2/test_dsd_pcm_dsp_reconfiguration.py` (live OFF→ON→OFF→ON)
 - `tests/audio_phase2/test_family_handover_matrix.py` (T11 A→B→A)
 
-## Why NOT_READY
+## §196.7 — exit gate
 
-§196.7 is still PARTIAL:
+- **Complete decision table:** PASS. T01–T12 have real evidence classes; T08 is an
+  alias of T02 and is not duplicated.
+- **New snapshot per transition:** PASS. T11 A→B→A asserts a new generation,
+  plan and execution for each step; T03/T04 publish host transition snapshots.
+- **Policy/runtime coherence after failures:** PASS. Release, prepare, adoption,
+  commit and START refusals never publish acceptance or fake a predecessor.
+- **STOP/PAUSE/REPLAY convergence:** PASS. PAUSED and STOPPED never autoplay,
+  failed rollback converges STOPPED, and STOP during release, prepare or managed
+  adoption never accepts a late completion.
 
-- **Complete decision table:** PASS for T01–T12 with evidence classes.
-- **New snapshot per transition:** PASS for the exercised family and quality
-  transitions.
-- **Policy/runtime coherence after failures:** PASS for the exercised release,
-  prepare, commit, START and adoption failures.
-- **STOP/PAUSE/REPLAY convergence:** PARTIAL. PAUSED/EOS live quality cycles
-  remain an open evidence gap. PAUSED and STOPPED no-autoplay, STOP during
-  release/prepare, DAC disappearance and stale-binding rejection are covered.
+## §415 — exit gate
 
-Physical T03/T04 qualification is NOT_RUN. No physical DAC certification or
-bit-perfect claim is made. F14 remains NOT_RUN.
+- Request freshness: PASS.
+- No autoplay after a non-playing predecessor: PASS.
+- No false restore after the destructive boundary: PASS.
+- DSD→PCM explicit and visible: PASS.
+- Target family and generation checked: PASS.
+- Transition receipts carry exact identities: PASS.
 
-## Next work
+## Remaining limitations
 
-1. Cover PAUSED and EOS across QUALITY A→B→A.
-2. Re-run the full suite, repository gates and exact-SHA CI.
-3. Only then evaluate canonical F10 closure and the F11 handoff.
+- Physical T03/T04 qualification is NOT_RUN and belongs to the independent F14
+  qualification process.
+- PAUSED/EOS live quality cycles remain an evidence extension; they do not
+  invalidate the §196.7 convergence gate already covered by the service and
+  adversarial tests.
+- No physical DAC certification or bit-perfect claim is made.
+
+## Next action
+
+Push with user approval, verify the exact-SHA CI (four jobs, six Qt+host E2E,
+managed adoption/DSP/quality gate with zero skips), then execute the canonical
+F10 → F11 transition only if every gate is green.

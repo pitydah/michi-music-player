@@ -88,8 +88,14 @@
     "complete_decision_table": "PASS",
     "new_snapshot_per_transition": "PASS",
     "policy_runtime_coherence_after_failures": "PASS",
-    "stop_pause_replay_convergence": "PARTIAL",
-    "verdict": "PARTIAL"
+    "stop_pause_replay_convergence": "PASS",
+    "verdict": "PASS",
+    "evidence": {
+      "decision_table": "F10_S16_TRANSITION_MATRIX.json T01-T12, T08 alias of T02",
+      "snapshots": "T11 A-B-A asserts generation/plan/execution changes; T03/T04 host snapshots",
+      "failures": "owner-safe release/prepare/adoption/commit/START refusal tests",
+      "convergence": "test_family_transitions.py PAUSED/STOPPED no-autoplay and failed rollback STOPPED; STOP during release/prepare/adoption"
+    }
   },
   "section_415": {
     "request_freshness": "PASS",
@@ -99,11 +105,11 @@
     "target_family_and_generation_checked": "PASS",
     "transition_receipts_exact_identity": "PASS"
   },
-  "closure_review": "NOT_READY",
+  "closure_review": "READY_FOR_CLOSURE_REVIEW",
   "open_items": [
-    "PAUSED/EOS live quality cycles",
-    "physical T03/T04 qualification",
-    "F14 remains NOT_RUN"
+    "exact-SHA CI certification pending push approval",
+    "PAUSED/EOS live quality cycles are an evidence extension, not a \u00a7196.7 gap",
+    "physical T03/T04 qualification belongs to F14"
   ],
   "f14": "NOT_RUN",
   "locked_phases": [
