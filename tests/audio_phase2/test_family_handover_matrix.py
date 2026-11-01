@@ -282,8 +282,15 @@ def _managed_request():
     return OutputRequest(facts, "dev:matrix", "profile:managed")
 
 
-def _service(requests: dict[str, OutputRequest], tx: _Tx, executor: _Deferred):
+def _service(
+    requests: dict[str, OutputRequest],
+    tx: _Tx,
+    executor: _Deferred,
+    *,
+    dsd_current=None,
+):
     provider = lambda path: requests[path.name]  # noqa: E731
+    dsd_checker = dsd_current or (lambda _plan: True)
     return OutputSessionService(
         OutputPlanner(),
         request_provider=provider,
@@ -297,7 +304,7 @@ def _service(requests: dict[str, OutputRequest], tx: _Tx, executor: _Deferred):
         dsd_pcm_commit=lambda _p: None,
         dsd_pcm_abort=tx.dsd_abort,
         dsd_pcm_stop=tx.dsd_abort,
-        dsd_pcm_plan_still_current=lambda _plan: True,
+        dsd_pcm_plan_still_current=dsd_checker,
         native_dsd_prepare=tx.native_prepare,
         native_dsd_commit=lambda _p: None,
         native_dsd_abort=tx.native_abort,
@@ -794,3 +801,40 @@ def test_t12_dop_dac_change_releases_before_prepare(tmp_path: Path) -> None:
     assert evidence["execution_id"] == "exec:dac-a"
     assert evidence["device"] == "hw:3,0"
     assert evidence["stable_device_id"] == "usb:152a:85dd"
+
+
+def test_t11_stale_binding_rejects_before_releasing_the_predecessor(
+    tmp_path: Path,
+) -> None:
+    plan_a = _dsd_plan(quality="FAST", rates=(88_200,))
+    plan_b = _dsd_plan(quality="HIGH", rates=(88_200, 176_400))
+    requests = {
+        "quality-a.dsf": OutputRequest.dsd_to_pcm(
+            plan_a, plan_a.stable_device_id, "profile:dsd"
+        ),
+        "quality-b.dsf": OutputRequest.dsd_to_pcm(
+            plan_b, plan_b.stable_device_id, "profile:dsd"
+        ),
+    }
+    tx = _Tx()
+    executor = _Deferred()
+    current = {"ok": True}
+    session = _service(requests, tx, executor, dsd_current=lambda _plan: current["ok"])
+
+    session.prepare_for_media(tmp_path / "quality-a.dsf")
+    prepared_a = session._dsd_pcm_prepared
+    assert prepared_a is not None
+    assert tx.dsd_prepare_calls == 1
+
+    current["ok"] = False
+    failures: list[Exception] = []
+    session.prepare_for_media_async(
+        tmp_path / "quality-b.dsf", lambda _token: None, failures.append
+    )
+    executor.drive()
+
+    assert failures
+    assert "DSD_PCM_BINDING_STALE" in str(failures[0])
+    assert tx.aborts == []
+    assert tx.dsd_prepare_calls == 1
+    assert session._dsd_pcm_prepared is prepared_a
