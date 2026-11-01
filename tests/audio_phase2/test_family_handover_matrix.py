@@ -689,6 +689,35 @@ def test_t11_dsd_pcm_quality_change_releases_before_prepare(tmp_path: Path) -> N
     assert evidence["execution_id"] == prepared_a.execution_id
     assert evidence["device"] == prepared_a.binding_locator
 
+    requests["quality-a2.dsf"] = OutputRequest.dsd_to_pcm(
+        plan_a, plan_a.stable_device_id, "profile:dsd"
+    )
+    prepared_b = session._dsd_pcm_prepared
+    assert prepared_b is not None
+    tokens_again: list[str] = []
+    failures_again: list[Exception] = []
+    session.prepare_for_media_async(
+        tmp_path / "quality-a2.dsf", tokens_again.append, failures_again.append
+    )
+    executor.run_one()
+    assert tx.aborts == [f"dsd_pcm:{prepared_a.execution_id}"]
+    assert tx.dsd_prepare_calls == 2
+
+    executor.drive()
+    assert failures_again == []
+    assert len(tokens_again) == 1
+    assert tx.aborts == [
+        f"dsd_pcm:{prepared_a.execution_id}",
+        f"dsd_pcm:{prepared_b.execution_id}",
+    ]
+    assert tx.dsd_prepare_calls == 3
+    assert session._dsd_pcm_prepared is not None
+    assert session._dsd_pcm_prepared.plan.plan_id == plan_a.plan_id
+    assert session._dsd_pcm_prepared.plan.quality_profile == "FAST"
+    evidence = session.last_handover_release_evidence
+    assert evidence is not None
+    assert evidence["execution_id"] == prepared_b.execution_id
+
 
 def test_t12_dop_dac_change_releases_before_prepare(tmp_path: Path) -> None:
     """T12: same-family DoP DAC A→B releases device A before binding device B."""
