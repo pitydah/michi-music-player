@@ -504,6 +504,89 @@ class _DirectExecutor:
         }
 
 
+class _DirectDeferred:
+    """Deterministic async boundary for the owner-safe Direct handover."""
+
+    def __init__(self) -> None:
+        self.pending: list[tuple[Any, Any]] = []
+
+    def submit(self, work, completed) -> None:
+        self.pending.append((work, completed))
+
+    def run_one(self) -> None:
+        work, completed = self.pending.pop(0)
+        try:
+            value = work()
+        except Exception as exc:  # noqa: BLE001 - test boundary
+            completed(None, exc)
+        else:
+            completed(value, None)
+
+
+def test_t01_direct_to_dsd_pcm_async_releases_before_target_prepare(
+    tmp_path: Path,
+) -> None:
+    """T01: the async owner-safe path releases Direct before DSD→PCM prepare."""
+    from tests.dac.test_v34_output_planner import DEVICE, _facts
+
+    dsd = _dsd_plan()
+    direct_facts = _facts()
+    executor = _DirectExecutor()
+    tx = _Tx()
+    deferred = _DirectDeferred()
+    requests = {
+        "direct.flac": OutputRequest(direct_facts, DEVICE, "profile:direct"),
+        "target.dsf": OutputRequest.dsd_to_pcm(
+            dsd, dsd.stable_device_id, "profile:direct"
+        ),
+    }
+    service = OutputSessionService(
+        OutputPlanner(),
+        facts_provider=lambda _path: direct_facts,
+        request_provider=lambda path: requests[path.name],
+        executors={"gstreamer": executor},
+        plan_still_current=lambda _plan: True,
+        async_submit=deferred.submit,
+        dsd_pcm_prepare=tx.dsd_prepare,
+        dsd_pcm_commit=lambda _p: None,
+        dsd_pcm_abort=tx.dsd_abort,
+        dsd_pcm_stop=tx.dsd_abort,
+        dsd_pcm_plan_still_current=lambda _plan: True,
+    )
+
+    direct_token = service.prepare_for_media(Path("direct.flac"))
+    service.commit_media(direct_token, Path("direct.flac"))
+    direct_plan = executor.plan
+    assert direct_plan is not None
+
+    tokens: list[str] = []
+    failures: list[Exception] = []
+    service.prepare_for_media_async(Path("target.dsf"), tokens.append, failures.append)
+
+    deferred.run_one()  # characterization: no physical command yet
+    assert executor.release_reasons == []
+    assert tx.dsd_prepare_calls == 0
+
+    deferred.run_one()  # release resolves before the target prepares
+    assert executor.release_reasons == ["handover_to_dsd_pcm"]
+    assert tx.dsd_prepare_calls == 0
+
+    deferred.run_one()  # target prepare + commit
+    assert tx.dsd_prepare_calls == 1
+    assert failures == []
+    assert len(tokens) == 1
+    assert service.mode == "dsd_pcm"
+    assert service.dsd_pcm_active is True
+    evidence = service.last_handover_release_evidence
+    assert evidence is not None
+    assert evidence["plan_id"] == direct_plan.plan_id
+    assert evidence["execution_id"] == "exec:direct:matrix"
+    assert evidence["command_confirmed"] is True
+    assert evidence["terminal_state"] == "RELEASED"
+    assert evidence["provenance"] == "SUPERVISED_HOST"
+    assert evidence["target_family"] == "dsd_pcm"
+
+
 def test_t01_direct_to_dsd_pcm_records_the_host_release(tmp_path: Path) -> None:
     """T01: a committed Direct execution releases with exact identity."""
     from tests.dac.test_v34_output_planner import DEVICE, _facts

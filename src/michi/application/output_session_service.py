@@ -1708,6 +1708,20 @@ class OutputSessionService:
         receives exact identities instead of reading live owner state.
         """
         snapshots: list[_PredecessorSnapshot] = []
+        direct = self._committed_direct_snapshot()
+        if direct is not None:
+            snapshots.append(
+                _PredecessorSnapshot(
+                    family="direct",
+                    prepared=direct,
+                    plan_id=direct.plan.plan_id,
+                    execution_id=direct.receipt,
+                    stable_device_id=direct.plan.stable_device_id,
+                    binding_generation=int(direct.plan.binding.generation),
+                    host_generation=0,
+                    device=direct.plan.binding.locator,
+                )
+            )
         dsd_pcm = self._dsd_pcm_prepared
         if dsd_pcm is not None:
             plan = dsd_pcm.plan
@@ -2105,6 +2119,7 @@ class OutputSessionService:
         plan: list[tuple[_PredecessorSnapshot, Callable[..., dict]]] = []
         for snapshot in attempt.predecessors:
             abort = {
+                "direct": self._direct_abort,
                 "dsd_pcm": self._dsd_pcm_abort,
                 "dop": self._dop_abort,
                 "native_dsd": self._native_dsd_abort,
@@ -2120,6 +2135,11 @@ class OutputSessionService:
         return tuple(plan)
 
     @staticmethod
+    def _direct_abort(prepared: _DirectSessionSnapshot, reason: str) -> dict:
+        """Pure physical release of the captured Direct executor."""
+        return prepared.executor.release(reason)
+
+    @staticmethod
     def _handover_identity_key(snapshot: _PredecessorSnapshot) -> tuple[object, ...]:
         """Exact physical identity protected by the single-flight lease."""
         return (
@@ -2133,6 +2153,13 @@ class OutputSessionService:
         )
 
     def _handover_identity_is_current(self, snapshot: _PredecessorSnapshot) -> bool:
+        if snapshot.family == "direct":
+            current_direct = self._committed_direct_snapshot()
+            return (
+                current_direct is not None
+                and current_direct.plan.plan_id == snapshot.plan_id
+                and current_direct.receipt == snapshot.execution_id
+            )
         current: object | None
         if snapshot.family == "dsd_pcm":
             current = self._dsd_pcm_prepared
@@ -2153,6 +2180,16 @@ class OutputSessionService:
     def _handover_family_confirmed(
         self, snapshot: _PredecessorSnapshot, result
     ) -> tuple[bool, str]:
+        if snapshot.family == "direct":
+            if not isinstance(result, dict):
+                return False, "DIRECT_RELEASE_UNCONFIRMED"
+            if result.get("command_confirmed") is not True:
+                return False, "DIRECT_RELEASE_UNCONFIRMED"
+            if not self._handover_receipt_matches(
+                snapshot, result, confirmation_key="command_confirmed"
+            ):
+                return False, "DIRECT_RELEASE_RECEIPT_INVALID"
+            return True, ""
         if snapshot.family == "dop":
             return (
                 self._dop_cleanup_confirmed(result, snapshot.prepared),
@@ -2187,12 +2224,16 @@ class OutputSessionService:
         return False, "OUTPUT_CLEANUP_UNCONFIRMED"
 
     def _handover_receipt_matches(
-        self, snapshot: _PredecessorSnapshot, receipt
+        self,
+        snapshot: _PredecessorSnapshot,
+        receipt,
+        *,
+        confirmation_key: str = "confirmed",
     ) -> bool:
         if not isinstance(receipt, dict):
             return False
         if (
-            receipt.get("confirmed") is not True
+            receipt.get(confirmation_key) is not True
             or receipt.get("terminal_state") != "RELEASED"
             or receipt.get("provenance") != "SUPERVISED_HOST"
         ):
@@ -2242,6 +2283,30 @@ class OutputSessionService:
 
     def _reconcile_handover_release(self, snapshot: _PredecessorSnapshot) -> None:
         """Retire exactly the released identity; never touch a newer one."""
+        if snapshot.family == "direct":
+            if not self._handover_identity_is_current(snapshot):
+                return
+            self._previous_direct = None
+            if self._executor_receipt == snapshot.execution_id:
+                self._executor = None
+                self._executor_receipt = None
+            self._token_value = None
+            self._path = None
+            self._error_code = None
+            if self._mode == "direct":
+                self._mode = "shared"
+            if self._state in (
+                OutputSessionState.READY,
+                OutputSessionState.RUNNING,
+                OutputSessionState.PAUSED,
+                OutputSessionState.RECONFIGURING,
+            ):
+                if self._state is OutputSessionState.RECONFIGURING:
+                    self._transition(OutputSessionState.READY)
+                self._transition(OutputSessionState.RELEASING)
+                self._transition(OutputSessionState.IDLE)
+            self._notify()
+            return
         if snapshot.family == "dsd_pcm":
             self._reconcile_confirmed_dsd_pcm_cleanup(snapshot.prepared)
             self._record_dsd_pcm_family(
@@ -2375,15 +2440,25 @@ class OutputSessionService:
                 )
             )
             return
-        for _snapshot, result, failure in results:
-            if failure is None and isinstance(result, dict):
+        for snapshot, result, failure in results:
+            if failure is not None or not isinstance(result, dict):
+                continue
+            if snapshot.family == "direct":
+                self._record_direct_release_evidence(
+                    snapshot.prepared,
+                    result,
+                    f"handover_to_{attempt.target_family}",
+                )
+                selected = dict(result)
+            else:
                 release = result.get("release")
-                if isinstance(release, dict):
-                    selected = dict(release)
-                    selected["attempt_id"] = attempt.attempt_id
-                    selected["target_family"] = attempt.target_family
-                    self._last_handover_release_evidence = selected
-                    break
+                if not isinstance(release, dict):
+                    continue
+                selected = dict(release)
+            selected["attempt_id"] = attempt.attempt_id
+            selected["target_family"] = attempt.target_family
+            self._last_handover_release_evidence = selected
+            break
         self._handover_state = HandoverState.PREPARE
         self._handover_release_truth = ReleaseTruth.RELEASE_CONFIRMED
         request = attempt.request
