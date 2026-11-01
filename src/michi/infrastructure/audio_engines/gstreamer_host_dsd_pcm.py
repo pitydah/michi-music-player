@@ -18,6 +18,7 @@ from __future__ import annotations
 import base64
 import contextlib
 import hashlib
+import os
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -218,6 +219,11 @@ class DsdPcmHostRuntime:
             sink.set_property("max-buffers", 1)
             sink.set_property("drop", True)
             sink.set_property("sync", False)
+        if (
+            request.sink_factory == "fakesink"
+            and os.environ.get("MICHI_GST_LAB_SYNC") == "1"
+        ):
+            sink.set_property("sync", True)
         filesrc.set_property("location", request.path)
         reversed_bytes = request.bit_order.upper() == "LSBF"
         dsd_caps_obj = gst.Caps.from_string(
@@ -419,7 +425,16 @@ class DsdPcmHostRuntime:
             filter_bin.set_state(self._gst.State.PAUSED)
             filter_bin.get_state(2 * self._gst.SECOND)
             if self._pipeline is not None:
-                self._pipeline.set_state(self._gst.State.PAUSED)
+                # A committed live run must keep flowing so the newly inserted
+                # working capsfilter negotiates real caps. A pre-commit install
+                # stays PAUSED: starting early would consume the source before
+                # the commit/capture boundary.
+                target_state = (
+                    self._gst.State.PLAYING
+                    if self._committed
+                    else self._gst.State.PAUSED
+                )
+                self._pipeline.set_state(target_state)
                 self._pipeline.get_state(2 * self._gst.SECOND)
             working_capsfilter = info.get("working_capsfilter")
             deadline = time.monotonic() + 2.0
