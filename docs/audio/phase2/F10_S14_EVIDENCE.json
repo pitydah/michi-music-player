@@ -41,8 +41,14 @@
       ]
     },
     "4_dsp_quality": {
-      "status": "NOT_RUN",
-      "blocker": "S13 proves DSP ON/OFF and quality service-path; S14 did not add ON->OFF->ON / A->B->A Qt+host runs"
+      "status": "PARTIAL",
+      "evidence": [
+        "tests/audio_phase2/test_dsd_pcm_product_dsp_e2e.py::test_selected_profile_is_effective_on_product_dsd_playback",
+        "tests/audio_phase2/test_dsd_pcm_product_dsp_e2e.py::test_dsp_on_to_off_while_dsd_pcm_is_running",
+        "tests/audio_phase2/test_family_handover_matrix.py::test_t11_dsd_pcm_quality_change_releases_before_prepare"
+      ],
+      "verified": "20 passed in 5.85 s combined with Cut 4/Cut 6 and T03-T06 matrix tests (fakesink lab, real DSP host).",
+      "blocker": "Missing extended scenarios: DSP OFF->ON->OFF, quality A->B->A, PAUSED, EOS, stale binding, host restart for T09-T11."
     },
     "5_numeric_closure": {
       "status": "PASS",
@@ -58,8 +64,12 @@
       "limitation": "No physical DAC numeric certification; lab host only"
     },
     "6_adversarial_qt": {
-      "status": "NOT_RUN",
-      "blocker": "release-pending QTimer barrier and DAC disconnect/host restart matrix not extended in S14"
+      "status": "PARTIAL",
+      "evidence": [
+        "tests/audio_phase2/test_owner_safe_handover_adversarial.py (9 tests: release rejected, foreign receipt, host restart, STOP during RELEASE, STOP during PREPARE, device-selection ABA, prepare failure after RELEASE, A->B->C, Qt loop free during RELEASE/PREPARE)"
+      ],
+      "verified": "9 adversarial tests passed; 20 passed in 5.85 s combined with Cut 4 and T03-T06 matrix tests.",
+      "blocker": "Missing PAUSED, duplicate release, START failure, DAC disconnect, late callback/recovery after ownership uncertain."
     },
     "7_physical": {
       "status": "PASS_ALSA_RUNTIME",
@@ -198,5 +208,10 @@
   },
   "ci_verified_at": "2026-11-01",
   "previous_code_sha": "5e85409b2c66a3c5f08050148bd517536e52b6e7",
-  "blockers_file": "docs/audio/phase2/F10_S14_BLOCKERS.json"
+  "blockers_file": "docs/audio/phase2/F10_S14_BLOCKERS.json",
+  "cut4_6_verification": {
+    "command": "MICHI_GST_LAB_SINK=fakesink MICHI_DOP_PLUGIN_PREFIX=$PWD/build/lib.linux-x86_64-cpython-311/michi/native/gstreamer-1.0 QT_QPA_PLATFORM=offscreen python -m pytest tests/audio_phase2/test_dsd_pcm_product_dsp_e2e.py tests/audio_phase2/test_family_handover_matrix.py tests/audio_phase2/test_owner_safe_handover_adversarial.py -q",
+    "result": "20 passed, 1 warning in 5.85 s",
+    "date": "2026-11-01"
+  }
 }

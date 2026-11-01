@@ -43,3 +43,9 @@ F14 remains **NOT_RUN**. F11-F15 remain **LOCKED**. F10 is not CLOSED.
   plan/execution identity; managed SOFTWARE volume authority is `MICHI_SOFTWARE`.
 - Blocker record: `docs/audio/phase2/F10_S14_BLOCKERS.json`.
 - Verdict remains **NOT_READY**.
+
+## Cut 4 / Cut 6 partial closure (2026-11-01)
+
+- Cut 4 `PARTIAL`: T09/T10 are proven by the productive DSD->PCM DSP tests; T11 is proven by the same-family handover matrix test. Missing extended OFF->ON->OFF, A->B->A, PAUSED, EOS, stale-binding and host-restart scenarios.
+- Cut 6 `PARTIAL`: the nine adversarial/Qt tests cover release rejection, foreign receipt, host restart, STOP during RELEASE/PREPARE, device-selection ABA, prepare failure after RELEASE, A->B->C and a free Qt loop. Missing PAUSED, duplicate release, START failure, DAC disconnect and late-callback recovery.
+- Combined verification: `20 passed, 1 warning in 5.85 s` (fakesink lab, real DSP host).
