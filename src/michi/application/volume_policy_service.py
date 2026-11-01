@@ -45,6 +45,12 @@ class VolumePolicyService:
     def authority(self) -> VolumeAuthority:
         if self._output.mode == "shared":
             return VolumeAuthority.MICHI_SOFTWARE
+        if self._output.mode == "managed":
+            # Managed output owns a software gain stage inside its own graph;
+            # the session publishes the concrete authority so Playback can
+            # synchronize the reference volume without inventing unity.
+            resolved = getattr(self._output, "volume_authority", None)
+            return resolved if resolved is not None else VolumeAuthority.UNKNOWN
         if self._output.mode != "direct":
             return VolumeAuthority.UNKNOWN
         resolved = getattr(self._output, "volume_authority", None)

@@ -1385,12 +1385,18 @@ class OutputSessionService:
 
     def transition_snapshot(self) -> dict:
         prepared = (
-            self._dsd_pcm_prepared or self._dop_prepared or self._native_dsd_prepared
+            self._dsd_pcm_prepared
+            or self._dop_prepared
+            or self._native_dsd_prepared
+            or self._managed_prepared
         )
         plan = (
             prepared.plan
             if prepared is not None
-            else self._dsd_pcm_plan or self._dop_plan or self._native_dsd_plan
+            else self._dsd_pcm_plan
+            or self._dop_plan
+            or self._native_dsd_plan
+            or self._managed_plan
         )
         return {
             "family": self.current_family,
@@ -1558,6 +1564,8 @@ class OutputSessionService:
         policy = self.volume_policy
         if policy is None:
             return None
+        if self._mode == "managed" and policy is VolumePolicy.SOFTWARE:
+            return VolumeAuthority.MICHI_SOFTWARE
         if policy is VolumePolicy.FIXED:
             return VolumeAuthority.FIXED
         if policy is VolumePolicy.HARDWARE:

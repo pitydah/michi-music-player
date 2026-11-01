@@ -68,6 +68,9 @@ class _ExactOpeningProbe:
 
 
 def _build_graph(tmp_path, **service_kwargs):
+    preparation_executor = (
+        service_kwargs.pop("output_preparation_executor", None) or _InlineExecutor()
+    )
     from michi.application.audio_output_selection_coordinator import (
         AudioOutputSelectionCoordinator,
     )
@@ -112,7 +115,7 @@ def _build_graph(tmp_path, **service_kwargs):
         audio_sysfs_root=sysfs,
         alsa_proc_root=proc,
         qualification_adapter=_ExactOpeningProbe(),
-        output_preparation_executor=_InlineExecutor(),
+        output_preparation_executor=preparation_executor,
         **service_kwargs,
     )
     graph.dac_qualification.cache_evidence(
@@ -201,6 +204,13 @@ def test_managed_identity_route_through_the_productive_composition(
 
         graph.output_session.commit_media(tokens[0], FIXTURE)
         assert graph.output_session.state.value == "running"
+
+        snapshot = graph.output_session.transition_snapshot()
+        assert snapshot["plan_id"]
+        assert snapshot["execution_id"]
+        from michi.application.audio_output_ports import VolumeAuthority
+
+        assert graph.output_session.volume_authority is VolumeAuthority.MICHI_SOFTWARE
 
         port = graph.gstreamer_engine_provider.current_port
         identity = port.query_managed_identity()
