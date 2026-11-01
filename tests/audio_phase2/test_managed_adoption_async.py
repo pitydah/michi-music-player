@@ -81,6 +81,82 @@ class _ImmediateAdoptionAudio(FakeAudioPort):
         super().play()
 
 
+class _QueuedAdoptionAudio(FakeAudioPort):
+    def __init__(self) -> None:
+        super().__init__()
+        self.pending: list = []
+
+    def adopt_preloaded_media_async(self, claim, *, on_done, on_failed) -> None:
+        self.pending.append(on_done)
+
+    def deliver(self, index: int) -> None:
+        self.pending[index]({"claimed": True})
+
+
+class _CommitFailingTx(_ManagedTx):
+    def commit_media(self, token: str, path: Path) -> None:
+        raise RuntimeError("commit rejected")
+
+
+def test_a_to_b_to_c_ignores_every_superseded_managed_adoption() -> None:
+    audio = _QueuedAdoptionAudio()
+    playback = PlaybackService(audio)
+    tx = _ManagedTx()
+    playback._output_tx = tx
+    accepted: list[Path] = []
+    paths = [Path(f"/tmp/managed-adoption-{name}.wav") for name in "abc"]
+
+    for index, path in enumerate(paths, start=1):
+        playback._request_epoch = index
+        playback._continue_prepared_load(
+            path,
+            f"output-tx:managed:{index}",
+            index,
+            False,
+            False,
+            accepted.append,
+            None,
+            None,
+        )
+
+    assert len(audio.pending) == 3
+    audio.deliver(0)
+    audio.deliver(1)
+    assert accepted == []
+    assert tx.committed is None
+
+    audio.deliver(2)
+    assert accepted == [paths[2]]
+    assert tx.committed == paths[2]
+
+
+def test_managed_commit_failure_never_publishes_acceptance() -> None:
+    audio = _ImmediateAdoptionAudio()
+    playback = PlaybackService(audio)
+    playback._request_epoch = 1
+    tx = _CommitFailingTx()
+    playback._output_tx = tx
+    accepted: list[Path] = []
+    rejected: list[tuple[Path, str]] = []
+    path = Path("/tmp/managed-adoption-commit-failure.wav")
+
+    playback._continue_prepared_load(
+        path,
+        "output-tx:managed:commit-failure",
+        1,
+        False,
+        False,
+        accepted.append,
+        lambda rejected_path, message: rejected.append((rejected_path, message)),
+        None,
+    )
+
+    assert accepted == []
+    assert rejected and rejected[0][0] == path
+    assert "commit rejected" in rejected[0][1]
+    assert ("output-tx:managed:commit-failure", "output_commit_failed") in tx.aborted
+
+
 def test_stop_during_managed_adoption_never_accepts_a_late_claim(qapp) -> None:
     audio = _BlockingAdoptionAudio()
     playback = PlaybackService(audio)
