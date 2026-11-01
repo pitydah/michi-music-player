@@ -4,7 +4,7 @@
   "sprint": "AP2-F10-S14",
   "base_sha": "6d1a8fb64897969c75ee2df6ee967fc2d8171b54",
   "code_sha": "5e85409b2c66a3c5f08050148bd517536e52b6e7",
-  "ci_sha": "TO_BE_RECORDED_AFTER_PUSH",
+  "ci_sha": "234a44a1a4f097219edf7cb4bada3cd20cbe6218",
   "generated_at": "2026-11-01",
   "commits": [
     "e60c3bf",
@@ -176,5 +176,14 @@
     "AP2-F13",
     "AP2-F14",
     "AP2-F15"
-  ]
+  ],
+  "ci_run": 41321071527,
+  "ci_status": "success",
+  "ci_jobs": {
+    "check": "success",
+    "min-qt": "success",
+    "dac-v35-software-closure": "success",
+    "dop-native-gate-a": "success"
+  },
+  "ci_verified_at": "2026-11-01"
 }
