@@ -54,6 +54,9 @@ Item {
     // PLAYBACK-CONTROLS-R1 (P2): the Play affordance derives from MEDIA
     // truth (committed logical track), not from presentation text.
     property string currentPath: ""
+    // F11: canonical presentation bridges injected by AppShell.
+    property var processingBridge: null
+    property var signalPathBridge: null
     readonly property bool hasPlayableMedia: root.currentPath !== ""
     readonly property bool hasTrack: trackTitle.length > 0
     readonly property bool compact: width < 1320
@@ -504,21 +507,46 @@ Item {
             }
 
             MichiIconButton {
+                id: settingsButton
                 objectName: "settingsButton"
                 Layout.row: 0
                 Layout.column: 2
                 Layout.preferredWidth: 34
                 Layout.preferredHeight: 34
                 iconName: "equalizer"
-                accessibleName: qsTr("Audio settings")
-                onClicked: root.settingsRequested()
+                accessibleName: qsTr("Equalizer")
+                checkable: true
+                checked: equalizerPopup.opened
+                onClicked: {
+                    equalizerPopup.open()
+                }
+            }
+
+            EqualizerPopup {
+                id: equalizerPopup
+                parent: settingsButton
+                x: Math.max(-330, settingsButton.width - width)
+                y: -height - MichiSpacing.md
+                processingBridge: root.processingBridge
+                focusReturnTarget: settingsButton
+            }
+
+            MichiIconButton {
+                objectName: "queueButton"
+                Layout.row: 0
+                Layout.column: 3
+                Layout.preferredWidth: 34
+                Layout.preferredHeight: 34
+                iconName: "queue"
+                accessibleName: "Open queue"
+                onClicked: root.queueRequested()
             }
 
             MichiIconButton {
                 id: outputDeviceButton
                 objectName: "outputDeviceButton"
-                Layout.row: 0
-                Layout.column: 3
+                Layout.row: 1
+                Layout.column: 2
                 Layout.preferredWidth: 34
                 Layout.preferredHeight: 34
                 iconName: "audio-output"
@@ -604,21 +632,20 @@ Item {
                     root.audioEngineSwitchRequested(engineId)
             }
 
-            Rectangle {
+            Button {
                 id: qualityBadge
                 objectName: "qualityBadge"
                 Layout.row: 1
                 Layout.column: 1
                 Layout.fillWidth: true
                 Layout.preferredHeight: 34
-                radius: 13
-                color: MichiSemanticColors.auroraPurpleSurfaceSoft
-                border.width: 1
-                border.color: MichiSemanticColors.auroraPurpleBorderMedium
-                Accessible.role: Accessible.StaticText
-                Accessible.name: "File quality: " + root.qualityText()
+                focusPolicy: Qt.StrongFocus
+                hoverEnabled: true
+                Accessible.role: Accessible.Button
+                Accessible.name: qsTr("Signal Truth: %1").arg(root.qualityText())
+                onClicked: signalTruthPopup.open()
 
-                Row {
+                contentItem: Row {
                     anchors.centerIn: parent
                     spacing: MichiSpacing.xs
                     Rectangle {
@@ -640,17 +667,32 @@ Item {
                         elide: Text.ElideRight
                     }
                 }
+
+                background: Rectangle {
+                    radius: 13
+                    color: qualityBadge.pressed
+                        ? MichiSemanticColors.surfacePressed
+                        : qualityBadge.hovered
+                            ? MichiSemanticColors.surfaceHover
+                            : MichiSemanticColors.auroraPurpleSurfaceSoft
+                    border.width: 1
+                    border.color: qualityBadge.visualFocus
+                        ? MichiSemanticColors.focusRing
+                        : MichiSemanticColors.auroraPurpleBorderMedium
+                    MichiFocusRing { visualFocus: qualityBadge.visualFocus }
+                }
             }
 
-            MichiIconButton {
-                objectName: "queueButton"
-                Layout.row: 1
-                Layout.column: 2
-                Layout.preferredWidth: 34
-                Layout.preferredHeight: 34
-                iconName: "queue"
-                accessibleName: "Open queue"
-                onClicked: root.queueRequested()
+            SignalTruthPopup {
+                id: signalTruthPopup
+                parent: qualityBadge
+                x: Math.min(0, qualityBadge.width - width)
+                y: -height - MichiSpacing.md
+                signalPathBridge: root.signalPathBridge
+                focusReturnTarget: qualityBadge
+                onConfigurationAction: {
+                    root.handleSignalTruthConfiguration(action)
+                }
             }
 
             Item {
@@ -692,6 +734,20 @@ Item {
         if (root.formatLabel.length > 0)
             return root.formatLabel
         return root.hasTrack ? "QUALITY —" : "NO TRACK"
+    }
+
+    function handleSignalTruthConfiguration(action) {
+        if (action === "OPEN_ENGINE") {
+            enginePopup.open()
+            root.audioEngineRefreshRequested()
+        } else if (action === "OPEN_PROCESSING") {
+            equalizerPopup.open()
+        } else if (action === "OPEN_OUTPUT") {
+            outputPopup.open()
+            root.audioOutputRefreshRequested()
+        } else if (action === "OPEN_DEVICE_SETUP") {
+            root.settingsRequested()
+        }
     }
 
     function nextRepeatMode(mode) {

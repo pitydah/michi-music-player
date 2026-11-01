@@ -196,6 +196,7 @@ from michi.presentation.audio_engine_bridge import (
     submit_audio_engine_probe,
 )
 from michi.presentation.audio_output_bridge import AudioOutputBridge
+from michi.presentation.audio_processing_bridge import AudioProcessingBridge
 from michi.presentation.enrichment_bridge import (
     EnrichmentBridge,
     LibraryEnrichmentProjection,
@@ -207,6 +208,7 @@ from michi.presentation.playback_session_bridge import PlaybackSessionBridge
 from michi.presentation.playlists_bridge import PlaylistsBridge
 from michi.presentation.queue_bridge import QueueBridge
 from michi.presentation.settings_bridge import SettingsBridge
+from michi.presentation.signal_path_bridge import SignalPathBridge
 
 logger = logging.getLogger(__name__)
 
@@ -2029,6 +2031,8 @@ class ApplicationContainer:
                 getattr(self, "_sb", None),
                 getattr(self, "_aeb", None),
                 getattr(self, "_aob", None),
+                getattr(self, "_apb", None),
+                getattr(self, "_spb", None),
                 getattr(self, "_eb", None),
                 getattr(self, "_library_enrichment", None),
             )
@@ -2231,6 +2235,34 @@ class ApplicationContainer:
         )
         qb = QueueBridge(queue, library)
         psb = PlaybackSessionBridge(graph.playback_session)
+
+        def _f11_signal():
+            """Decoded-PCM contract for the EQ planner (never inferred in QML)."""
+            path = playback.state.file_path
+            if path is None or path.suffix.casefold() in {".dsf", ".dff"}:
+                return None
+            track = library.resolve_trackref(path)
+            if track is None or track.sample_rate_hz <= 0 or track.channels <= 0:
+                return None
+            positions = tuple(f"CH{index}" for index in range(track.channels))
+            if track.channels == 2:
+                positions = ("FL", "FR")
+            return PcmSignalFormat(
+                rate_hz=track.sample_rate_hz,
+                transport_format="F32LE",
+                significant_bits=32,
+                layout=ChannelLayout(positions=positions),
+            )
+
+        def _f11_family() -> str:
+            family = graph.output_session.current_family
+            return family.value.casefold() if family is not None else ""
+
+        apb = AudioProcessingBridge(
+            graph.audio_processing,
+            signal_provider=_f11_signal,
+            source_family_provider=_f11_family,
+        )
         # M11.3-UI: ONE production AudioEngineBridge over the SAME
         # AudioEngineService / AudioEngineRegistry / SelectionCoordinator
         # used by the runtime — no duplicate engine graph.
@@ -2247,8 +2279,17 @@ class ApplicationContainer:
             playback_unsubscribe=lambda cb: playback.unsubscribe_changed(cb),
             probe_submit=submit_audio_engine_probe,
         )
-        lb = graph.bridge
-        # M8-R1F: application-level coordination for the OPEN PLAYLIST
+        spb = SignalPathBridge(
+            graph.signal_truth,
+            aob,
+            apb,
+            playback_path_provider=lambda: (
+                str(playback.state.file_path) if playback.state.file_path else ""
+            ),
+        )
+        lb = (
+            graph.bridge
+        )  # M8-R1F: application-level coordination for the OPEN PLAYLIST
         # product intent (validate → recent → navigate). Not a state
         # authority: it only orchestrates PlaylistService + NavigationService.
         playlist_nav = PlaylistNavigationCoordinator(playlist_service, navigation)
@@ -2286,6 +2327,8 @@ class ApplicationContainer:
         ctx.setContextProperty("settingsBridge", sb)
         ctx.setContextProperty("audioEngine", aeb)
         ctx.setContextProperty("audioOutput", aob)
+        ctx.setContextProperty("audioProcessing", apb)
+        ctx.setContextProperty("signalPath", spb)
         ctx.setContextProperty("enrichment", self._eb)
         ctx.setContextProperty("libraryEnrichment", self._library_enrichment)
 
@@ -2307,6 +2350,8 @@ class ApplicationContainer:
         self._psb = psb
         self._aeb = aeb
         self._aob = aob
+        self._apb = apb
+        self._spb = spb
         self._queue = queue
         self._library = library
         self._playlist_service = playlist_service
@@ -2504,6 +2549,8 @@ class ApplicationContainer:
             self._psb,
             self._aeb,
             getattr(self, "_aob", None),
+            getattr(self, "_apb", None),
+            getattr(self, "_spb", None),
             self._lb,
             self._plb,
             self._nb,

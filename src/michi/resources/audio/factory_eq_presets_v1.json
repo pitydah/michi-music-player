@@ -1,0 +1,14 @@
+{
+  "schema": "michi.audio.factory_eq_presets.v1",
+  "layout": "MICHI_10_V1",
+  "centersHz": [31.25, 62.5, 125, 250, 500, 1000, 2000, 4000, 8000, 16000],
+  "presets": [
+    {
+      "id": "flat",
+      "displayName": "Flat",
+      "gainsDb": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      "sourceProvenance": "factory/flat",
+      "reviewState": "reviewed"
+    }
+  ]
+}

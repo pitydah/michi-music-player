@@ -132,6 +132,8 @@ Item {
         outputRecoveryActions: audioOutput.outputRecoveryActions
         canSelectOutput: audioOutput.canSelectDevice
         currentPath: playback.currentPath
+        processingBridge: audioProcessing
+        signalPathBridge: signalPath
         onPlayPauseRequested: playback.toggle_play_pause()
         onPreviousRequested: playbackSession.previous_track()
         onNextRequested: playbackSession.next_track()
