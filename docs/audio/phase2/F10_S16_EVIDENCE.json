@@ -3,8 +3,8 @@
   "phase": "AP2-F10",
   "sprint": "S16",
   "base_sha": "8504d1e046682f0bd3cb4f47f12dcde2a57d37f9",
-  "code_sha": "2218301",
-  "test_sha": "2218301",
+  "code_sha": "179bb96",
+  "test_sha": "179bb96",
   "ci_sha": "PENDING",
   "generated_at": "2026-11-01",
   "commits": [
@@ -37,7 +37,7 @@
     },
     "E_adversarial": {
       "status": "PARTIAL",
-      "evidence": "Qt non-blocking, STOP during adoption, PLAY/COMMIT/START refusal, A->B->C supersession, claim tamper/host-generation tests. Remaining: DAC disconnect and PAUSED/EOS cycles."
+      "evidence": "Qt non-blocking, STOP during adoption, PLAY/COMMIT/START refusal, A->B->C supersession, DAC disappearance fail-closed, claim tamper and replaced host generation. Remaining: PAUSED/EOS quality cycles."
     },
     "F_dsp_quality": {
       "status": "PARTIAL",
@@ -101,7 +101,6 @@
   },
   "closure_review": "NOT_READY",
   "open_items": [
-    "DAC disconnect during managed adoption",
     "PAUSED/EOS/host-restart/stale-binding quality cycles",
     "physical T03/T04 qualification",
     "F14 remains NOT_RUN"

@@ -25,14 +25,14 @@ independent qualification phase.
 - **QUALITY A→B→A.** Same-family quality changes release the exact predecessor,
   prepare the new plan and publish a fresh output snapshot per transition.
 - **Managed adversarial.** Late A/B/C completions never commit or accept;
-  STOP, PLAY failure, commit failure and unconfirmed START never publish
-  acceptance; Qt keeps ticking while CLAIM is held.
+  STOP, PLAY failure, commit failure, unconfirmed START and DAC disappearance
+  never publish acceptance; Qt keeps ticking while CLAIM is held.
 
 ## Evidence
 
 - `docs/audio/phase2/F10_S16_TRANSITION_MATRIX.json`
 - `docs/audio/phase2/F10_S16_EVIDENCE.json`
-- `tests/audio_phase2/test_managed_adoption_async.py` (6 tests)
+- `tests/audio_phase2/test_managed_adoption_async.py` (7 tests)
 - `tests/audio_phase2/test_managed_preloaded_claim.py` (7 tests)
 - `tests/audio_phase2/test_f10_s14_managed_qt_host_e2e.py` (T03/T04)
 - `tests/audio_phase2/test_dsd_pcm_dsp_reconfiguration.py` (live OFF→ON→OFF→ON)
@@ -47,9 +47,10 @@ independent qualification phase.
   transitions.
 - **Policy/runtime coherence after failures:** PASS for the exercised release,
   prepare, commit, START and adoption failures.
-- **STOP/PAUSE/REPLAY convergence:** PARTIAL. PAUSED and EOS quality cycles,
-  host restart between claim and START, and DAC disconnection during managed
-  adoption are not yet covered by deterministic tests.
+- **STOP/PAUSE/REPLAY convergence:** PARTIAL. PAUSED and EOS quality cycles
+  and host restart between claim and START are not yet covered by
+  deterministic quality-transition tests. DAC disappearance during managed
+  adoption now fails closed without acceptance or fallback.
 
 Physical T03/T04 qualification is NOT_RUN. No physical DAC certification or
 bit-perfect claim is made. F14 remains NOT_RUN.
@@ -57,6 +58,5 @@ bit-perfect claim is made. F14 remains NOT_RUN.
 ## Next work
 
 1. Cover PAUSED, EOS, host restart and stale binding across QUALITY A→B→A.
-2. Cover DAC disconnection during CLAIM/START with a typed, fail-closed result.
-3. Re-run the full suite, repository gates and exact-SHA CI.
-4. Only then evaluate canonical F10 closure and the F11 handoff.
+2. Re-run the full suite, repository gates and exact-SHA CI.
+3. Only then evaluate canonical F10 closure and the F11 handoff.
