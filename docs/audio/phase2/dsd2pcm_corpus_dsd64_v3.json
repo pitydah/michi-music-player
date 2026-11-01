@@ -1,0 +1,2536 @@
+{
+  "certification": {
+    "blocked_by": [],
+    "certified": true,
+    "flag": "CERTIFIED",
+    "profiles": {
+      "BALANCED": {
+        "purpose": "efficient",
+        "qualified": false,
+        "rates": {
+          "176400": {
+            "reason": "not executed by this corpus run; no inferred qualification",
+            "status": "CONDITIONAL"
+          },
+          "88200": {
+            "reason": "not executed by this corpus run; no inferred qualification",
+            "status": "CONDITIONAL"
+          }
+        }
+      },
+      "FAST": {
+        "purpose": "diagnostic",
+        "qualified": false,
+        "rates": {
+          "88200": {
+            "reason": "not executed by this corpus run; no inferred qualification",
+            "status": "CONDITIONAL"
+          }
+        }
+      },
+      "HIGH": {
+        "purpose": "default explicit conversion",
+        "qualified": true,
+        "rates": {
+          "176400": {
+            "reason": "not executed by this corpus run; no inferred qualification",
+            "status": "CONDITIONAL"
+          },
+          "352800": {
+            "reason": "not executed by this corpus run; no inferred qualification",
+            "status": "CONDITIONAL"
+          },
+          "88200": {
+            "reason": "measured by this corpus run",
+            "status": "PASS"
+          }
+        }
+      },
+      "REFERENCE": {
+        "purpose": "requires qualification and resource evidence",
+        "qualified": false,
+        "rates": {
+          "176400": {
+            "reason": "not executed by this corpus run; no inferred qualification",
+            "status": "CONDITIONAL"
+          },
+          "352800": {
+            "reason": "not executed by this corpus run; no inferred qualification",
+            "status": "CONDITIONAL"
+          },
+          "705600": {
+            "reason": "rate 705600 exceeds the DSD64 decoder native rate 352800",
+            "status": "UNAVAILABLE"
+          },
+          "88200": {
+            "reason": "not executed by this corpus run; no inferred qualification",
+            "status": "CONDITIONAL"
+          }
+        }
+      }
+    },
+    "scope": {
+      "bit_order": "LSBF",
+      "channels": 2,
+      "corpus": "dsd64_v3",
+      "decoder": "avdec_dsd_lsbf",
+      "note": "lab supervised host path only; no physical DAC claim",
+      "output_format": "F32LE",
+      "physical_device": null,
+      "profile": "HIGH",
+      "sink": "fakesink",
+      "target_rate_hz": 88200
+    }
+  },
+  "corpus": "dsd64_v3",
+  "environment": {
+    "python": "3.11",
+    "sink": "fakesink"
+  },
+  "latency": {
+    "criterion": "latency_projection_error_le_1_block",
+    "decoder_filter_delay_frames": 4.978139922235641,
+    "decoder_filter_delay_us": 14.110373929239346,
+    "difference_frames": 0.08202110449383326,
+    "dsp_nodes": [],
+    "isolated_resampler_eos": true,
+    "isolated_resampler_sha256": "ebb2d041945f175bf3a6d3cb43f6b7e1756f002f127a33a017fd73b2fa2d6028",
+    "measured_total_latency_frames": 1.2499999477995516,
+    "processing_block_frames": 1024,
+    "processing_latency_frames": 0,
+    "profile": "HIGH",
+    "projected_total_latency_frames": 1.1679788433057183,
+    "reason": "measured 1.250 frames vs projected 1.168 frames; difference 0.082 <= 1024 frames",
+    "resampler_latency_frames": -0.07655613725319199,
+    "schema_version": 1,
+    "section": "\u00a7274.5",
+    "status": "PASS",
+    "stimulus": {
+      "level_after": 0.25,
+      "level_before": -0.25,
+      "transition_bit": 88200,
+      "type": "dc_step"
+    },
+    "target_rate_hz": 88200
+  },
+  "phase": "AP2-F10",
+  "procedure": {
+    "description": "DC: second-order sigma-delta constant-level stimulus; linear DC offset reported separately; DC gain error = 20*log10(measured_dc/reference_dc) against the versioned FFmpeg F32LE capture at the same target rate, only when |reference_dc| >= 0.05. Stopband: isolated filesrc(F32LE at 352800) -> audioresample(quality=10,kaiser,full,none) -> F32LE at the target rate; input amplitude and folded-alias output amplitude measured by complex projection with a Hann window. Passband: production capture versus the versioned FFmpeg capture at the same target rate. Latency: step midpoint crossing on the decoder-only and full paths plus the isolated resampler.",
+    "ffmpeg": "ffmpeg version n9.0.2 Copyright (c) 2000-2026 the FFmpeg developers",
+    "sha256": "d6a34febb67f8db0d4cfc0509868bcdcd4b552145b9deb4d1cca1865f1248cbb",
+    "version": "ap2-f10-s14-cut5-v1"
+  },
+  "profile": "HIGH",
+  "profile_rules": {
+    "ladder_hz": [
+      352800,
+      176400,
+      88200
+    ],
+    "profile": "HIGH",
+    "reason": "target rate belongs to the profile ladder",
+    "status": "PASS",
+    "target_rate_hz": 88200
+  },
+  "requirements": [
+    {
+      "evidence": [
+        "silence",
+        "tone_20hz",
+        "tone_100hz",
+        "tone_1khz",
+        "tone_5khz",
+        "tone_10khz",
+        "tone_15khz",
+        "tone_20khz",
+        "tone_25khz",
+        "tone_30khz",
+        "tone_35khz",
+        "tone_40khz",
+        "dc_plus_0p25",
+        "dc_minus_0p25",
+        "phase_inverted_1khz",
+        "stopband_80khz"
+      ],
+      "id": "numeric_type_f32le",
+      "mandatory": true,
+      "measured": true,
+      "reason": "every capture negotiated F32LE",
+      "section": "\u00a7274.4",
+      "status": "PASS",
+      "threshold": "PCM numeric type after decoder = F32LE"
+    },
+    {
+      "evidence": [
+        "tone_20hz",
+        "tone_100hz",
+        "tone_1khz",
+        "tone_5khz",
+        "tone_10khz",
+        "tone_15khz",
+        "tone_20khz",
+        "tone_25khz",
+        "tone_30khz",
+        "tone_35khz",
+        "tone_40khz",
+        "dc_plus_0p25",
+        "dc_minus_0p25",
+        "phase_inverted_1khz",
+        "stopband_80khz"
+      ],
+      "id": "nan_inf_zero",
+      "mandatory": true,
+      "measured": [
+        "PASS"
+      ],
+      "reason": "all measured vectors pass",
+      "section": "\u00a7274.4",
+      "status": "PASS",
+      "threshold": "NaN/Inf = 0"
+    },
+    {
+      "evidence": [
+        "tone_20hz",
+        "tone_100hz",
+        "tone_1khz",
+        "tone_5khz",
+        "tone_10khz",
+        "tone_15khz",
+        "tone_20khz",
+        "tone_25khz",
+        "tone_30khz",
+        "tone_35khz",
+        "tone_40khz",
+        "dc_plus_0p25",
+        "dc_minus_0p25",
+        "phase_inverted_1khz",
+        "stopband_80khz"
+      ],
+      "id": "no_unexpected_clipping",
+      "mandatory": true,
+      "measured": [
+        "NOT_APPLICABLE",
+        "PASS"
+      ],
+      "reason": "all measured vectors pass",
+      "section": "\u00a7274.4",
+      "status": "PASS",
+      "threshold": "unexpected clipping = 0 samples"
+    },
+    {
+      "evidence": [
+        "tone_20hz",
+        "tone_100hz",
+        "tone_1khz",
+        "tone_5khz",
+        "tone_10khz",
+        "tone_15khz",
+        "tone_20khz",
+        "tone_25khz",
+        "tone_30khz",
+        "tone_35khz",
+        "tone_40khz",
+        "dc_plus_0p25",
+        "dc_minus_0p25",
+        "phase_inverted_1khz",
+        "stopband_80khz"
+      ],
+      "id": "eos_observed",
+      "mandatory": true,
+      "measured": [
+        "PASS"
+      ],
+      "reason": "all measured vectors pass",
+      "section": "\u00a7275.4",
+      "status": "PASS",
+      "threshold": "capture reaches EOS"
+    },
+    {
+      "evidence": [
+        "tone_20hz",
+        "tone_100hz",
+        "tone_1khz",
+        "tone_5khz",
+        "tone_10khz",
+        "tone_15khz",
+        "tone_20khz",
+        "tone_25khz",
+        "tone_30khz",
+        "tone_35khz",
+        "tone_40khz",
+        "phase_inverted_1khz"
+      ],
+      "id": "inter_channel_gain_le_0_01_db",
+      "mandatory": true,
+      "measured": [
+        "PASS"
+      ],
+      "reason": "all measured vectors pass",
+      "section": "\u00a7274.4",
+      "status": "PASS",
+      "threshold": "inter-channel gain mismatch <= 0.01 dB"
+    },
+    {
+      "evidence": [
+        "tone_20hz",
+        "tone_100hz",
+        "tone_1khz",
+        "tone_5khz",
+        "tone_10khz",
+        "tone_15khz",
+        "tone_20khz",
+        "tone_25khz",
+        "tone_30khz",
+        "tone_35khz",
+        "tone_40khz",
+        "phase_inverted_1khz"
+      ],
+      "id": "inter_channel_latency_zero_samples",
+      "mandatory": true,
+      "measured": [
+        "PASS"
+      ],
+      "reason": "all measured vectors pass",
+      "section": "\u00a7274.4",
+      "status": "PASS",
+      "threshold": "inter-channel latency mismatch = 0 samples"
+    },
+    {
+      "evidence": [
+        "dc_plus_0p25",
+        "dc_minus_0p25"
+      ],
+      "id": "dc_gain_error_le_0_05_db",
+      "mandatory": true,
+      "measured": [
+        {
+          "dc_gain_error_db": 1.878605766228058e-05,
+          "measured_dc_offset": 0.24998945168061118,
+          "reference_dc_offset": 0.24998891099780596,
+          "stimulus": 0.25
+        },
+        {
+          "dc_gain_error_db": 2.0427096328314506e-05,
+          "measured_dc_offset": -0.24998951405024922,
+          "reference_dc_offset": -0.2499889261365072,
+          "stimulus": -0.25
+        }
+      ],
+      "reason": "DC gain error 0.000019 dB is within 0.05 dB of the versioned reference",
+      "section": "\u00a7274.4",
+      "status": "PASS",
+      "threshold": "DC gain error <= 0.05 dB vs versioned reference"
+    },
+    {
+      "evidence": [
+        "tone_20hz",
+        "tone_100hz",
+        "tone_1khz",
+        "tone_5khz",
+        "tone_10khz",
+        "tone_15khz",
+        "tone_20khz",
+        "phase_inverted_1khz"
+      ],
+      "id": "magnitude_error_le_0_10_db",
+      "mandatory": true,
+      "measured": {
+        "phase_inverted_1khz": -7.91972180301101e-07,
+        "tone_100hz": -1.3790863698659205e-07,
+        "tone_10khz": -7.88234797715971e-07,
+        "tone_15khz": 1.0223325328236212e-06,
+        "tone_1khz": -7.91972180301101e-07,
+        "tone_20hz": -7.224354810579615e-08,
+        "tone_20khz": 4.0072257225106545e-07,
+        "tone_5khz": -7.119639177037789e-07
+      },
+      "reason": "every 20 Hz..20 kHz point is within 0.10 dB of the reference",
+      "section": "\u00a7274.4",
+      "status": "PASS",
+      "threshold": "20 Hz..20 kHz magnitude error <= 0.10 dB vs reference"
+    },
+    {
+      "evidence": [
+        "tone_25khz",
+        "tone_30khz",
+        "tone_35khz",
+        "tone_40khz"
+      ],
+      "id": "magnitude_error_le_0_25_db",
+      "mandatory": true,
+      "measured": {
+        "tone_25khz": -2.883686956363703e-06,
+        "tone_30khz": 3.263555567485325e-05,
+        "tone_35khz": -5.343120207411635e-07,
+        "tone_40khz": -3.4480463324945366e-06
+      },
+      "reason": "every 20-40 kHz point is within 0.25 dB of the reference",
+      "section": "\u00a7274.4",
+      "status": "PASS",
+      "threshold": "20 kHz..40 kHz magnitude error <= 0.25 dB when Nyquist permits"
+    },
+    {
+      "evidence": [
+        "isolated_resampler:60000Hz",
+        "isolated_resampler:80000Hz",
+        "isolated_resampler:100000Hz",
+        "isolated_resampler:120000Hz",
+        "isolated_resampler:160000Hz"
+      ],
+      "id": "resampler_stopband_ge_80_db",
+      "mandatory": true,
+      "measured": {
+        "100000": 151.89677213891974,
+        "120000": 151.2226656366533,
+        "160000": 149.37949653262078,
+        "40000": null,
+        "60000": 143.22573477961026,
+        "80000": 153.30195873656442
+      },
+      "reason": "every isolated stopband point meets the threshold",
+      "section": "\u00a7274.4",
+      "status": "PASS",
+      "threshold": "added resampler stopband rejection >= 80 dB (isolated)"
+    },
+    {
+      "evidence": [
+        "isolated_resampler_contract"
+      ],
+      "id": "resampler_contract_exact",
+      "mandatory": true,
+      "measured": {
+        "ok": true,
+        "properties": {
+          "quality": {
+            "actual": 10,
+            "exact": true,
+            "expected": 10
+          },
+          "resample-method": {
+            "actual": "kaiser",
+            "exact": true,
+            "expected": "kaiser"
+          },
+          "sinc-filter-interpolation": {
+            "actual": "none",
+            "exact": true,
+            "expected": "none"
+          },
+          "sinc-filter-mode": {
+            "actual": "full",
+            "exact": true,
+            "expected": "full"
+          }
+        }
+      },
+      "reason": "the exact \u00a7274.3 resampler policy was read back",
+      "section": "\u00a7274.3",
+      "status": "PASS",
+      "threshold": "quality=10, kaiser, full, none with exact readback"
+    },
+    {
+      "evidence": [
+        "dc_step_latency"
+      ],
+      "id": "latency_projection_error_le_1_block",
+      "mandatory": true,
+      "measured": {
+        "decoder_filter_delay_us": 14.110373929239346,
+        "difference_frames": 0.08202110449383326,
+        "measured_total_latency_frames": 1.2499999477995516,
+        "projected_total_latency_frames": 1.1679788433057183,
+        "resampler_latency_frames": -0.07655613725319199
+      },
+      "reason": "measured 1.250 frames vs projected 1.168 frames; difference 0.082 <= 1024 frames",
+      "section": "\u00a7274.5",
+      "status": "PASS",
+      "threshold": "measured vs projected total latency <= 1 processing block"
+    }
+  ],
+  "schema_version": 2,
+  "status": "PASS",
+  "stopband_sweep": {
+    "control_pass": true,
+    "criterion": "resampler_stopband_ge_80_db",
+    "measurement": "isolated filesrc F32LE at the decoder native rate -> audioresample with the exact \u00a7274.3 policy -> F32LE at the target rate; complex projection of the input tone and of the folded alias",
+    "points": [
+      {
+        "alias_amplitude": 0.4999998187748832,
+        "alias_hz": 40000,
+        "control_pass": true,
+        "control_transfer_db": -3.1615253247279644e-06,
+        "counts_toward_verdict": false,
+        "input_amplitude": 0.5000000007668775,
+        "input_sha256": "04325c478952a0413ca880599342315598c7621974b758270529dc3f4f27ba2f",
+        "measurement_uncertainty_db": 4.578241080196321e-11,
+        "output_frames": 43972,
+        "output_sha256": "5d7d0149fd19dba486559eae97c2a0e7763c7aa7f15745c910920beae0c209d2",
+        "pass_at_80_db": null,
+        "reason": "in-band control: the resampler must preserve a 40 kHz tone within 0.1 dB",
+        "rejection_db": null,
+        "resampler_policy": {
+          "ok": true,
+          "properties": {
+            "quality": {
+              "actual": 10,
+              "exact": true,
+              "expected": 10
+            },
+            "resample-method": {
+              "actual": "kaiser",
+              "exact": true,
+              "expected": "kaiser"
+            },
+            "sinc-filter-interpolation": {
+              "actual": "none",
+              "exact": true,
+              "expected": "none"
+            },
+            "sinc-filter-mode": {
+              "actual": "full",
+              "exact": true,
+              "expected": "full"
+            }
+          }
+        },
+        "role": "control",
+        "status": "PASS",
+        "stimulus_hz": 40000
+      },
+      {
+        "alias_amplitude": 3.448921151685145e-08,
+        "alias_hz": 28200,
+        "control_pass": null,
+        "control_transfer_db": null,
+        "counts_toward_verdict": true,
+        "input_amplitude": 0.5000000004614901,
+        "input_sha256": "fade699d6033c38168cc31a59c9cf3b026ed29d6f76f37460ddaeada528cf47b",
+        "measurement_uncertainty_db": 5.6124746885643956e-06,
+        "output_frames": 43972,
+        "output_sha256": "285960ff6006de3c0a1d893bfe3dc91867cd6c3dfe6380c16944811ff5cc3c58",
+        "pass_at_80_db": true,
+        "reason": "isolated resampler rejection 143.226 dB >= 80.0 dB",
+        "rejection_db": 143.22573477961026,
+        "resampler_policy": {
+          "ok": true,
+          "properties": {
+            "quality": {
+              "actual": 10,
+              "exact": true,
+              "expected": 10
+            },
+            "resample-method": {
+              "actual": "kaiser",
+              "exact": true,
+              "expected": "kaiser"
+            },
+            "sinc-filter-interpolation": {
+              "actual": "none",
+              "exact": true,
+              "expected": "none"
+            },
+            "sinc-filter-mode": {
+              "actual": "full",
+              "exact": true,
+              "expected": "full"
+            }
+          }
+        },
+        "role": "stopband",
+        "status": "PASS",
+        "stimulus_hz": 60000
+      },
+      {
+        "alias_amplitude": 1.0811154359797922e-08,
+        "alias_hz": 8200,
+        "control_pass": null,
+        "control_transfer_db": null,
+        "counts_toward_verdict": true,
+        "input_amplitude": 0.500000000766879,
+        "input_sha256": "0ca0783d5a412893b58f12a6dcac94ce89ff55c753259e9a0b413e7370fb7786",
+        "measurement_uncertainty_db": 3.0773408480435287e-06,
+        "output_frames": 43972,
+        "output_sha256": "bfb282278b6794e984c13f39da1f8addad9841f03100a458e13613152286ff05",
+        "pass_at_80_db": true,
+        "reason": "isolated resampler rejection 153.302 dB >= 80.0 dB",
+        "rejection_db": 153.30195873656442,
+        "resampler_policy": {
+          "ok": true,
+          "properties": {
+            "quality": {
+              "actual": 10,
+              "exact": true,
+              "expected": 10
+            },
+            "resample-method": {
+              "actual": "kaiser",
+              "exact": true,
+              "expected": "kaiser"
+            },
+            "sinc-filter-interpolation": {
+              "actual": "none",
+              "exact": true,
+              "expected": "none"
+            },
+            "sinc-filter-mode": {
+              "actual": "full",
+              "exact": true,
+              "expected": "full"
+            }
+          }
+        },
+        "role": "stopband",
+        "status": "PASS",
+        "stimulus_hz": 80000
+      },
+      {
+        "alias_amplitude": 1.2709585821776204e-08,
+        "alias_hz": 11800,
+        "control_pass": null,
+        "control_transfer_db": null,
+        "counts_toward_verdict": true,
+        "input_amplitude": 0.5000000007668814,
+        "input_sha256": "c4beb7ef5a3174f6fdebf57050f3324f6f915fd8940844a15da69b65d22cd878",
+        "measurement_uncertainty_db": 0.0001598024184436457,
+        "output_frames": 43972,
+        "output_sha256": "530691ea73795c5732fcb55b160feac8517bfa4bc1f090b334cac42f8f76b0a4",
+        "pass_at_80_db": true,
+        "reason": "isolated resampler rejection 151.897 dB >= 80.0 dB",
+        "rejection_db": 151.89677213891974,
+        "resampler_policy": {
+          "ok": true,
+          "properties": {
+            "quality": {
+              "actual": 10,
+              "exact": true,
+              "expected": 10
+            },
+            "resample-method": {
+              "actual": "kaiser",
+              "exact": true,
+              "expected": "kaiser"
+            },
+            "sinc-filter-interpolation": {
+              "actual": "none",
+              "exact": true,
+              "expected": "none"
+            },
+            "sinc-filter-mode": {
+              "actual": "full",
+              "exact": true,
+              "expected": "full"
+            }
+          }
+        },
+        "role": "stopband",
+        "status": "PASS",
+        "stimulus_hz": 100000
+      },
+      {
+        "alias_amplitude": 1.3735254881017871e-08,
+        "alias_hz": 31800,
+        "control_pass": null,
+        "control_transfer_db": null,
+        "counts_toward_verdict": true,
+        "input_amplitude": 0.5000000004614892,
+        "input_sha256": "79b0a4161ee244c5431ad3f204fcd2121601c4be8258b186cf9466cdafd1ef43",
+        "measurement_uncertainty_db": 2.3678758448033204e-06,
+        "output_frames": 43972,
+        "output_sha256": "f1a54b82a7ca55af638e5448f8bfe49fa57a5006f765670d666bd6e2783c1b21",
+        "pass_at_80_db": true,
+        "reason": "isolated resampler rejection 151.223 dB >= 80.0 dB",
+        "rejection_db": 151.2226656366533,
+        "resampler_policy": {
+          "ok": true,
+          "properties": {
+            "quality": {
+              "actual": 10,
+              "exact": true,
+              "expected": 10
+            },
+            "resample-method": {
+              "actual": "kaiser",
+              "exact": true,
+              "expected": "kaiser"
+            },
+            "sinc-filter-interpolation": {
+              "actual": "none",
+              "exact": true,
+              "expected": "none"
+            },
+            "sinc-filter-mode": {
+              "actual": "full",
+              "exact": true,
+              "expected": "full"
+            }
+          }
+        },
+        "role": "stopband",
+        "status": "PASS",
+        "stimulus_hz": 120000
+      },
+      {
+        "alias_amplitude": 1.6982247983072406e-08,
+        "alias_hz": 16400,
+        "control_pass": null,
+        "control_transfer_db": null,
+        "counts_toward_verdict": true,
+        "input_amplitude": 0.5000000007668715,
+        "input_sha256": "4ce22e9ddbf9c5c0157651cb85e2981d952f0d183bee40a393a4ccc8ba0e4a5d",
+        "measurement_uncertainty_db": 1.4304923187770161e-06,
+        "output_frames": 43972,
+        "output_sha256": "807b09247f1f25f8ca022a2c25ffaae9cc0066d08f2486e3ed94407580654873",
+        "pass_at_80_db": true,
+        "reason": "isolated resampler rejection 149.379 dB >= 80.0 dB",
+        "rejection_db": 149.37949653262078,
+        "resampler_policy": {
+          "ok": true,
+          "properties": {
+            "quality": {
+              "actual": 10,
+              "exact": true,
+              "expected": 10
+            },
+            "resample-method": {
+              "actual": "kaiser",
+              "exact": true,
+              "expected": "kaiser"
+            },
+            "sinc-filter-interpolation": {
+              "actual": "none",
+              "exact": true,
+              "expected": "none"
+            },
+            "sinc-filter-mode": {
+              "actual": "full",
+              "exact": true,
+              "expected": "full"
+            }
+          }
+        },
+        "role": "stopband",
+        "status": "PASS",
+        "stimulus_hz": 160000
+      }
+    ],
+    "procedure_sha256": "d6a34febb67f8db0d4cfc0509868bcdcd4b552145b9deb4d1cca1865f1248cbb",
+    "procedure_version": "ap2-f10-s14-cut5-v1",
+    "profile": "HIGH",
+    "reason": "every isolated stopband point meets the threshold",
+    "resampler_contract": {
+      "ok": true,
+      "properties": {
+        "quality": {
+          "actual": 10,
+          "exact": true,
+          "expected": 10
+        },
+        "resample-method": {
+          "actual": "kaiser",
+          "exact": true,
+          "expected": "kaiser"
+        },
+        "sinc-filter-interpolation": {
+          "actual": "none",
+          "exact": true,
+          "expected": "none"
+        },
+        "sinc-filter-mode": {
+          "actual": "full",
+          "exact": true,
+          "expected": "full"
+        }
+      }
+    },
+    "resampler_contract_ok": true,
+    "schema_version": 1,
+    "section": "\u00a7274.4",
+    "status": "PASS",
+    "target_rate_hz": 88200,
+    "threshold_db": 80.0
+  },
+  "target_rate_hz": 88200,
+  "vectors": [
+    {
+      "backend": {
+        "decoder": "avdec_dsd_lsbf",
+        "output_format": "F32LE"
+      },
+      "caps_negotiated": "audio/x-raw, rate=(int)88200, format=(string)F32LE, channels=(int)2, layout=(string)interleaved, channel-mask=(bitmask)0x0000000000000003",
+      "cleanup_confirmed": true,
+      "dc": {},
+      "decoder_caps": "audio/x-dsd, rate=(int)352800, channels=(int)2, channel-mask=(bitmask)0x0000000000000003, format=(string)DSDU8, layout=(string)interleaved, reversed-bytes=(boolean)true",
+      "environment": {
+        "python": "3.11",
+        "sink": "fakesink"
+      },
+      "eos_observed": true,
+      "fixture": {
+        "analytic_dc_level": null,
+        "analytic_frequency_hz": 0,
+        "bit_order": "LSBF",
+        "generated": false,
+        "name": "silence",
+        "oracle": "analytic_sine_amplitude_0.5",
+        "path": null,
+        "sha256": "41b94cf790e19377b424d1d0e9350f40ea99c03206fc3ddf7439e0c6c210337a"
+      },
+      "informational_metrics": {
+        "disposition": "INFORMATIONAL \u2014 not the \u00a7274.4 isolated resampler criterion",
+        "stopband_rejection_db": null
+      },
+      "metric_dispositions": {
+        "eos": "PASS",
+        "numeric_finiteness": "PASS",
+        "oracle": "NOT_RUN",
+        "signal_present": "PASS"
+      },
+      "metrics": {
+        "channel_balance_db": 0.0,
+        "channels": 2,
+        "dc": -8.426583424852549e-08,
+        "max_step": 0.0010100894141942263,
+        "nan_inf": 0,
+        "peak": 0.0010854059364646673,
+        "rate_hz": 88200,
+        "rms": 1.1501214830998918e-05,
+        "sample_count": 11025
+      },
+      "numeric_checks": {},
+      "output_sha256": "368ecc2fd113f3d4bcc3ecd26cdf9ec60f694665f1f10ca3e8970a6ece68126a",
+      "processing_graph_revision": null,
+      "profile": "HIGH",
+      "reference": {},
+      "release": {
+        "binding_generation": 1,
+        "confirmed": true,
+        "device": "lab",
+        "execution_id": "exec:conformance",
+        "host_generation": 1,
+        "operation": "stop",
+        "plan_id": "conformance:HIGH:88200",
+        "provenance": "SUPERVISED_HOST",
+        "stable_device_id": "lab:fakesink",
+        "terminal_state": "RELEASED"
+      },
+      "sample_count": 11025,
+      "schema_version": 2,
+      "status": "PASS",
+      "stopband": {},
+      "target_rate_hz": 88200,
+      "tone_metrics": {}
+    },
+    {
+      "backend": {
+        "decoder": "avdec_dsd_lsbf",
+        "output_format": "F32LE"
+      },
+      "caps_negotiated": "audio/x-raw, rate=(int)88200, format=(string)F32LE, channels=(int)2, layout=(string)interleaved, channel-mask=(bitmask)0x0000000000000003",
+      "cleanup_confirmed": true,
+      "dc": {},
+      "decoder_caps": "audio/x-dsd, rate=(int)352800, channels=(int)2, channel-mask=(bitmask)0x0000000000000003, format=(string)DSDU8, layout=(string)interleaved, reversed-bytes=(boolean)true",
+      "environment": {
+        "python": "3.11",
+        "sink": "fakesink"
+      },
+      "eos_observed": true,
+      "fixture": {
+        "analytic_dc_level": null,
+        "analytic_frequency_hz": 20,
+        "bit_order": "LSBF",
+        "generated": false,
+        "name": "tone_20hz",
+        "oracle": "analytic_sine_amplitude_0.5",
+        "path": null,
+        "sha256": "3d751d5cecd7862eb0f593c675b52be30b9ae3f4a3bdc4b87ac2a0c9d7f7a1d7"
+      },
+      "informational_metrics": {
+        "disposition": "INFORMATIONAL \u2014 not the \u00a7274.4 isolated resampler criterion",
+        "stopband_rejection_db": null
+      },
+      "metric_dispositions": {
+        "eos": "PASS",
+        "numeric_finiteness": "PASS",
+        "oracle": "PASS",
+        "signal_present": "PASS"
+      },
+      "metrics": {
+        "channel_balance_db": 0.0,
+        "channels": 2,
+        "dc": 1.7280726834272124e-08,
+        "max_step": 0.34754055738449097,
+        "nan_inf": 0,
+        "peak": 0.698925256729126,
+        "rate_hz": 88200,
+        "rms": 0.35537207978244223,
+        "sample_count": 141120
+      },
+      "numeric_checks": {
+        "channel_polarity_in_phase": "PASS",
+        "eos_observed": "PASS",
+        "frequency_error_le_20_hz": "PASS",
+        "inter_channel_gain_le_0_01_db": "PASS",
+        "inter_channel_latency_zero_samples": "PASS",
+        "magnitude_error_le_0_10_db": "PASS",
+        "nan_inf_zero": "PASS",
+        "no_unexpected_clipping": "PASS"
+      },
+      "output_sha256": "208c1e9068125412aff2b96f15a2cf750d271383f9726c9fc158b4a841da2e92",
+      "processing_graph_revision": null,
+      "profile": "HIGH",
+      "reference": {
+        "amplitude": 0.49999906483035966,
+        "dc_offset": -1.2660706228934178e-09,
+        "gain_db": -1.6245575770046628e-05,
+        "reference_role": "decoder_native_reference",
+        "sample_count": 564480,
+        "sha256": "508cf0419d2935234d47d0736ad52bf3343aebe5b830e6e57387714535f12191",
+        "status": "PASS",
+        "target_rate_hz": 352800,
+        "tool": "ffmpeg",
+        "version": "ffmpeg version n9.0.2 Copyright (c) 2000-2026 the FFmpeg developers"
+      },
+      "release": {
+        "binding_generation": 1,
+        "confirmed": true,
+        "device": "lab",
+        "execution_id": "exec:conformance",
+        "host_generation": 1,
+        "operation": "stop",
+        "plan_id": "conformance:HIGH:88200",
+        "provenance": "SUPERVISED_HOST",
+        "stable_device_id": "lab:fakesink",
+        "terminal_state": "RELEASED"
+      },
+      "sample_count": 141120,
+      "schema_version": 2,
+      "status": "PASS",
+      "stopband": {},
+      "target_rate_hz": 88200,
+      "tone_metrics": {
+        "channel_amplitudes": [
+          0.49999906067169453,
+          0.49999906067169453
+        ],
+        "channel_polarity": "IN_PHASE",
+        "channels": 2,
+        "clipping_samples": 0,
+        "dc_gain_error_db": null,
+        "dc_gain_reason": "no DC stimulus; residual offset is linear, not a gain error",
+        "dc_gain_status": "NOT_MEASURED",
+        "dc_offset": 1.7280726834272124e-08,
+        "inter_channel_correlation": 1.0,
+        "inter_channel_gain_mismatch_db": 0.0,
+        "inter_channel_latency_samples": 0,
+        "magnitude_band": "20Hz-20kHz",
+        "magnitude_error_vs_reference_db": -7.224354810579615e-08,
+        "nan_inf": 0,
+        "peak": 0.698925256729126,
+        "rate_hz": 88200,
+        "sample_count": 141120,
+        "stopband_rejection_db": 19.53078730946688,
+        "tone_amplitude": 0.49999906067169453,
+        "tone_frequency_error_hz": 0.0,
+        "tone_frequency_hz": 20.0,
+        "tone_gain_error_db": -1.6317819318266525e-05
+      }
+    },
+    {
+      "backend": {
+        "decoder": "avdec_dsd_lsbf",
+        "output_format": "F32LE"
+      },
+      "caps_negotiated": "audio/x-raw, rate=(int)88200, format=(string)F32LE, channels=(int)2, layout=(string)interleaved, channel-mask=(bitmask)0x0000000000000003",
+      "cleanup_confirmed": true,
+      "dc": {},
+      "decoder_caps": "audio/x-dsd, rate=(int)352800, channels=(int)2, channel-mask=(bitmask)0x0000000000000003, format=(string)DSDU8, layout=(string)interleaved, reversed-bytes=(boolean)true",
+      "environment": {
+        "python": "3.11",
+        "sink": "fakesink"
+      },
+      "eos_observed": true,
+      "fixture": {
+        "analytic_dc_level": null,
+        "analytic_frequency_hz": 100,
+        "bit_order": "LSBF",
+        "generated": false,
+        "name": "tone_100hz",
+        "oracle": "analytic_sine_amplitude_0.5",
+        "path": null,
+        "sha256": "da68b9feefbc2365025f8254067242eaefebe46807df9e1c848d51c9a012e9fe"
+      },
+      "informational_metrics": {
+        "disposition": "INFORMATIONAL \u2014 not the \u00a7274.4 isolated resampler criterion",
+        "stopband_rejection_db": null
+      },
+      "metric_dispositions": {
+        "eos": "PASS",
+        "numeric_finiteness": "PASS",
+        "oracle": "PASS",
+        "signal_present": "PASS"
+      },
+      "metrics": {
+        "channel_balance_db": 0.0,
+        "channels": 2,
+        "dc": -6.038827716581188e-07,
+        "max_step": 0.26405778527259827,
+        "nan_inf": 0,
+        "peak": 0.6535684466362,
+        "rate_hz": 88200,
+        "rms": 0.3553235181254994,
+        "sample_count": 28224
+      },
+      "numeric_checks": {
+        "channel_polarity_in_phase": "PASS",
+        "eos_observed": "PASS",
+        "frequency_error_le_20_hz": "PASS",
+        "inter_channel_gain_le_0_01_db": "PASS",
+        "inter_channel_latency_zero_samples": "PASS",
+        "magnitude_error_le_0_10_db": "PASS",
+        "nan_inf_zero": "PASS",
+        "no_unexpected_clipping": "PASS"
+      },
+      "output_sha256": "39f8bbbcbe821f6fc2288a0329ad304fa525c7c3b1e596d1a3b5599849c3c335",
+      "processing_graph_revision": null,
+      "profile": "HIGH",
+      "reference": {
+        "amplitude": 0.49999765042949607,
+        "dc_offset": -2.681227778575889e-08,
+        "gain_db": -4.0816316088942845e-05,
+        "reference_role": "decoder_native_reference",
+        "sample_count": 112896,
+        "sha256": "3216e7284e7eda266dc9487f84877c26f530a9d08285603f4c036a9de5242191",
+        "status": "PASS",
+        "target_rate_hz": 352800,
+        "tool": "ffmpeg",
+        "version": "ffmpeg version n9.0.2 Copyright (c) 2000-2026 the FFmpeg developers"
+      },
+      "release": {
+        "binding_generation": 1,
+        "confirmed": true,
+        "device": "lab",
+        "execution_id": "exec:conformance",
+        "host_generation": 1,
+        "operation": "stop",
+        "plan_id": "conformance:HIGH:88200",
+        "provenance": "SUPERVISED_HOST",
+        "stable_device_id": "lab:fakesink",
+        "terminal_state": "RELEASED"
+      },
+      "sample_count": 28224,
+      "schema_version": 2,
+      "status": "PASS",
+      "stopband": {},
+      "target_rate_hz": 88200,
+      "tone_metrics": {
+        "channel_amplitudes": [
+          0.49999764249087414,
+          0.49999764249087414
+        ],
+        "channel_polarity": "IN_PHASE",
+        "channels": 2,
+        "clipping_samples": 0,
+        "dc_gain_error_db": null,
+        "dc_gain_reason": "no DC stimulus; residual offset is linear, not a gain error",
+        "dc_gain_status": "NOT_MEASURED",
+        "dc_offset": -6.038827716581188e-07,
+        "inter_channel_correlation": 1.0,
+        "inter_channel_gain_mismatch_db": 0.0,
+        "inter_channel_latency_samples": 0,
+        "magnitude_band": "20Hz-20kHz",
+        "magnitude_error_vs_reference_db": -1.3790863698659205e-07,
+        "nan_inf": 0,
+        "peak": 0.6535684466362,
+        "rate_hz": 88200,
+        "sample_count": 28224,
+        "stopband_rejection_db": 19.58354160085579,
+        "tone_amplitude": 0.49999764249087414,
+        "tone_frequency_error_hz": 0.0,
+        "tone_frequency_hz": 100.0,
+        "tone_gain_error_db": -4.095422472595349e-05
+      }
+    },
+    {
+      "backend": {
+        "decoder": "avdec_dsd_lsbf",
+        "output_format": "F32LE"
+      },
+      "caps_negotiated": "audio/x-raw, rate=(int)88200, format=(string)F32LE, channels=(int)2, layout=(string)interleaved, channel-mask=(bitmask)0x0000000000000003",
+      "cleanup_confirmed": true,
+      "dc": {},
+      "decoder_caps": "audio/x-dsd, rate=(int)352800, channels=(int)2, channel-mask=(bitmask)0x0000000000000003, format=(string)DSDU8, layout=(string)interleaved, reversed-bytes=(boolean)true",
+      "environment": {
+        "python": "3.11",
+        "sink": "fakesink"
+      },
+      "eos_observed": true,
+      "fixture": {
+        "analytic_dc_level": null,
+        "analytic_frequency_hz": 1000,
+        "bit_order": "LSBF",
+        "generated": false,
+        "name": "tone_1khz",
+        "oracle": "analytic_sine_amplitude_0.5",
+        "path": null,
+        "sha256": "64a522ac4f72b78d3195ee9b3ceb36e77115d815c0af2468a1a6526f25cae457"
+      },
+      "informational_metrics": {
+        "disposition": "INFORMATIONAL \u2014 not the \u00a7274.4 isolated resampler criterion",
+        "stopband_rejection_db": null
+      },
+      "metric_dispositions": {
+        "eos": "PASS",
+        "numeric_finiteness": "PASS",
+        "oracle": "PASS",
+        "signal_present": "PASS"
+      },
+      "metrics": {
+        "channel_balance_db": 0.0,
+        "channels": 2,
+        "dc": 8.903454425332903e-06,
+        "max_step": 0.25611700117588043,
+        "nan_inf": 0,
+        "peak": 0.627899706363678,
+        "rate_hz": 88200,
+        "rms": 0.3553031879732771,
+        "sample_count": 4410
+      },
+      "numeric_checks": {
+        "channel_polarity_in_phase": "PASS",
+        "eos_observed": "PASS",
+        "frequency_error_le_20_hz": "PASS",
+        "inter_channel_gain_le_0_01_db": "PASS",
+        "inter_channel_latency_zero_samples": "PASS",
+        "magnitude_error_le_0_10_db": "PASS",
+        "nan_inf_zero": "PASS",
+        "no_unexpected_clipping": "PASS"
+      },
+      "output_sha256": "bfd0c92c99126c22dfda0a6aa51efe8824de9a0c86129fdad76a6803c3160f3a",
+      "processing_graph_revision": null,
+      "profile": "HIGH",
+      "reference": {
+        "amplitude": 0.49996693287400434,
+        "dc_offset": 6.080248177132982e-06,
+        "gain_db": -0.0005744538098384119,
+        "reference_role": "decoder_native_reference",
+        "sample_count": 17640,
+        "sha256": "8fcf21cfb9d7e2c800c3059bbbc4299f7e63f2808994fbd3d5118cdfa89e408c",
+        "status": "PASS",
+        "target_rate_hz": 352800,
+        "tool": "ffmpeg",
+        "version": "ffmpeg version n9.0.2 Copyright (c) 2000-2026 the FFmpeg developers"
+      },
+      "release": {
+        "binding_generation": 1,
+        "confirmed": true,
+        "device": "lab",
+        "execution_id": "exec:conformance",
+        "host_generation": 1,
+        "operation": "stop",
+        "plan_id": "conformance:HIGH:88200",
+        "provenance": "SUPERVISED_HOST",
+        "stable_device_id": "lab:fakesink",
+        "terminal_state": "RELEASED"
+      },
+      "sample_count": 4410,
+      "schema_version": 2,
+      "status": "PASS",
+      "stopband": {},
+      "target_rate_hz": 88200,
+      "tone_metrics": {
+        "channel_amplitudes": [
+          0.49996688728743804,
+          0.49996688728743804
+        ],
+        "channel_polarity": "IN_PHASE",
+        "channels": 2,
+        "clipping_samples": 0,
+        "dc_gain_error_db": null,
+        "dc_gain_reason": "no DC stimulus; residual offset is linear, not a gain error",
+        "dc_gain_status": "NOT_MEASURED",
+        "dc_offset": 8.903454425332903e-06,
+        "inter_channel_correlation": 1.0,
+        "inter_channel_gain_mismatch_db": 0.0,
+        "inter_channel_latency_samples": 0,
+        "magnitude_band": "20Hz-20kHz",
+        "magnitude_error_vs_reference_db": -7.91972180301101e-07,
+        "nan_inf": 0,
+        "peak": 0.627899706363678,
+        "rate_hz": 88200,
+        "sample_count": 4410,
+        "stopband_rejection_db": 19.87718000386628,
+        "tone_amplitude": 0.49996688728743804,
+        "tone_frequency_error_hz": 0.0,
+        "tone_frequency_hz": 1000.0,
+        "tone_gain_error_db": -0.0005752457820187163
+      }
+    },
+    {
+      "backend": {
+        "decoder": "avdec_dsd_lsbf",
+        "output_format": "F32LE"
+      },
+      "caps_negotiated": "audio/x-raw, rate=(int)88200, format=(string)F32LE, channels=(int)2, layout=(string)interleaved, channel-mask=(bitmask)0x0000000000000003",
+      "cleanup_confirmed": true,
+      "dc": {},
+      "decoder_caps": "audio/x-dsd, rate=(int)352800, channels=(int)2, channel-mask=(bitmask)0x0000000000000003, format=(string)DSDU8, layout=(string)interleaved, reversed-bytes=(boolean)true",
+      "environment": {
+        "python": "3.11",
+        "sink": "fakesink"
+      },
+      "eos_observed": true,
+      "fixture": {
+        "analytic_dc_level": null,
+        "analytic_frequency_hz": 5000,
+        "bit_order": "LSBF",
+        "generated": false,
+        "name": "tone_5khz",
+        "oracle": "analytic_sine_amplitude_0.5",
+        "path": null,
+        "sha256": "46677b5340bfed1d395a656ba9efc57d490b9e6b2682b50e4ed6af90761818b9"
+      },
+      "informational_metrics": {
+        "disposition": "INFORMATIONAL \u2014 not the \u00a7274.4 isolated resampler criterion",
+        "stopband_rejection_db": null
+      },
+      "metric_dispositions": {
+        "eos": "PASS",
+        "numeric_finiteness": "PASS",
+        "oracle": "PASS",
+        "signal_present": "PASS"
+      },
+      "metrics": {
+        "channel_balance_db": 0.0,
+        "channels": 2,
+        "dc": 5.152713023801915e-05,
+        "max_step": 0.3434312790632248,
+        "nan_inf": 0,
+        "peak": 0.6102389693260193,
+        "rate_hz": 88200,
+        "rms": 0.3554829184827411,
+        "sample_count": 4410
+      },
+      "numeric_checks": {
+        "channel_polarity_in_phase": "PASS",
+        "eos_observed": "PASS",
+        "frequency_error_le_20_hz": "PASS",
+        "inter_channel_gain_le_0_01_db": "PASS",
+        "inter_channel_latency_zero_samples": "PASS",
+        "magnitude_error_le_0_10_db": "PASS",
+        "nan_inf_zero": "PASS",
+        "no_unexpected_clipping": "PASS"
+      },
+      "output_sha256": "9e09c752db93512f9e454b80241646661161547875290caa33b5f29dfa4e0b84",
+      "processing_graph_revision": null,
+      "profile": "HIGH",
+      "reference": {
+        "amplitude": 0.5001908527935659,
+        "dc_offset": 3.3336467525789676e-05,
+        "gain_db": 0.003314820001641657,
+        "reference_role": "decoder_native_reference",
+        "sample_count": 17640,
+        "sha256": "aca048f62278492fc92711bccbd41021781d53b0bb85f998fd2eb611754c279b",
+        "status": "PASS",
+        "target_rate_hz": 352800,
+        "tool": "ffmpeg",
+        "version": "ffmpeg version n9.0.2 Copyright (c) 2000-2026 the FFmpeg developers"
+      },
+      "release": {
+        "binding_generation": 1,
+        "confirmed": true,
+        "device": "lab",
+        "execution_id": "exec:conformance",
+        "host_generation": 1,
+        "operation": "stop",
+        "plan_id": "conformance:HIGH:88200",
+        "provenance": "SUPERVISED_HOST",
+        "stable_device_id": "lab:fakesink",
+        "terminal_state": "RELEASED"
+      },
+      "sample_count": 4410,
+      "schema_version": 2,
+      "status": "PASS",
+      "stopband": {},
+      "target_rate_hz": 88200,
+      "tone_metrics": {
+        "channel_amplitudes": [
+          0.5001908117939862,
+          0.5001908117939862
+        ],
+        "channel_polarity": "IN_PHASE",
+        "channels": 2,
+        "clipping_samples": 0,
+        "dc_gain_error_db": null,
+        "dc_gain_reason": "no DC stimulus; residual offset is linear, not a gain error",
+        "dc_gain_status": "NOT_MEASURED",
+        "dc_offset": 5.152713023801915e-05,
+        "inter_channel_correlation": 1.0,
+        "inter_channel_gain_mismatch_db": 0.0,
+        "inter_channel_latency_samples": 0,
+        "magnitude_band": "20Hz-20kHz",
+        "magnitude_error_vs_reference_db": -7.119639177037789e-07,
+        "nan_inf": 0,
+        "peak": 0.6102389693260193,
+        "rate_hz": 88200,
+        "sample_count": 4410,
+        "stopband_rejection_db": 19.466755188425438,
+        "tone_amplitude": 0.5001908117939862,
+        "tone_frequency_error_hz": 0.0,
+        "tone_frequency_hz": 5000.0,
+        "tone_gain_error_db": 0.003314108037723567
+      }
+    },
+    {
+      "backend": {
+        "decoder": "avdec_dsd_lsbf",
+        "output_format": "F32LE"
+      },
+      "caps_negotiated": "audio/x-raw, rate=(int)88200, format=(string)F32LE, channels=(int)2, layout=(string)interleaved, channel-mask=(bitmask)0x0000000000000003",
+      "cleanup_confirmed": true,
+      "dc": {},
+      "decoder_caps": "audio/x-dsd, rate=(int)352800, channels=(int)2, channel-mask=(bitmask)0x0000000000000003, format=(string)DSDU8, layout=(string)interleaved, reversed-bytes=(boolean)true",
+      "environment": {
+        "python": "3.11",
+        "sink": "fakesink"
+      },
+      "eos_observed": true,
+      "fixture": {
+        "analytic_dc_level": null,
+        "analytic_frequency_hz": 10000,
+        "bit_order": "LSBF",
+        "generated": false,
+        "name": "tone_10khz",
+        "oracle": "analytic_sine_amplitude_0.5",
+        "path": null,
+        "sha256": "ada914d42adb7a1b162c166b8cd6538d4d3924860c7cdf1e2b717b60075b440d"
+      },
+      "informational_metrics": {
+        "disposition": "INFORMATIONAL \u2014 not the \u00a7274.4 isolated resampler criterion",
+        "stopband_rejection_db": null
+      },
+      "metric_dispositions": {
+        "eos": "PASS",
+        "numeric_finiteness": "PASS",
+        "oracle": "PASS",
+        "signal_present": "PASS"
+      },
+      "metrics": {
+        "channel_balance_db": 0.0,
+        "channels": 2,
+        "dc": 0.00010893633979839397,
+        "max_step": 0.49973905086517334,
+        "nan_inf": 0,
+        "peak": 0.5791276693344116,
+        "rate_hz": 88200,
+        "rms": 0.3534648516851747,
+        "sample_count": 4410
+      },
+      "numeric_checks": {
+        "channel_polarity_in_phase": "PASS",
+        "eos_observed": "PASS",
+        "frequency_error_le_20_hz": "PASS",
+        "inter_channel_gain_le_0_01_db": "PASS",
+        "inter_channel_latency_zero_samples": "PASS",
+        "magnitude_error_le_0_10_db": "PASS",
+        "nan_inf_zero": "PASS",
+        "no_unexpected_clipping": "PASS"
+      },
+      "output_sha256": "8e67aaed13259294420144e36b00e2423c348ff3a0e6afe25ab382f6137b5109",
+      "processing_graph_revision": null,
+      "profile": "HIGH",
+      "reference": {
+        "amplitude": 0.49728653086567126,
+        "dc_offset": 6.994181380389337e-05,
+        "gain_db": -0.04726615845765232,
+        "reference_role": "decoder_native_reference",
+        "sample_count": 17640,
+        "sha256": "5c110184355b9bd9640b4c78a5cd9ca3b219a17b25bbc0012582c080e0aa89d6",
+        "status": "PASS",
+        "target_rate_hz": 352800,
+        "tool": "ffmpeg",
+        "version": "ffmpeg version n9.0.2 Copyright (c) 2000-2026 the FFmpeg developers"
+      },
+      "release": {
+        "binding_generation": 1,
+        "confirmed": true,
+        "device": "lab",
+        "execution_id": "exec:conformance",
+        "host_generation": 1,
+        "operation": "stop",
+        "plan_id": "conformance:HIGH:88200",
+        "provenance": "SUPERVISED_HOST",
+        "stable_device_id": "lab:fakesink",
+        "terminal_state": "RELEASED"
+      },
+      "sample_count": 4410,
+      "schema_version": 2,
+      "status": "PASS",
+      "stopband": {},
+      "target_rate_hz": 88200,
+      "tone_metrics": {
+        "channel_amplitudes": [
+          0.49728648573747525,
+          0.49728648573747525
+        ],
+        "channel_polarity": "IN_PHASE",
+        "channels": 2,
+        "clipping_samples": 0,
+        "dc_gain_error_db": null,
+        "dc_gain_reason": "no DC stimulus; residual offset is linear, not a gain error",
+        "dc_gain_status": "NOT_MEASURED",
+        "dc_offset": 0.00010893633979839397,
+        "inter_channel_correlation": 1.0,
+        "inter_channel_gain_mismatch_db": 0.0,
+        "inter_channel_latency_samples": 0,
+        "magnitude_band": "20Hz-20kHz",
+        "magnitude_error_vs_reference_db": -7.88234797715971e-07,
+        "nan_inf": 0,
+        "peak": 0.5791276693344116,
+        "rate_hz": 88200,
+        "sample_count": 4410,
+        "stopband_rejection_db": 19.608433561232196,
+        "tone_amplitude": 0.49728648573747525,
+        "tone_frequency_error_hz": 0.0,
+        "tone_frequency_hz": 10000.0,
+        "tone_gain_error_db": -0.047266946692449754
+      }
+    },
+    {
+      "backend": {
+        "decoder": "avdec_dsd_lsbf",
+        "output_format": "F32LE"
+      },
+      "caps_negotiated": "audio/x-raw, rate=(int)88200, format=(string)F32LE, channels=(int)2, layout=(string)interleaved, channel-mask=(bitmask)0x0000000000000003",
+      "cleanup_confirmed": true,
+      "dc": {},
+      "decoder_caps": "audio/x-dsd, rate=(int)352800, channels=(int)2, channel-mask=(bitmask)0x0000000000000003, format=(string)DSDU8, layout=(string)interleaved, reversed-bytes=(boolean)true",
+      "environment": {
+        "python": "3.11",
+        "sink": "fakesink"
+      },
+      "eos_observed": true,
+      "fixture": {
+        "analytic_dc_level": null,
+        "analytic_frequency_hz": 15000,
+        "bit_order": "LSBF",
+        "generated": false,
+        "name": "tone_15khz",
+        "oracle": "analytic_sine_amplitude_0.5",
+        "path": null,
+        "sha256": "8c0be1997b8a2c9e044956c229e17e9cba07c70cc1b7f3b758bb3c57bc4e6424"
+      },
+      "informational_metrics": {
+        "disposition": "INFORMATIONAL \u2014 not the \u00a7274.4 isolated resampler criterion",
+        "stopband_rejection_db": null
+      },
+      "metric_dispositions": {
+        "eos": "PASS",
+        "numeric_finiteness": "PASS",
+        "oracle": "PASS",
+        "signal_present": "PASS"
+      },
+      "metrics": {
+        "channel_balance_db": 0.0,
+        "channels": 2,
+        "dc": 0.00013835511767979112,
+        "max_step": 0.6569035947322845,
+        "nan_inf": 0,
+        "peak": 0.6021360158920288,
+        "rate_hz": 88200,
+        "rms": 0.35396087313085517,
+        "sample_count": 4410
+      },
+      "numeric_checks": {
+        "channel_polarity_in_phase": "PASS",
+        "eos_observed": "PASS",
+        "frequency_error_le_20_hz": "PASS",
+        "inter_channel_gain_le_0_01_db": "PASS",
+        "inter_channel_latency_zero_samples": "PASS",
+        "magnitude_error_le_0_10_db": "PASS",
+        "nan_inf_zero": "PASS",
+        "no_unexpected_clipping": "PASS"
+      },
+      "output_sha256": "04f89f4b3a11bbaade750cac8c5b47bc2f85331a02f2984754e13d36012ddc2e",
+      "processing_graph_revision": null,
+      "profile": "HIGH",
+      "reference": {
+        "amplitude": 0.49817149073262074,
+        "dc_offset": 0.00010037913754410785,
+        "gain_db": -0.03182268299885619,
+        "reference_role": "decoder_native_reference",
+        "sample_count": 17640,
+        "sha256": "d6e92036302fe7243be0de843923409b73a5c88790cf82e2de39f64149c630e5",
+        "status": "PASS",
+        "target_rate_hz": 352800,
+        "tool": "ffmpeg",
+        "version": "ffmpeg version n9.0.2 Copyright (c) 2000-2026 the FFmpeg developers"
+      },
+      "release": {
+        "binding_generation": 1,
+        "confirmed": true,
+        "device": "lab",
+        "execution_id": "exec:conformance",
+        "host_generation": 1,
+        "operation": "stop",
+        "plan_id": "conformance:HIGH:88200",
+        "provenance": "SUPERVISED_HOST",
+        "stable_device_id": "lab:fakesink",
+        "terminal_state": "RELEASED"
+      },
+      "sample_count": 4410,
+      "schema_version": 2,
+      "status": "PASS",
+      "stopband": {},
+      "target_rate_hz": 88200,
+      "tone_metrics": {
+        "channel_amplitudes": [
+          0.4981715493675992,
+          0.4981715493675992
+        ],
+        "channel_polarity": "IN_PHASE",
+        "channels": 2,
+        "clipping_samples": 0,
+        "dc_gain_error_db": null,
+        "dc_gain_reason": "no DC stimulus; residual offset is linear, not a gain error",
+        "dc_gain_status": "NOT_MEASURED",
+        "dc_offset": 0.00013835511767979112,
+        "inter_channel_correlation": 1.0,
+        "inter_channel_gain_mismatch_db": 0.0,
+        "inter_channel_latency_samples": 0,
+        "magnitude_band": "20Hz-20kHz",
+        "magnitude_error_vs_reference_db": 1.0223325328236212e-06,
+        "nan_inf": 0,
+        "peak": 0.6021360158920288,
+        "rate_hz": 88200,
+        "sample_count": 4410,
+        "stopband_rejection_db": 19.4224663592254,
+        "tone_amplitude": 0.4981715493675992,
+        "tone_frequency_error_hz": 0.0,
+        "tone_frequency_hz": 15000.0,
+        "tone_gain_error_db": -0.03182166066632303
+      }
+    },
+    {
+      "backend": {
+        "decoder": "avdec_dsd_lsbf",
+        "output_format": "F32LE"
+      },
+      "caps_negotiated": "audio/x-raw, rate=(int)88200, format=(string)F32LE, channels=(int)2, layout=(string)interleaved, channel-mask=(bitmask)0x0000000000000003",
+      "cleanup_confirmed": true,
+      "dc": {},
+      "decoder_caps": "audio/x-dsd, rate=(int)352800, channels=(int)2, channel-mask=(bitmask)0x0000000000000003, format=(string)DSDU8, layout=(string)interleaved, reversed-bytes=(boolean)true",
+      "environment": {
+        "python": "3.11",
+        "sink": "fakesink"
+      },
+      "eos_observed": true,
+      "fixture": {
+        "analytic_dc_level": null,
+        "analytic_frequency_hz": 20000,
+        "bit_order": "LSBF",
+        "generated": false,
+        "name": "tone_20khz",
+        "oracle": "analytic_sine_amplitude_0.5",
+        "path": null,
+        "sha256": "0d481a4b67d92144b17fbab5e9842bbb0939db5f22afa383b54a252495843522"
+      },
+      "informational_metrics": {
+        "disposition": "INFORMATIONAL \u2014 not the \u00a7274.4 isolated resampler criterion",
+        "stopband_rejection_db": null
+      },
+      "metric_dispositions": {
+        "eos": "PASS",
+        "numeric_finiteness": "PASS",
+        "oracle": "PASS",
+        "signal_present": "PASS"
+      },
+      "metrics": {
+        "channel_balance_db": 0.0,
+        "channels": 2,
+        "dc": 0.0001392318224618866,
+        "max_step": 0.8168517351150513,
+        "nan_inf": 0,
+        "peak": 0.5901271104812622,
+        "rate_hz": 88200,
+        "rms": 0.3477254812960621,
+        "sample_count": 4410
+      },
+      "numeric_checks": {
+        "channel_polarity_in_phase": "PASS",
+        "eos_observed": "PASS",
+        "frequency_error_le_20_hz": "PASS",
+        "inter_channel_gain_le_0_01_db": "PASS",
+        "inter_channel_latency_zero_samples": "PASS",
+        "magnitude_error_le_0_10_db": "PASS",
+        "nan_inf_zero": "PASS",
+        "no_unexpected_clipping": "PASS"
+      },
+      "output_sha256": "a71fb2bac4f0b78924c3442dca673040e0545695887dd0f558c96a4bcb112403",
+      "processing_graph_revision": null,
+      "profile": "HIGH",
+      "reference": {
+        "amplitude": 0.4892775941156813,
+        "dc_offset": 0.0001150503874351483,
+        "gain_db": -0.18829352237885535,
+        "reference_role": "decoder_native_reference",
+        "sample_count": 17640,
+        "sha256": "ea486b13862d00ee72785670724308152c117935a5942324f4e7664a637657d4",
+        "status": "PASS",
+        "target_rate_hz": 352800,
+        "tool": "ffmpeg",
+        "version": "ffmpeg version n9.0.2 Copyright (c) 2000-2026 the FFmpeg developers"
+      },
+      "release": {
+        "binding_generation": 1,
+        "confirmed": true,
+        "device": "lab",
+        "execution_id": "exec:conformance",
+        "host_generation": 1,
+        "operation": "stop",
+        "plan_id": "conformance:HIGH:88200",
+        "provenance": "SUPERVISED_HOST",
+        "stable_device_id": "lab:fakesink",
+        "terminal_state": "RELEASED"
+      },
+      "sample_count": 4410,
+      "schema_version": 2,
+      "status": "PASS",
+      "stopband": {},
+      "target_rate_hz": 88200,
+      "tone_metrics": {
+        "channel_amplitudes": [
+          0.4892776166884503,
+          0.4892776166884503
+        ],
+        "channel_polarity": "IN_PHASE",
+        "channels": 2,
+        "clipping_samples": 0,
+        "dc_gain_error_db": null,
+        "dc_gain_reason": "no DC stimulus; residual offset is linear, not a gain error",
+        "dc_gain_status": "NOT_MEASURED",
+        "dc_offset": 0.0001392318224618866,
+        "inter_channel_correlation": 1.0,
+        "inter_channel_gain_mismatch_db": 0.0,
+        "inter_channel_latency_samples": 0,
+        "magnitude_band": "20Hz-20kHz",
+        "magnitude_error_vs_reference_db": 4.0072257225106545e-07,
+        "nan_inf": 0,
+        "peak": 0.5901271104812622,
+        "rate_hz": 88200,
+        "sample_count": 4410,
+        "stopband_rejection_db": 19.362386095662252,
+        "tone_amplitude": 0.4892776166884503,
+        "tone_frequency_error_hz": 0.0,
+        "tone_frequency_hz": 20000.0,
+        "tone_gain_error_db": -0.18829312165628276
+      }
+    },
+    {
+      "backend": {
+        "decoder": "avdec_dsd_lsbf",
+        "output_format": "F32LE"
+      },
+      "caps_negotiated": "audio/x-raw, rate=(int)88200, format=(string)F32LE, channels=(int)2, layout=(string)interleaved, channel-mask=(bitmask)0x0000000000000003",
+      "cleanup_confirmed": true,
+      "dc": {},
+      "decoder_caps": "audio/x-dsd, rate=(int)352800, channels=(int)2, channel-mask=(bitmask)0x0000000000000003, format=(string)DSDU8, layout=(string)interleaved, reversed-bytes=(boolean)true",
+      "environment": {
+        "python": "3.11",
+        "sink": "fakesink"
+      },
+      "eos_observed": true,
+      "fixture": {
+        "analytic_dc_level": null,
+        "analytic_frequency_hz": 25000,
+        "bit_order": "LSBF",
+        "generated": false,
+        "name": "tone_25khz",
+        "oracle": "analytic_sine_amplitude_0.5",
+        "path": null,
+        "sha256": "762dba780df0229456425b7379fc5df09dc3f6122bc734873a610d7dc1be7174"
+      },
+      "informational_metrics": {
+        "disposition": "INFORMATIONAL \u2014 not the \u00a7274.4 isolated resampler criterion",
+        "stopband_rejection_db": null
+      },
+      "metric_dispositions": {
+        "eos": "PASS",
+        "numeric_finiteness": "PASS",
+        "oracle": "PASS",
+        "signal_present": "PASS"
+      },
+      "metrics": {
+        "channel_balance_db": 0.0,
+        "channels": 2,
+        "dc": 0.00013303010378142737,
+        "max_step": 0.9223651587963104,
+        "nan_inf": 0,
+        "peak": 0.5747861862182617,
+        "rate_hz": 88200,
+        "rms": 0.34963651487964814,
+        "sample_count": 4410
+      },
+      "numeric_checks": {
+        "channel_polarity_in_phase": "PASS",
+        "eos_observed": "PASS",
+        "frequency_error_le_20_hz": "PASS",
+        "inter_channel_gain_le_0_01_db": "PASS",
+        "inter_channel_latency_zero_samples": "PASS",
+        "magnitude_error_le_0_25_db": "PASS",
+        "nan_inf_zero": "PASS",
+        "no_unexpected_clipping": "PASS"
+      },
+      "output_sha256": "b85829e28cfd08540420178933f148b865927eac662e0fd19c10b0100cf7fdb6",
+      "processing_graph_revision": null,
+      "profile": "HIGH",
+      "reference": {
+        "amplitude": 0.4918398485177627,
+        "dc_offset": 0.0001124898876970826,
+        "gain_db": -0.14292584550261012,
+        "reference_role": "decoder_native_reference",
+        "sample_count": 17640,
+        "sha256": "85398c0bfbb45b8735e37fe5940839c53837b0e54bd4d55b5a0d0ff3be1aa1a2",
+        "status": "PASS",
+        "target_rate_hz": 352800,
+        "tool": "ffmpeg",
+        "version": "ffmpeg version n9.0.2 Copyright (c) 2000-2026 the FFmpeg developers"
+      },
+      "release": {
+        "binding_generation": 1,
+        "confirmed": true,
+        "device": "lab",
+        "execution_id": "exec:conformance",
+        "host_generation": 1,
+        "operation": "stop",
+        "plan_id": "conformance:HIGH:88200",
+        "provenance": "SUPERVISED_HOST",
+        "stable_device_id": "lab:fakesink",
+        "terminal_state": "RELEASED"
+      },
+      "sample_count": 4410,
+      "schema_version": 2,
+      "status": "PASS",
+      "stopband": {},
+      "target_rate_hz": 88200,
+      "tone_metrics": {
+        "channel_amplitudes": [
+          0.4918396852285684,
+          0.4918396852285684
+        ],
+        "channel_polarity": "IN_PHASE",
+        "channels": 2,
+        "clipping_samples": 0,
+        "dc_gain_error_db": null,
+        "dc_gain_reason": "no DC stimulus; residual offset is linear, not a gain error",
+        "dc_gain_status": "NOT_MEASURED",
+        "dc_offset": 0.00013303010378142737,
+        "inter_channel_correlation": 1.0,
+        "inter_channel_gain_mismatch_db": 0.0,
+        "inter_channel_latency_samples": 0,
+        "magnitude_band": "20kHz-40kHz",
+        "magnitude_error_vs_reference_db": -2.883686956363703e-06,
+        "nan_inf": 0,
+        "peak": 0.5747861862182617,
+        "rate_hz": 88200,
+        "sample_count": 4410,
+        "stopband_rejection_db": 19.231709921878018,
+        "tone_amplitude": 0.4918396852285684,
+        "tone_frequency_error_hz": 0.0,
+        "tone_frequency_hz": 25000.0,
+        "tone_gain_error_db": -0.14292872918956695
+      }
+    },
+    {
+      "backend": {
+        "decoder": "avdec_dsd_lsbf",
+        "output_format": "F32LE"
+      },
+      "caps_negotiated": "audio/x-raw, rate=(int)88200, format=(string)F32LE, channels=(int)2, layout=(string)interleaved, channel-mask=(bitmask)0x0000000000000003",
+      "cleanup_confirmed": true,
+      "dc": {},
+      "decoder_caps": "audio/x-dsd, rate=(int)352800, channels=(int)2, channel-mask=(bitmask)0x0000000000000003, format=(string)DSDU8, layout=(string)interleaved, reversed-bytes=(boolean)true",
+      "environment": {
+        "python": "3.11",
+        "sink": "fakesink"
+      },
+      "eos_observed": true,
+      "fixture": {
+        "analytic_dc_level": null,
+        "analytic_frequency_hz": 30000,
+        "bit_order": "LSBF",
+        "generated": false,
+        "name": "tone_30khz",
+        "oracle": "analytic_sine_amplitude_0.5",
+        "path": null,
+        "sha256": "167d1caf7f2a777768c72a0962919887528c3a49676e8aa529a93dceb9b86a5b"
+      },
+      "informational_metrics": {
+        "disposition": "INFORMATIONAL \u2014 not the \u00a7274.4 isolated resampler criterion",
+        "stopband_rejection_db": null
+      },
+      "metric_dispositions": {
+        "eos": "PASS",
+        "numeric_finiteness": "PASS",
+        "oracle": "PASS",
+        "signal_present": "PASS"
+      },
+      "metrics": {
+        "channel_balance_db": 0.0,
+        "channels": 2,
+        "dc": 7.924645066856831e-05,
+        "max_step": 0.9773744344711304,
+        "nan_inf": 0,
+        "peak": 0.5727933645248413,
+        "rate_hz": 88200,
+        "rms": 0.33779960270789744,
+        "sample_count": 4410
+      },
+      "numeric_checks": {
+        "channel_polarity_in_phase": "PASS",
+        "eos_observed": "PASS",
+        "frequency_error_le_20_hz": "PASS",
+        "inter_channel_gain_le_0_01_db": "PASS",
+        "inter_channel_latency_zero_samples": "PASS",
+        "magnitude_error_le_0_25_db": "PASS",
+        "nan_inf_zero": "PASS",
+        "no_unexpected_clipping": "PASS"
+      },
+      "output_sha256": "ff1e6eabb53f24f3c2c9f4abaaca6fba1e8111d900330380aea266e24b2780c3",
+      "processing_graph_revision": null,
+      "profile": "HIGH",
+      "reference": {
+        "amplitude": 0.48070580453337697,
+        "dc_offset": 9.547822211781189e-05,
+        "gain_db": -0.34181276120191084,
+        "reference_role": "decoder_native_reference",
+        "sample_count": 17640,
+        "sha256": "6d919d842a925ba98aa9a639b5b91983c741b376804cad91bc85fd3c3e259638",
+        "status": "PASS",
+        "target_rate_hz": 352800,
+        "tool": "ffmpeg",
+        "version": "ffmpeg version n9.0.2 Copyright (c) 2000-2026 the FFmpeg developers"
+      },
+      "release": {
+        "binding_generation": 1,
+        "confirmed": true,
+        "device": "lab",
+        "execution_id": "exec:conformance",
+        "host_generation": 1,
+        "operation": "stop",
+        "plan_id": "conformance:HIGH:88200",
+        "provenance": "SUPERVISED_HOST",
+        "stable_device_id": "lab:fakesink",
+        "terminal_state": "RELEASED"
+      },
+      "sample_count": 4410,
+      "schema_version": 2,
+      "status": "PASS",
+      "stopband": {},
+      "target_rate_hz": 88200,
+      "tone_metrics": {
+        "channel_amplitudes": [
+          0.48070761069615053,
+          0.48070761069615053
+        ],
+        "channel_polarity": "IN_PHASE",
+        "channels": 2,
+        "clipping_samples": 0,
+        "dc_gain_error_db": null,
+        "dc_gain_reason": "no DC stimulus; residual offset is linear, not a gain error",
+        "dc_gain_status": "NOT_MEASURED",
+        "dc_offset": 7.924645066856831e-05,
+        "inter_channel_correlation": 1.0,
+        "inter_channel_gain_mismatch_db": 0.0,
+        "inter_channel_latency_samples": 0,
+        "magnitude_band": "20kHz-40kHz",
+        "magnitude_error_vs_reference_db": 3.263555567485325e-05,
+        "nan_inf": 0,
+        "peak": 0.5727933645248413,
+        "rate_hz": 88200,
+        "sample_count": 4410,
+        "stopband_rejection_db": 20.0401262672128,
+        "tone_amplitude": 0.48070761069615053,
+        "tone_frequency_error_hz": 0.0,
+        "tone_frequency_hz": 30000.0,
+        "tone_gain_error_db": -0.34178012564623605
+      }
+    },
+    {
+      "backend": {
+        "decoder": "avdec_dsd_lsbf",
+        "output_format": "F32LE"
+      },
+      "caps_negotiated": "audio/x-raw, rate=(int)88200, format=(string)F32LE, channels=(int)2, layout=(string)interleaved, channel-mask=(bitmask)0x0000000000000003",
+      "cleanup_confirmed": true,
+      "dc": {},
+      "decoder_caps": "audio/x-dsd, rate=(int)352800, channels=(int)2, channel-mask=(bitmask)0x0000000000000003, format=(string)DSDU8, layout=(string)interleaved, reversed-bytes=(boolean)true",
+      "environment": {
+        "python": "3.11",
+        "sink": "fakesink"
+      },
+      "eos_observed": true,
+      "fixture": {
+        "analytic_dc_level": null,
+        "analytic_frequency_hz": 35000,
+        "bit_order": "LSBF",
+        "generated": false,
+        "name": "tone_35khz",
+        "oracle": "analytic_sine_amplitude_0.5",
+        "path": null,
+        "sha256": "276a3cd1eda0b2ef5e7b2255498fc9b3fc1352e25e2a940140d5af2ba0aa40f5"
+      },
+      "informational_metrics": {
+        "disposition": "INFORMATIONAL \u2014 not the \u00a7274.4 isolated resampler criterion",
+        "stopband_rejection_db": null
+      },
+      "metric_dispositions": {
+        "eos": "PASS",
+        "numeric_finiteness": "PASS",
+        "oracle": "PASS",
+        "signal_present": "PASS"
+      },
+      "metrics": {
+        "channel_balance_db": 0.0,
+        "channels": 2,
+        "dc": 5.423593009629893e-05,
+        "max_step": 1.0715987086296082,
+        "nan_inf": 0,
+        "peak": 0.5587506890296936,
+        "rate_hz": 88200,
+        "rms": 0.332201559341363,
+        "sample_count": 4410
+      },
+      "numeric_checks": {
+        "channel_polarity_in_phase": "PASS",
+        "eos_observed": "PASS",
+        "frequency_error_le_20_hz": "PASS",
+        "inter_channel_gain_le_0_01_db": "PASS",
+        "inter_channel_latency_zero_samples": "PASS",
+        "magnitude_error_le_0_25_db": "PASS",
+        "nan_inf_zero": "PASS",
+        "no_unexpected_clipping": "PASS"
+      },
+      "output_sha256": "41c46f27050145073f3b6acedb45480e9db23f28258911d2b1fe9029405e8f2f",
+      "processing_graph_revision": null,
+      "profile": "HIGH",
+      "reference": {
+        "amplitude": 0.46764937580574995,
+        "dc_offset": 8.310365251098598e-05,
+        "gain_db": -0.5809929065609649,
+        "reference_role": "decoder_native_reference",
+        "sample_count": 17640,
+        "sha256": "4c65deabeb390faf65d31b98dea1885076c11426d28abf13546ae1e074a1305a",
+        "status": "PASS",
+        "target_rate_hz": 352800,
+        "tool": "ffmpeg",
+        "version": "ffmpeg version n9.0.2 Copyright (c) 2000-2026 the FFmpeg developers"
+      },
+      "release": {
+        "binding_generation": 1,
+        "confirmed": true,
+        "device": "lab",
+        "execution_id": "exec:conformance",
+        "host_generation": 1,
+        "operation": "stop",
+        "plan_id": "conformance:HIGH:88200",
+        "provenance": "SUPERVISED_HOST",
+        "stable_device_id": "lab:fakesink",
+        "terminal_state": "RELEASED"
+      },
+      "sample_count": 4410,
+      "schema_version": 2,
+      "status": "PASS",
+      "stopband": {},
+      "target_rate_hz": 88200,
+      "tone_metrics": {
+        "channel_amplitudes": [
+          0.46764934703832534,
+          0.46764934703832534
+        ],
+        "channel_polarity": "IN_PHASE",
+        "channels": 2,
+        "clipping_samples": 0,
+        "dc_gain_error_db": null,
+        "dc_gain_reason": "no DC stimulus; residual offset is linear, not a gain error",
+        "dc_gain_status": "NOT_MEASURED",
+        "dc_offset": 5.423593009629893e-05,
+        "inter_channel_correlation": 1.0,
+        "inter_channel_gain_mismatch_db": 0.0,
+        "inter_channel_latency_samples": 0,
+        "magnitude_band": "20kHz-40kHz",
+        "magnitude_error_vs_reference_db": -5.343120207411635e-07,
+        "nan_inf": 0,
+        "peak": 0.5587506890296936,
+        "rate_hz": 88200,
+        "sample_count": 4410,
+        "stopband_rejection_db": 20.811074484171456,
+        "tone_amplitude": 0.46764934703832534,
+        "tone_frequency_error_hz": 0.0,
+        "tone_frequency_hz": 35000.0,
+        "tone_gain_error_db": -0.5809934408729857
+      }
+    },
+    {
+      "backend": {
+        "decoder": "avdec_dsd_lsbf",
+        "output_format": "F32LE"
+      },
+      "caps_negotiated": "audio/x-raw, rate=(int)88200, format=(string)F32LE, channels=(int)2, layout=(string)interleaved, channel-mask=(bitmask)0x0000000000000003",
+      "cleanup_confirmed": true,
+      "dc": {},
+      "decoder_caps": "audio/x-dsd, rate=(int)352800, channels=(int)2, channel-mask=(bitmask)0x0000000000000003, format=(string)DSDU8, layout=(string)interleaved, reversed-bytes=(boolean)true",
+      "environment": {
+        "python": "3.11",
+        "sink": "fakesink"
+      },
+      "eos_observed": true,
+      "fixture": {
+        "analytic_dc_level": null,
+        "analytic_frequency_hz": 40000,
+        "bit_order": "LSBF",
+        "generated": false,
+        "name": "tone_40khz",
+        "oracle": "analytic_sine_amplitude_0.5",
+        "path": null,
+        "sha256": "62740c652396af904d32b4b06043e1f0d95374d5dfd3e05fd3cb2110d946bed5"
+      },
+      "informational_metrics": {
+        "disposition": "INFORMATIONAL \u2014 not the \u00a7274.4 isolated resampler criterion",
+        "stopband_rejection_db": null
+      },
+      "metric_dispositions": {
+        "eos": "PASS",
+        "numeric_finiteness": "PASS",
+        "oracle": "PASS",
+        "signal_present": "PASS"
+      },
+      "metrics": {
+        "channel_balance_db": 0.0,
+        "channels": 2,
+        "dc": 2.253976803116686e-05,
+        "max_step": 1.0931057929992676,
+        "nan_inf": 0,
+        "peak": 0.5639269948005676,
+        "rate_hz": 88200,
+        "rms": 0.3327814907306242,
+        "sample_count": 4410
+      },
+      "numeric_checks": {
+        "channel_polarity_in_phase": "PASS",
+        "eos_observed": "PASS",
+        "frequency_error_le_20_hz": "PASS",
+        "inter_channel_gain_le_0_01_db": "PASS",
+        "inter_channel_latency_zero_samples": "PASS",
+        "magnitude_error_le_0_25_db": "PASS",
+        "nan_inf_zero": "PASS",
+        "no_unexpected_clipping": "PASS"
+      },
+      "output_sha256": "2d45e31aa90b270d4264c65e9732954b1b1f9b9a81593b91995366758c474f1e",
+      "processing_graph_revision": null,
+      "profile": "HIGH",
+      "reference": {
+        "amplitude": 0.4673684992356225,
+        "dc_offset": 7.579935908115513e-05,
+        "gain_db": -0.5862113371996751,
+        "reference_role": "decoder_native_reference",
+        "sample_count": 17640,
+        "sha256": "05472cdb664200b818e808aed4b29b42d3693a8f672c39aadd25668e7791d110",
+        "status": "PASS",
+        "target_rate_hz": 352800,
+        "tool": "ffmpeg",
+        "version": "ffmpeg version n9.0.2 Copyright (c) 2000-2026 the FFmpeg developers"
+      },
+      "release": {
+        "binding_generation": 1,
+        "confirmed": true,
+        "device": "lab",
+        "execution_id": "exec:conformance",
+        "host_generation": 1,
+        "operation": "stop",
+        "plan_id": "conformance:HIGH:88200",
+        "provenance": "SUPERVISED_HOST",
+        "stable_device_id": "lab:fakesink",
+        "terminal_state": "RELEASED"
+      },
+      "sample_count": 4410,
+      "schema_version": 2,
+      "status": "PASS",
+      "stopband": {},
+      "target_rate_hz": 88200,
+      "tone_metrics": {
+        "channel_amplitudes": [
+          0.46736831370391685,
+          0.46736831370391685
+        ],
+        "channel_polarity": "IN_PHASE",
+        "channels": 2,
+        "clipping_samples": 0,
+        "dc_gain_error_db": null,
+        "dc_gain_reason": "no DC stimulus; residual offset is linear, not a gain error",
+        "dc_gain_status": "NOT_MEASURED",
+        "dc_offset": 2.253976803116686e-05,
+        "inter_channel_correlation": 1.0,
+        "inter_channel_gain_mismatch_db": 0.0,
+        "inter_channel_latency_samples": 0,
+        "magnitude_band": "20kHz-40kHz",
+        "magnitude_error_vs_reference_db": -3.4480463324945366e-06,
+        "nan_inf": 0,
+        "peak": 0.5639269948005676,
+        "rate_hz": 88200,
+        "sample_count": 4410,
+        "stopband_rejection_db": 18.377554999370936,
+        "tone_amplitude": 0.46736831370391685,
+        "tone_frequency_error_hz": 0.0,
+        "tone_frequency_hz": 40000.0,
+        "tone_gain_error_db": -0.5862147852460075
+      }
+    },
+    {
+      "backend": {
+        "decoder": "avdec_dsd_lsbf",
+        "output_format": "F32LE"
+      },
+      "caps_negotiated": "audio/x-raw, rate=(int)88200, format=(string)F32LE, channels=(int)2, layout=(string)interleaved, channel-mask=(bitmask)0x0000000000000003",
+      "cleanup_confirmed": true,
+      "dc": {
+        "dc_gain_error_db": 1.878605766228058e-05,
+        "dc_gain_error_vs_stimulus_db": -0.0003664938841568717,
+        "expected_level": 0.25,
+        "measured_dc_offset": 0.24998945168061118,
+        "reason": "DC gain error 0.000019 dB is within 0.05 dB of the versioned reference",
+        "reference_dc_offset": 0.24998891099780596,
+        "reference_sha256": "8d15160039e9a1d4e4a964e7e63738eed2baa211bfa2a4cc09800677c800fd1b",
+        "reference_version": "ffmpeg version n9.0.2 Copyright (c) 2000-2026 the FFmpeg developers",
+        "status": "PASS",
+        "units": "dB = 20*log10(measured_dc / reference_dc)"
+      },
+      "decoder_caps": "audio/x-dsd, rate=(int)352800, channels=(int)2, channel-mask=(bitmask)0x0000000000000003, format=(string)DSDU8, layout=(string)interleaved, reversed-bytes=(boolean)true",
+      "environment": {
+        "python": "3.11",
+        "sink": "fakesink"
+      },
+      "eos_observed": true,
+      "fixture": {
+        "analytic_dc_level": 0.25,
+        "analytic_frequency_hz": 0,
+        "bit_order": "LSBF",
+        "generated": false,
+        "name": "dc_plus_0p25",
+        "oracle": "analytic_dc_level",
+        "path": null,
+        "sha256": "34451029f0e8449610d0751323dfaf1f81771623d15f71d513f356fe46caea8d"
+      },
+      "informational_metrics": {
+        "disposition": "INFORMATIONAL \u2014 not the \u00a7274.4 isolated resampler criterion",
+        "stopband_rejection_db": null
+      },
+      "metric_dispositions": {
+        "eos": "PASS",
+        "numeric_finiteness": "PASS",
+        "oracle": "PASS",
+        "signal_present": "PASS"
+      },
+      "metrics": {
+        "channel_balance_db": 0.0,
+        "channels": 2,
+        "dc": 0.24998945168061118,
+        "max_step": 0.19774848222732544,
+        "nan_inf": 0,
+        "peak": 0.27027392387390137,
+        "rate_hz": 88200,
+        "rms": 0.24999431623466226,
+        "sample_count": 44100
+      },
+      "numeric_checks": {
+        "dc_gain_error_le_0_05_db": "PASS",
+        "eos_observed": "PASS",
+        "nan_inf_zero": "PASS",
+        "no_unexpected_clipping": "PASS"
+      },
+      "output_sha256": "050b86a197798d5558402b351b04ba6e52032a7e5e246ff66d871b840fdffada",
+      "processing_graph_revision": null,
+      "profile": "HIGH",
+      "reference": {
+        "amplitude": null,
+        "dc_offset": 0.24998891099780596,
+        "gain_db": null,
+        "reference_role": "target_rate_reference",
+        "sample_count": 44100,
+        "sha256": "8d15160039e9a1d4e4a964e7e63738eed2baa211bfa2a4cc09800677c800fd1b",
+        "status": "PASS",
+        "target_rate_hz": 88200,
+        "tool": "ffmpeg",
+        "version": "ffmpeg version n9.0.2 Copyright (c) 2000-2026 the FFmpeg developers"
+      },
+      "release": {
+        "binding_generation": 1,
+        "confirmed": true,
+        "device": "lab",
+        "execution_id": "exec:conformance",
+        "host_generation": 1,
+        "operation": "stop",
+        "plan_id": "conformance:HIGH:88200",
+        "provenance": "SUPERVISED_HOST",
+        "stable_device_id": "lab:fakesink",
+        "terminal_state": "RELEASED"
+      },
+      "sample_count": 44100,
+      "schema_version": 2,
+      "status": "PASS",
+      "stopband": {},
+      "target_rate_hz": 88200,
+      "tone_metrics": {
+        "channel_amplitudes": [
+          0.0,
+          0.0
+        ],
+        "channel_polarity": "IN_PHASE",
+        "channels": 2,
+        "clipping_samples": 0,
+        "dc_gain_error_db": null,
+        "dc_gain_reason": "no DC stimulus; residual offset is linear, not a gain error",
+        "dc_gain_status": "NOT_MEASURED",
+        "dc_offset": 0.24998945168061118,
+        "inter_channel_correlation": 1.0,
+        "inter_channel_gain_mismatch_db": 0.0,
+        "inter_channel_latency_samples": 0,
+        "nan_inf": 0,
+        "peak": 0.27027392387390137,
+        "rate_hz": 88200,
+        "sample_count": 44100,
+        "stopband_rejection_db": null,
+        "tone_amplitude": 0.0,
+        "tone_frequency_error_hz": 0.0,
+        "tone_frequency_hz": 2.0,
+        "tone_gain_error_db": -233.97940008672037
+      }
+    },
+    {
+      "backend": {
+        "decoder": "avdec_dsd_lsbf",
+        "output_format": "F32LE"
+      },
+      "caps_negotiated": "audio/x-raw, rate=(int)88200, format=(string)F32LE, channels=(int)2, layout=(string)interleaved, channel-mask=(bitmask)0x0000000000000003",
+      "cleanup_confirmed": true,
+      "dc": {
+        "dc_gain_error_db": 2.0427096328314506e-05,
+        "dc_gain_error_vs_stimulus_db": -0.00036432684982186505,
+        "expected_level": -0.25,
+        "measured_dc_offset": -0.24998951405024922,
+        "reason": "DC gain error 0.000020 dB is within 0.05 dB of the versioned reference",
+        "reference_dc_offset": -0.2499889261365072,
+        "reference_sha256": "3cb47b20bfed4491308028f547e4e116a5b5b9fedfb5e14e649c35f7c0a2c088",
+        "reference_version": "ffmpeg version n9.0.2 Copyright (c) 2000-2026 the FFmpeg developers",
+        "status": "PASS",
+        "units": "dB = 20*log10(measured_dc / reference_dc)"
+      },
+      "decoder_caps": "audio/x-dsd, rate=(int)352800, channels=(int)2, channel-mask=(bitmask)0x0000000000000003, format=(string)DSDU8, layout=(string)interleaved, reversed-bytes=(boolean)true",
+      "environment": {
+        "python": "3.11",
+        "sink": "fakesink"
+      },
+      "eos_observed": true,
+      "fixture": {
+        "analytic_dc_level": -0.25,
+        "analytic_frequency_hz": 0,
+        "bit_order": "LSBF",
+        "generated": false,
+        "name": "dc_minus_0p25",
+        "oracle": "analytic_dc_level",
+        "path": null,
+        "sha256": "5b33d04b18605b2f871179ab4a8ace7525af06db00294667049b77011a845f9c"
+      },
+      "informational_metrics": {
+        "disposition": "INFORMATIONAL \u2014 not the \u00a7274.4 isolated resampler criterion",
+        "stopband_rejection_db": null
+      },
+      "metric_dispositions": {
+        "eos": "PASS",
+        "numeric_finiteness": "PASS",
+        "oracle": "PASS",
+        "signal_present": "PASS"
+      },
+      "metrics": {
+        "channel_balance_db": 0.0,
+        "channels": 2,
+        "dc": -0.24998951405024922,
+        "max_step": 0.19402210414409637,
+        "nan_inf": 0,
+        "peak": 0.27051618695259094,
+        "rate_hz": 88200,
+        "rms": 0.24999428003394092,
+        "sample_count": 44100
+      },
+      "numeric_checks": {
+        "dc_gain_error_le_0_05_db": "PASS",
+        "eos_observed": "PASS",
+        "nan_inf_zero": "PASS",
+        "no_unexpected_clipping": "PASS"
+      },
+      "output_sha256": "4dabb9989475fddc530635fbc57e3bc7726f5d807a55c45ed2caaa879ee50562",
+      "processing_graph_revision": null,
+      "profile": "HIGH",
+      "reference": {
+        "amplitude": null,
+        "dc_offset": -0.2499889261365072,
+        "gain_db": null,
+        "reference_role": "target_rate_reference",
+        "sample_count": 44100,
+        "sha256": "3cb47b20bfed4491308028f547e4e116a5b5b9fedfb5e14e649c35f7c0a2c088",
+        "status": "PASS",
+        "target_rate_hz": 88200,
+        "tool": "ffmpeg",
+        "version": "ffmpeg version n9.0.2 Copyright (c) 2000-2026 the FFmpeg developers"
+      },
+      "release": {
+        "binding_generation": 1,
+        "confirmed": true,
+        "device": "lab",
+        "execution_id": "exec:conformance",
+        "host_generation": 1,
+        "operation": "stop",
+        "plan_id": "conformance:HIGH:88200",
+        "provenance": "SUPERVISED_HOST",
+        "stable_device_id": "lab:fakesink",
+        "terminal_state": "RELEASED"
+      },
+      "sample_count": 44100,
+      "schema_version": 2,
+      "status": "PASS",
+      "stopband": {},
+      "target_rate_hz": 88200,
+      "tone_metrics": {
+        "channel_amplitudes": [
+          0.0,
+          0.0
+        ],
+        "channel_polarity": "IN_PHASE",
+        "channels": 2,
+        "clipping_samples": 0,
+        "dc_gain_error_db": null,
+        "dc_gain_reason": "no DC stimulus; residual offset is linear, not a gain error",
+        "dc_gain_status": "NOT_MEASURED",
+        "dc_offset": -0.24998951405024922,
+        "inter_channel_correlation": 1.0,
+        "inter_channel_gain_mismatch_db": 0.0,
+        "inter_channel_latency_samples": 0,
+        "nan_inf": 0,
+        "peak": 0.27051618695259094,
+        "rate_hz": 88200,
+        "sample_count": 44100,
+        "stopband_rejection_db": null,
+        "tone_amplitude": 0.0,
+        "tone_frequency_error_hz": 0.0,
+        "tone_frequency_hz": 2.0,
+        "tone_gain_error_db": -233.97940008672037
+      }
+    },
+    {
+      "backend": {
+        "decoder": "avdec_dsd_lsbf",
+        "output_format": "F32LE"
+      },
+      "caps_negotiated": "audio/x-raw, rate=(int)88200, format=(string)F32LE, channels=(int)2, layout=(string)interleaved, channel-mask=(bitmask)0x0000000000000003",
+      "cleanup_confirmed": true,
+      "dc": {},
+      "decoder_caps": "audio/x-dsd, rate=(int)352800, channels=(int)2, channel-mask=(bitmask)0x0000000000000003, format=(string)DSDU8, layout=(string)interleaved, reversed-bytes=(boolean)true",
+      "environment": {
+        "python": "3.11",
+        "sink": "fakesink"
+      },
+      "eos_observed": true,
+      "fixture": {
+        "analytic_dc_level": null,
+        "analytic_frequency_hz": 1000,
+        "bit_order": "LSBF",
+        "generated": false,
+        "name": "phase_inverted_1khz",
+        "oracle": "analytic_sine_amplitude_0.5",
+        "path": null,
+        "sha256": "f4af4eed1217d3aecc1b8c729cdbfa641ef2e0b9df86a431c9fa2a6bca894c9e"
+      },
+      "informational_metrics": {
+        "disposition": "INFORMATIONAL \u2014 not the \u00a7274.4 isolated resampler criterion",
+        "stopband_rejection_db": null
+      },
+      "metric_dispositions": {
+        "eos": "PASS",
+        "numeric_finiteness": "PASS",
+        "oracle": "PASS",
+        "signal_present": "PASS"
+      },
+      "metrics": {
+        "channel_balance_db": 4.486084199983614e-07,
+        "channels": 2,
+        "dc": -2.478246995228894e-07,
+        "max_step": 0.25611700117588043,
+        "nan_inf": 0,
+        "peak": 0.627899706363678,
+        "rate_hz": 88200,
+        "rms": 0.35530317879793627,
+        "sample_count": 4410
+      },
+      "numeric_checks": {
+        "channel_polarity_inversion_detected": "PASS",
+        "eos_observed": "PASS",
+        "frequency_error_le_20_hz": "PASS",
+        "inter_channel_gain_le_0_01_db": "PASS",
+        "inter_channel_latency_zero_samples": "PASS",
+        "magnitude_error_le_0_10_db": "PASS",
+        "nan_inf_zero": "PASS",
+        "no_unexpected_clipping": "PASS"
+      },
+      "output_sha256": "ff18e6a08164bf8717d1c915a9ec569f68d5c347395cdf8d840d75d24695a24d",
+      "processing_graph_revision": null,
+      "profile": "HIGH",
+      "reference": {
+        "amplitude": 0.49996693287400434,
+        "dc_offset": 6.080248177132982e-06,
+        "gain_db": -0.0005744538098384119,
+        "reference_role": "decoder_native_reference",
+        "sample_count": 17640,
+        "sha256": "2417d609b27477a0061cdbcded9833f4b3743f656cfe85545c90ca5e9b2a9856",
+        "status": "PASS",
+        "target_rate_hz": 352800,
+        "tool": "ffmpeg",
+        "version": "ffmpeg version n9.0.2 Copyright (c) 2000-2026 the FFmpeg developers"
+      },
+      "release": {
+        "binding_generation": 1,
+        "confirmed": true,
+        "device": "lab",
+        "execution_id": "exec:conformance",
+        "host_generation": 1,
+        "operation": "stop",
+        "plan_id": "conformance:HIGH:88200",
+        "provenance": "SUPERVISED_HOST",
+        "stable_device_id": "lab:fakesink",
+        "terminal_state": "RELEASED"
+      },
+      "sample_count": 4410,
+      "schema_version": 2,
+      "status": "PASS",
+      "stopband": {},
+      "target_rate_hz": 88200,
+      "tone_metrics": {
+        "channel_amplitudes": [
+          0.49996688728743804,
+          0.4999668872871193
+        ],
+        "channel_polarity": "INVERTED",
+        "channels": 2,
+        "clipping_samples": 0,
+        "dc_gain_error_db": null,
+        "dc_gain_reason": "no DC stimulus; residual offset is linear, not a gain error",
+        "dc_gain_status": "NOT_MEASURED",
+        "dc_offset": 8.903454425332903e-06,
+        "inter_channel_correlation": -0.9999999964885727,
+        "inter_channel_gain_mismatch_db": 5.537168312947209e-12,
+        "inter_channel_latency_samples": 0,
+        "magnitude_band": "20Hz-20kHz",
+        "magnitude_error_vs_reference_db": -7.91972180301101e-07,
+        "nan_inf": 0,
+        "peak": 0.627899706363678,
+        "rate_hz": 88200,
+        "sample_count": 4410,
+        "stopband_rejection_db": 19.87718000386628,
+        "tone_amplitude": 0.49996688728743804,
+        "tone_frequency_error_hz": 0.0,
+        "tone_frequency_hz": 1000.0,
+        "tone_gain_error_db": -0.0005752457820187163
+      }
+    },
+    {
+      "backend": {
+        "decoder": "avdec_dsd_lsbf",
+        "output_format": "F32LE"
+      },
+      "caps_negotiated": "audio/x-raw, rate=(int)88200, format=(string)F32LE, channels=(int)2, layout=(string)interleaved, channel-mask=(bitmask)0x0000000000000003",
+      "cleanup_confirmed": true,
+      "dc": {},
+      "decoder_caps": "audio/x-dsd, rate=(int)352800, channels=(int)2, channel-mask=(bitmask)0x0000000000000003, format=(string)DSDU8, layout=(string)interleaved, reversed-bytes=(boolean)true",
+      "environment": {
+        "python": "3.11",
+        "sink": "fakesink"
+      },
+      "eos_observed": true,
+      "fixture": {
+        "analytic_dc_level": null,
+        "analytic_frequency_hz": 0,
+        "bit_order": "LSBF",
+        "generated": false,
+        "name": "stopband_80khz",
+        "oracle": "analytic_sine_amplitude_0.5",
+        "path": null,
+        "sha256": "97a3f6cc0774dc6e38950605b9f7884fe63972ffe40c99ab56085d29dc6094f3"
+      },
+      "informational_metrics": {
+        "disposition": "INFORMATIONAL \u2014 not the \u00a7274.4 isolated resampler criterion",
+        "stopband_rejection_db": 86.35478984804543
+      },
+      "metric_dispositions": {
+        "eos": "PASS",
+        "numeric_finiteness": "PASS",
+        "oracle": "PASS",
+        "signal_present": "PASS"
+      },
+      "metrics": {
+        "channel_balance_db": 0.0,
+        "channels": 2,
+        "dc": 6.128951627074777e-06,
+        "max_step": 0.20714673399925232,
+        "nan_inf": 0,
+        "peak": 0.12038619816303253,
+        "rate_hz": 88200,
+        "rms": 0.03134680601321934,
+        "sample_count": 17640
+      },
+      "numeric_checks": {
+        "eos_observed": "PASS",
+        "nan_inf_zero": "PASS",
+        "no_unexpected_clipping": "NOT_APPLICABLE"
+      },
+      "output_sha256": "c3cdbb1545e4f928c3afbceb7d45baba635d754378143d4a4dff5f032093b62d",
+      "processing_graph_revision": null,
+      "profile": "HIGH",
+      "reference": {},
+      "release": {
+        "binding_generation": 1,
+        "confirmed": true,
+        "device": "lab",
+        "execution_id": "exec:conformance",
+        "host_generation": 1,
+        "operation": "stop",
+        "plan_id": "conformance:HIGH:88200",
+        "provenance": "SUPERVISED_HOST",
+        "stable_device_id": "lab:fakesink",
+        "terminal_state": "RELEASED"
+      },
+      "sample_count": 17640,
+      "schema_version": 2,
+      "status": "PASS",
+      "stopband": {
+        "alias_amplitude": 1.7692340875457055e-05,
+        "alias_hz": 8200,
+        "clipping_disposition": "NOT_APPLICABLE \u2014 an out-of-band stimulus may reconstruct above full scale; clipping is not a pass/fail criterion here",
+        "disposition": "INFORMATIONAL \u2014 end-to-end alias rejection is bounded by the modulator noise floor; \u00a7274.4 is certified only by the isolated pre/post resampler sweep",
+        "reference": {
+          "amplitude": 0.3677263835601256,
+          "dc_offset": 1.8825436339597827e-06,
+          "gain_db": -2.6689042734870445,
+          "reference_role": "decoder_native_reference",
+          "sample_count": 70560,
+          "sha256": "aace26bb8c7010710f2c7589358ab82926c215434f5dbb9c8cab8d8ff168ac68",
+          "status": "PASS",
+          "target_rate_hz": 352800,
+          "tool": "ffmpeg",
+          "version": "ffmpeg version n9.0.2 Copyright (c) 2000-2026 the FFmpeg developers"
+        },
+        "rejection_db": 86.35478984804543,
+        "stimulus_hz": 80000
+      },
+      "target_rate_hz": 88200,
+      "tone_metrics": {}
+    }
+  ]
+}

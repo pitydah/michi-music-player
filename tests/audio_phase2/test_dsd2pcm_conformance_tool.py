@@ -68,5 +68,9 @@ def test_stopband_stimulus_measures_the_resampler_rejection(tmp_path):
     )
     assert result["stopband"]["alias_hz"] == 8_200
     assert result["stopband"]["rejection_db"] >= 80.0
-    assert result["numeric_checks"]["resampler_stopband_ge_80_db"] == "PASS"
+    # End-to-end alias rejection is bounded by the modulator and the analysis
+    # bandwidth; it is INFORMATIONAL. The mandatory >=80 dB criterion is the
+    # isolated resampler sweep.
+    assert result["stopband"]["disposition"].startswith("INFORMATIONAL")
+    assert "resampler_stopband_ge_80_db" not in result["numeric_checks"]
     assert result["numeric_checks"]["no_unexpected_clipping"] == "NOT_APPLICABLE"
