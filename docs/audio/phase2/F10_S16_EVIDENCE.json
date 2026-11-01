@@ -135,7 +135,6 @@
   },
   "closure_review": "READY_FOR_CLOSURE_REVIEW",
   "open_items": [
-    "exact-SHA CI certification pending push approval",
     "PAUSED/EOS live quality cycles are an evidence extension, not a \u00a7196.7 gap",
     "physical T03/T04 qualification belongs to F14"
   ],
