@@ -98,6 +98,39 @@ class _CommitFailingTx(_ManagedTx):
         raise RuntimeError("commit rejected")
 
 
+class _FailingAdoptionAudio(_ImmediateAdoptionAudio):
+    def adopt_preloaded_media_async(self, claim, *, on_done, on_failed) -> None:
+        on_failed(RuntimeError("the DAC binding disappeared"))
+
+
+def test_dac_disappearance_during_managed_adoption_never_falls_back() -> None:
+    audio = _FailingAdoptionAudio()
+    playback = PlaybackService(audio)
+    playback._request_epoch = 1
+    tx = _ManagedTx()
+    playback._output_tx = tx
+    accepted: list[Path] = []
+    rejected: list[tuple[Path, str]] = []
+    path = Path("/tmp/managed-adoption-dac-lost.wav")
+
+    playback._continue_prepared_load(
+        path,
+        "output-tx:managed:dac-lost",
+        1,
+        False,
+        False,
+        accepted.append,
+        lambda rejected_path, message: rejected.append((rejected_path, message)),
+        None,
+    )
+
+    assert audio.loaded is None
+    assert tx.committed is None
+    assert accepted == []
+    assert rejected and "binding disappeared" in rejected[0][1]
+    assert ("output-tx:managed:dac-lost", "managed_adopt_failed") in tx.aborted
+
+
 def test_a_to_b_to_c_ignores_every_superseded_managed_adoption() -> None:
     audio = _QueuedAdoptionAudio()
     playback = PlaybackService(audio)
