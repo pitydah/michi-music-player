@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -97,5 +98,47 @@ def test_claim_after_stop_never_reuses_the_managed_execution(
     try:
         graph.output_session.abort_media(token, "test_stop")
         assert graph.output_session.prepared_transport_claim(token, FIXTURE) is None
+    finally:
+        _close(graph)
+
+
+def test_host_claim_rejects_a_tampered_binding_generation(
+    tmp_path: Path,
+) -> None:
+    graph, token = _prepared_managed(tmp_path)
+    try:
+        port = graph.gstreamer_engine_provider.current_port
+        assert port is not None
+        claim = graph.output_session.prepared_transport_claim(token, FIXTURE)
+        assert claim is not None
+        tampered = replace(claim, binding_generation=claim.binding_generation + 1)
+        rejected = port.claim_preloaded_managed(tampered)
+        assert rejected["claimed"] is False
+        assert rejected["stale"] is True
+        assert rejected["code"] == "MANAGED_CLAIM_STALE"
+        # A rejected claim must not consume the live execution.
+        accepted = port.claim_preloaded_managed(claim)
+        assert accepted["claimed"] is True
+        assert accepted["identity"]["path"] == str(FIXTURE)
+    finally:
+        _close(graph)
+
+
+def test_host_claim_rejects_a_replaced_host_generation(
+    tmp_path: Path,
+) -> None:
+    graph, token = _prepared_managed(tmp_path)
+    try:
+        port = graph.gstreamer_engine_provider.current_port
+        assert port is not None
+        claim = graph.output_session.prepared_transport_claim(token, FIXTURE)
+        assert claim is not None
+        tampered = replace(claim, host_generation=claim.host_generation + 1)
+        rejected = port.claim_preloaded_managed(tampered)
+        assert rejected["claimed"] is False
+        assert rejected["stale"] is True
+        assert rejected["code"] == "MANAGED_CLAIM_HOST_GENERATION_STALE"
+        accepted = port.claim_preloaded_managed(claim)
+        assert accepted["claimed"] is True
     finally:
         _close(graph)
