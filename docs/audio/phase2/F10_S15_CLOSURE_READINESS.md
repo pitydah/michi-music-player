@@ -82,3 +82,12 @@ The fix is **Prepared Managed Transport Adoption**:
 - Physical Managed/DSD handover evidence remains NOT_RUN; all S15 E2E use
   `fakesink`. No bit-perfect or analog audibility claim.
 - F14 remains NOT_RUN as an independent formal phase. F11–F15 remain LOCKED.
+
+## Final local verification (2026-11-01)
+
+- `python -m pytest tests/ -q`: 6390 passed, 37 skipped, 1 failed only the frozen
+  adapter baseline for the two authorized S15 files. The baseline was re-sealed
+  in `a537c71`; `test_m11_3f_engine_selection.py` then passed 68/68.
+- `ruff check src tests scripts` and `ruff format --check` are clean (646 files).
+- Six Qt+host E2E and the seven managed-claim tests pass with the lab env.
+- Exact-SHA CI is still pending push approval.

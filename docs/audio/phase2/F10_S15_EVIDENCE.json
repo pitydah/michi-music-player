@@ -41,7 +41,7 @@
     },
     "G_certification": {
       "status": "PARTIAL",
-      "evidence": "Targeted 59 passed; six Qt+host E2E 6 passed. Full suite running; exact-SHA CI pending push approval."
+      "evidence": "Targeted 59 passed; six Qt+host E2E 6 passed; claim suite 7 passed. Full suite tests/ 6390 passed, 37 skipped, 1 failed only the frozen adapter baseline for the two authorized files; re-sealed in a537c71 and engine selection 68 passed. Ruff 646 files clean. Exact-SHA CI pending push approval."
     }
   },
   "e2e": {
