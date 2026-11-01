@@ -19,7 +19,7 @@ from dataclasses import dataclass, replace
 from enum import StrEnum
 from pathlib import Path
 
-from michi.application.audio_family_transition import AudioFamily
+from michi.application.audio_family_transition import AudioFamily, ReleaseTruth
 from michi.application.audio_output_planner import (
     EXACT_TUPLE_UNKNOWN,
     OutputPlanner,
@@ -1117,6 +1117,7 @@ class OutputSessionService:
         self._handover_attempt: _HandoverAttempt | None = None
         self._handover_state: HandoverState | None = None
         self._handover_boundary_crossed = False
+        self._handover_release_truth = ReleaseTruth.NOT_REQUESTED
         self._last_handover_release_evidence: dict | None = None
         self._subscribers: list[Callable[[], None]] = []
 
@@ -1822,8 +1823,32 @@ class OutputSessionService:
 
     @property
     def handover_boundary_crossed(self) -> bool:
-        """True once this request crossed the destructive release boundary."""
+        """True once this request dispatched the destructive release command."""
         return self._handover_boundary_crossed
+
+    @property
+    def handover_release_truth(self) -> ReleaseTruth:
+        """Transactional truth of the current attempt's release command."""
+        return self._handover_release_truth
+
+    @property
+    def handover_release_confirmed(self) -> bool:
+        return self._handover_release_truth is ReleaseTruth.RELEASE_CONFIRMED
+
+    @property
+    def handover_ownership_uncertain(self) -> bool:
+        return self._handover_release_truth is ReleaseTruth.OWNERSHIP_UNCERTAIN
+
+    @property
+    def handover_predecessor_active(self) -> bool:
+        """True when a captured predecessor still matches the live owner."""
+        attempt = self._handover_attempt
+        if attempt is None:
+            return False
+        return any(
+            self._handover_identity_is_current(snapshot)
+            for snapshot in attempt.predecessors
+        )
 
     @property
     def last_handover_release_evidence(self) -> dict | None:
@@ -1840,6 +1865,7 @@ class OutputSessionService:
         self._handover_attempt = None
         self._handover_state = None
         self._handover_boundary_crossed = False
+        self._handover_release_truth = ReleaseTruth.NOT_REQUESTED
         self._last_handover_release_evidence = None
 
     def _submit_async_work(self, work, completed) -> None:
@@ -1932,6 +1958,7 @@ class OutputSessionService:
             )
 
         self._handover_boundary_crossed = True
+        self._handover_release_truth = ReleaseTruth.RELEASE_REQUESTED
         self._submit_async_work(release_work, release_completed)
 
     def _preflight_handover(self, attempt: _HandoverAttempt) -> None:
@@ -2109,10 +2136,23 @@ class OutputSessionService:
             "binding_generation": snapshot.binding_generation,
             "host_generation": snapshot.host_generation,
         }
-        return all(
-            str(receipt.get(field) or "") == str(wanted)
-            for field, wanted in expected.items()
-        )
+        for field, wanted in expected.items():
+            actual = receipt.get(field)
+            if isinstance(wanted, bool):
+                matches = isinstance(actual, bool) and actual is wanted
+            elif isinstance(wanted, int):
+                # Zero is a valid generation; never coerce it to an empty
+                # string or accept a foreign/non-integer counter.
+                matches = (
+                    isinstance(actual, int)
+                    and not isinstance(actual, bool)
+                    and actual == wanted
+                )
+            else:
+                matches = isinstance(actual, str) and actual == wanted
+            if not matches:
+                return False
+        return True
 
     def _handover_release_confirmed(
         self, snapshot: _PredecessorSnapshot, result
@@ -2231,7 +2271,8 @@ class OutputSessionService:
         for snapshot in confirmed:
             self._reconcile_handover_release(snapshot)
         if stale:
-            self._handover_state = HandoverState.SUPERSEDED
+            if self._handover_attempt is attempt:
+                self._handover_state = HandoverState.SUPERSEDED
             on_failed(
                 OutputSessionError(
                     "OUTPUT_PREPARATION_STALE",
@@ -2250,6 +2291,7 @@ class OutputSessionService:
                     code=code,
                     detail="host did not confirm the predecessor release",
                 )
+            self._handover_release_truth = ReleaseTruth.OWNERSHIP_UNCERTAIN
             self._handover_state = HandoverState.OWNERSHIP_UNCONFIRMED
             on_failed(
                 OutputSessionError(
@@ -2269,6 +2311,7 @@ class OutputSessionService:
                     self._last_handover_release_evidence = selected
                     break
         self._handover_state = HandoverState.PREPARE
+        self._handover_release_truth = ReleaseTruth.RELEASE_CONFIRMED
         request = attempt.request
 
         def prepare_work():
@@ -2312,7 +2355,8 @@ class OutputSessionService:
         )
         if stale:
             self._abort_uncommitted_candidate(prepared, "superseded_before_commit")
-            self._handover_state = HandoverState.SUPERSEDED
+            if self._handover_attempt is attempt:
+                self._handover_state = HandoverState.SUPERSEDED
             on_failed(
                 OutputSessionError(
                     "OUTPUT_PREPARATION_STALE",

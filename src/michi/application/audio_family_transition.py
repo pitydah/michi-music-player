@@ -31,6 +31,21 @@ class TransitionPhase(StrEnum):
     OWNERSHIP_UNCONFIRMED = "OWNERSHIP_UNCONFIRMED"
 
 
+class ReleaseTruth(StrEnum):
+    """Transactional truth of the predecessor release command.
+
+    ``RELEASE_REQUESTED`` only proves the physical command was dispatched.
+    ``RELEASE_CONFIRMED`` requires an exact supervised-host receipt.
+    ``OWNERSHIP_UNCERTAIN`` means the command failed or could not be proven;
+    no acquisition may proceed until the owner reconciles it.
+    """
+
+    NOT_REQUESTED = "NOT_REQUESTED"
+    RELEASE_REQUESTED = "RELEASE_REQUESTED"
+    RELEASE_CONFIRMED = "RELEASE_CONFIRMED"
+    OWNERSHIP_UNCERTAIN = "OWNERSHIP_UNCERTAIN"
+
+
 class GaplessClass(StrEnum):
     GAPLESS_EXACT = "GAPLESS_EXACT"
     GAPLESS_SAME_GRAPH = "GAPLESS_SAME_GRAPH"
@@ -165,14 +180,25 @@ class AudioFamilyTransitionService:
             "host_generation": receipt.host_generation,
         }
         for field, wanted in expected.items():
-            # 0 is a legitimate generation (fresh host/binding); only an
-            # absent/empty identity field is invalid.
-            if wanted is None or wanted == "":
+            # Zero is a legitimate generation (fresh host/binding). Only an
+            # absent/empty identity field is invalid; never use ``or ""``.
+            if wanted is None or (isinstance(wanted, str) and wanted == ""):
                 raise TransitionError(
                     "TRANSITION_RELEASE_UNCONFIRMED",
                     f"release evidence requires {field}",
                 )
-            if str(evidence.get(field) or "") != str(wanted):
+            actual = evidence.get(field)
+            if isinstance(wanted, bool):
+                matches = isinstance(actual, bool) and actual is wanted
+            elif isinstance(wanted, int):
+                matches = (
+                    isinstance(actual, int)
+                    and not isinstance(actual, bool)
+                    and actual == wanted
+                )
+            else:
+                matches = isinstance(actual, str) and actual == wanted
+            if not matches:
                 raise TransitionError(
                     "TRANSITION_RELEASE_UNCONFIRMED",
                     f"release evidence does not match {field}",

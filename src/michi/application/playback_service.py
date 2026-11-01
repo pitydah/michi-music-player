@@ -17,6 +17,7 @@ from michi.application.audio_family_transition import (
     AudioFamily,
     AudioFamilyTransitionService,
     FamilyTransitionRequest,
+    ReleaseTruth,
 )
 from michi.application.audio_family_transition import (
     PlaybackStatus as TransitionPlaybackStatus,
@@ -510,13 +511,47 @@ class PlaybackService:
             def failed(exc: Exception) -> None:
                 if my_epoch != self._request_epoch:
                     return
-                boundary_crossed = bool(
-                    getattr(self._output_tx, "handover_boundary_crossed", False)
+                release_truth = getattr(self._output_tx, "handover_release_truth", None)
+                if release_truth is None:
+                    # Legacy output transactions only exposed the boundary
+                    # boolean; keep their historical post-release semantics.
+                    release_truth = (
+                        ReleaseTruth.RELEASE_CONFIRMED
+                        if bool(
+                            getattr(self._output_tx, "handover_boundary_crossed", False)
+                        )
+                        else ReleaseTruth.NOT_REQUESTED
+                    )
+                predecessor_active = bool(
+                    getattr(self._output_tx, "handover_predecessor_active", False)
                 )
                 self._clear_pending()
-                if boundary_crossed:
+                if release_truth is ReleaseTruth.RELEASE_CONFIRMED:
                     # The predecessor was physically released: it must never
                     # be restored as if it were still playing.
+                    self._intent = False
+                    self._accepted = False
+                    self._state.status = PlaybackStatus.STOPPED
+                    if planned_receipt is not None:
+                        self.family_transition_receipts.append(
+                            self._family_transition.mark_failed(planned_receipt)
+                        )
+                elif (
+                    release_truth is ReleaseTruth.OWNERSHIP_UNCERTAIN
+                    and predecessor_active
+                ):
+                    # The host did not confirm the release and the exact
+                    # predecessor identity is still live. Publishing STOPPED
+                    # here would be fiction; keep it and block acquisitions.
+                    if planned_receipt is not None:
+                        self.family_transition_receipts.append(
+                            self._family_transition.mark_ownership_unconfirmed(
+                                planned_receipt
+                            )
+                        )
+                elif release_truth is ReleaseTruth.OWNERSHIP_UNCERTAIN:
+                    # Ownership is uncertain and no exact live predecessor is
+                    # verified: fail closed rather than claim a restore.
                     self._intent = False
                     self._accepted = False
                     self._state.status = PlaybackStatus.STOPPED
