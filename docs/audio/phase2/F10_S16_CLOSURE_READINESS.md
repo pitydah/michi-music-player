@@ -23,7 +23,8 @@ independent qualification phase.
   processing reapply negotiates working caps, and OFF→ON→OFF→ON publishes
   graph revisions 2 and 3 as effective.
 - **QUALITY A→B→A.** Same-family quality changes release the exact predecessor,
-  prepare the new plan and publish a fresh output snapshot per transition.
+  prepare the new plan and publish a fresh output snapshot per transition; a
+  stale binding is rejected before the destructive release.
 - **Managed adversarial.** Late A/B/C completions never commit or accept;
   STOP, PLAY failure, commit failure, unconfirmed START and DAC disappearance
   never publish acceptance; Qt keeps ticking while CLAIM is held.
@@ -47,16 +48,15 @@ independent qualification phase.
   transitions.
 - **Policy/runtime coherence after failures:** PASS for the exercised release,
   prepare, commit, START and adoption failures.
-- **STOP/PAUSE/REPLAY convergence:** PARTIAL. PAUSED and EOS quality cycles
-  and host restart between claim and START are not yet covered by
-  deterministic quality-transition tests. DAC disappearance during managed
-  adoption now fails closed without acceptance or fallback.
+- **STOP/PAUSE/REPLAY convergence:** PARTIAL. PAUSED/EOS live quality cycles
+  remain an open evidence gap. PAUSED and STOPPED no-autoplay, STOP during
+  release/prepare, DAC disappearance and stale-binding rejection are covered.
 
 Physical T03/T04 qualification is NOT_RUN. No physical DAC certification or
 bit-perfect claim is made. F14 remains NOT_RUN.
 
 ## Next work
 
-1. Cover PAUSED, EOS, host restart and stale binding across QUALITY A→B→A.
+1. Cover PAUSED and EOS across QUALITY A→B→A.
 2. Re-run the full suite, repository gates and exact-SHA CI.
 3. Only then evaluate canonical F10 closure and the F11 handoff.

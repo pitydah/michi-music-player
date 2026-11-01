@@ -3,8 +3,8 @@
   "phase": "AP2-F10",
   "sprint": "S16",
   "base_sha": "8504d1e046682f0bd3cb4f47f12dcde2a57d37f9",
-  "code_sha": "179bb96",
-  "test_sha": "179bb96",
+  "code_sha": "75261c1",
+  "test_sha": "75261c1",
   "ci_sha": "PENDING",
   "generated_at": "2026-11-01",
   "commits": [
@@ -37,11 +37,11 @@
     },
     "E_adversarial": {
       "status": "PARTIAL",
-      "evidence": "Qt non-blocking, STOP during adoption, PLAY/COMMIT/START refusal, A->B->C supersession, DAC disappearance fail-closed, claim tamper and replaced host generation. Remaining: PAUSED/EOS quality cycles."
+      "evidence": "Qt non-blocking, STOP during adoption, PLAY/COMMIT/START refusal, A->B->C supersession, DAC disappearance fail-closed, stale binding before release, claim tamper and replaced host generation. Remaining: PAUSED/EOS quality cycles."
     },
     "F_dsp_quality": {
       "status": "PARTIAL",
-      "evidence": "Live DSD-PCM OFF->ON->OFF->ON with negotiated caps; QUALITY A->B->A with fresh output snapshots. Remaining: PAUSED/EOS/host-restart/stale-binding cycles."
+      "evidence": "Live DSD-PCM OFF->ON->OFF->ON with negotiated caps; QUALITY A->B->A with fresh output snapshots; stale binding rejected before release. Remaining: PAUSED/EOS live quality cycles."
     },
     "G_certification": {
       "status": "PARTIAL",
@@ -101,7 +101,7 @@
   },
   "closure_review": "NOT_READY",
   "open_items": [
-    "PAUSED/EOS/host-restart/stale-binding quality cycles",
+    "PAUSED/EOS live quality cycles",
     "physical T03/T04 qualification",
     "F14 remains NOT_RUN"
   ],
