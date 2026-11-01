@@ -17,17 +17,31 @@ import pytest
 
 from michi.application.audio_family_transition import TransitionPhase
 from michi.application.audio_output_planner import OutputPlanner
+from michi.application.dsd_output_planner import (
+    AlsaDsdTuple,
+    NativeDsdPlanner,
+    NativeDsdQualification,
+)
 from michi.application.dsd_policy_service import DsdPolicyDecision, OutputFamily
 from michi.application.dsd_to_pcm_plan import DsdToPcmPlanner
 from michi.application.output_session_service import (
     DopSessionPrepared,
     DsdPcmSessionPrepared,
     HandoverState,
+    NativeDsdSessionPrepared,
+    OutputRequest,
     OutputSessionService,
 )
 from michi.application.playback_service import PlaybackService
 from michi.domain.audio_output import OutputSessionState
 from michi.domain.dop import DopInterpretationState, DopPolicyDecision
+from michi.domain.dsd_signal import (
+    AlsaDsdGrouping,
+    DsdBitOrder,
+    DsdOrganization,
+    DsdPacking,
+    DsdSignalFormat,
+)
 from michi.domain.signal_truth import OutputFamilyState, SignalTruthRecorder
 from tests.audio_phase2.test_dop_resolver import _resolver
 from tests.audio_phase2.test_dsd_source_truth import build_dsf
@@ -88,6 +102,42 @@ def _dsd_pcm_resolver():
     )
 
 
+def _native_plan():
+    source = DsdSignalFormat(
+        bit_rate_hz=2_822_400,
+        channels=2,
+        packing=DsdPacking.DSD_U8,
+        bit_order=DsdBitOrder.MSBF,
+        organization=DsdOrganization.PLANAR,
+        layout=("FL", "FR"),
+    )
+    requested = AlsaDsdTuple(
+        format_name=AlsaDsdGrouping.DSD_U32_BE.alsa_format_name,
+        frame_rate_hz=88_200,
+        channels=2,
+        sample_width_bits=32,
+        source_bits_per_second_per_channel=2_822_400,
+    )
+    return NativeDsdPlanner().plan(
+        stable_device_id="usb:152a:85dd",
+        binding_locator="hw:3,0",
+        binding_generation=1,
+        source=source,
+        qualifications=(
+            NativeDsdQualification(
+                stable_device_id="usb:152a:85dd",
+                binding_generation=1,
+                requested=requested,
+                supported=True,
+                evidence_ref="alsa-dsd:lab",
+            ),
+        ),
+        execution_id="native-exec:lab",
+        source_proven=True,
+        active_engine_id="gstreamer",
+    )
+
+
 class _Rig:
     def __init__(self, port, session, resolver):
         self.port = port
@@ -126,12 +176,17 @@ def _build(tmp_path, monkeypatch, *, dsd_source: Path, async_submit=None):
     session_holder: dict[str, OutputSessionService] = {}
     dop_resolver = _dop_resolver()
     dsd_resolver = _dsd_pcm_resolver()
+    native_plan = _native_plan()
 
     def request_for(path: Path):
-        # The same canonical resolver authority resolves both families; the
+        # The same canonical resolver authority resolves all families; the
         # selected media intent (not a fabricated plan) chooses the family.
         if path.name == "dop.dsf":
             return dop_resolver(path)
+        if path.name == "native.dsf":
+            return OutputRequest.native_dsd(
+                native_plan, native_plan.stable_device_id, "profile:direct"
+            )
         return dsd_resolver(path)
 
     def dop_prepare(plan_value, path, _instance):
@@ -222,6 +277,52 @@ def _build(tmp_path, monkeypatch, *, dsd_source: Path, async_submit=None):
     def dsd_stop(prepared, reason):
         return port.stop_dsd_pcm(prepared.handle)
 
+    def native_prepare(plan_value, path, _instance):
+        identity = port.prepare_native_dsd(
+            {
+                "path": str(path),
+                "plan_id": plan_value.plan_id,
+                "execution_id": plan_value.execution_id,
+                "binding_generation": plan_value.binding_generation,
+                "stable_device_id": plan_value.stable_device_id,
+                "locator": plan_value.binding_locator,
+                "gst_format": plan_value.gst_format,
+                "gst_rate_bytes_per_second_per_channel": (
+                    plan_value.gst_rate_bytes_per_second_per_channel
+                ),
+                "channels": plan_value.alsa_tuple.channels,
+                "source_bits_per_second_per_channel": plan_value.source.bit_rate_hz,
+                "normalize_reversed_bytes": plan_value.normalize_reversed_bytes,
+                "requires_dsdconvert": True,
+                "source_family": "dsf",
+                "sink_factory": "fakesink",
+            }
+        )
+        expected = {
+            "plan_id": identity["plan_id"],
+            "execution_id": identity["execution_id"],
+            "stable_device_id": identity["stable_device_id"],
+            "device": identity["device"],
+            "binding_generation": identity["binding_generation"],
+        }
+        return NativeDsdSessionPrepared(
+            plan=plan_value,
+            execution_id=expected["execution_id"],
+            stable_device_id=expected["stable_device_id"],
+            runtime_identity=dict(identity),
+            evidence_refs=(),
+            handle=expected,
+        )
+
+    def native_commit(prepared):
+        port.commit_native_dsd(prepared.handle)
+
+    def native_abort(prepared, reason):
+        return port.abort_native_dsd(prepared.handle)
+
+    def native_stop(prepared, reason):
+        return port.stop_native_dsd(prepared.handle)
+
     session = OutputSessionService(
         OutputPlanner(),
         request_provider=request_for,
@@ -236,6 +337,11 @@ def _build(tmp_path, monkeypatch, *, dsd_source: Path, async_submit=None):
         dsd_pcm_abort=dsd_abort,
         dsd_pcm_stop=dsd_stop,
         dsd_pcm_plan_still_current=lambda _plan: True,
+        native_dsd_prepare=native_prepare,
+        native_dsd_commit=native_commit,
+        native_dsd_abort=native_abort,
+        native_dsd_stop=native_stop,
+        native_dsd_plan_still_current=lambda _plan: True,
         truth_recorder=truth,
     )
     session_holder["s"] = session

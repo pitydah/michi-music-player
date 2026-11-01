@@ -950,6 +950,15 @@ class GStreamerHostedAudioPort(AudioPort):
         return result
 
     def stop_native_dsd(self, expected: dict[str, Any]) -> dict[str, Any]:
+        with self._lock:
+            if self._native_dsd_expected is None:
+                # The backend stop runs before the owner transaction. A second
+                # stop of an already-released execution is idempotent; there is
+                # no newer execution to protect because a different identity
+                # would still be recorded in ``_native_dsd_expected``.
+                self._native_dsd_active = False
+                self._native_dsd_state = "RELEASED"
+                return {"stopped": True, "stale": True, "already": True}
         self._require_native_expected(expected)
         result = self._submit(
             HostOperation.STOP_NATIVE_DSD,

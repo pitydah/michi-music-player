@@ -1408,6 +1408,11 @@ class OutputSessionService:
             "host_generation": int(
                 getattr(prepared, "host_generation", 0)
                 or getattr(plan, "host_generation", 0)
+                or (
+                    prepared.runtime_identity.get("host_generation", 0)
+                    if isinstance(getattr(prepared, "runtime_identity", None), dict)
+                    else 0
+                )
                 or 0
             ),
             "processing_generation": 0,

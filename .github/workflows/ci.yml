@@ -445,12 +445,12 @@ jobs:
           set -euo pipefail
           python -m pytest tests/audio_phase2/test_f10_s13_qt_host_e2e.py \
             --collect-only -q | tee /tmp/qt-host-collect.txt
-          grep -q "2 tests collected" /tmp/qt-host-collect.txt
+          grep -q "4 tests collected" /tmp/qt-host-collect.txt
           python -m pytest tests/audio_phase2/test_f10_s13_qt_host_e2e.py \
             -q | tee /tmp/qt-host-run.txt
-          grep -Eq '^2 passed' /tmp/qt-host-run.txt
+          grep -Eq '^4 passed' /tmp/qt-host-run.txt
           if grep -Eq '[0-9]+ skipped' /tmp/qt-host-run.txt; then
-            echo "SKIP is not PASS: both Qt+host E2E must run" >&2
+            echo "SKIP is not PASS: all Qt+host E2E must run" >&2
             exit 1
           fi
 
