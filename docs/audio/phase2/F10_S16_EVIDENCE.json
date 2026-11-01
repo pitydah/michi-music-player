@@ -5,7 +5,7 @@
   "base_sha": "8504d1e046682f0bd3cb4f47f12dcde2a57d37f9",
   "code_sha": "75261c1",
   "test_sha": "75261c1",
-  "ci_sha": "PENDING",
+  "ci_sha": "397d43dc42af4af8f7a830d0c85a102fd955d78b",
   "generated_at": "2026-11-01",
   "commits": [
     "02ac5f2",
@@ -109,7 +109,7 @@
     },
     {
       "command": "python -m pytest tests/ -q",
-      "result": "PENDING after server restart"
+      "result": "6400 passed, 39 skipped in 1866.81 s (31:06)"
     }
   ],
   "section_196_7": {
@@ -146,5 +146,21 @@
     "F13",
     "F14",
     "F15"
-  ]
+  ],
+  "full_suite": {
+    "command": "python -m pytest tests/ -q",
+    "result": "6400 passed, 39 skipped",
+    "duration_s": 1866.81,
+    "warnings": [
+      "test_m6_ext_r4_corrective_seal thread timeout warning"
+    ]
+  },
+  "ci_run": 41345419422,
+  "ci_status": "success",
+  "ci_jobs": {
+    "check": "success",
+    "dop-native-gate-a": "success",
+    "dac-v35-software-closure": "success",
+    "min-qt": "success"
+  }
 }
