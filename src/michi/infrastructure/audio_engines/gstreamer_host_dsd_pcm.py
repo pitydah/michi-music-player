@@ -133,6 +133,7 @@ class DsdPcmHostRuntime:
         self._identity: dict[str, Any] | None = None
         self._last_receipt: dict[str, Any] | None = None
         self._committed = False
+        self._paused = False
         self._errors: list[dict[str, str]] = []
         self._eos = False
         self._pcm_caps = None
@@ -312,6 +313,7 @@ class DsdPcmHostRuntime:
                     f"{upper.get_name()} -> {lower.get_name()}",
                 )
         self._pipeline = pipeline
+        self._paused = False
         if request.capture_max_frames:
             self.enable_capture(request.capture_max_frames)
         pipeline.set_state(gst.State.PAUSED)
@@ -382,6 +384,11 @@ class DsdPcmHostRuntime:
         if self._processing_filter is not None:
             raise DsdPcmHostError(
                 "DSD_PCM_PROCESSING_ALREADY_INSTALLED", "filter already present"
+            )
+        if self._paused:
+            raise DsdPcmHostError(
+                "DSP_PAUSED_REQUIRES_RESUME",
+                "processing install while paused requires resume",
             )
         from michi.infrastructure.audio_processing.gstreamer_graph_builder import (
             build_processing_filter,
@@ -487,6 +494,11 @@ class DsdPcmHostRuntime:
         return bool(removed)
 
     def remove_processing_filter(self) -> dict[str, Any]:
+        if self._paused:
+            raise DsdPcmHostError(
+                "DSP_PAUSED_REQUIRES_RESUME",
+                "processing removal while paused requires resume",
+            )
         identity = dict(self._identity or {})
         generation = self._pipeline_generation
         filter_bin = self._processing_filter
@@ -587,6 +599,7 @@ class DsdPcmHostRuntime:
             raise DsdPcmHostError("DSD_PCM_HOST_NOT_COMMITTED", "commit before start")
         self._pipeline.set_state(self._gst.State.PLAYING)
         self._confirm(self._gst.State.PLAYING, "PLAYING")
+        self._paused = False
         self._drain_bus()
         if self._errors:
             raise DsdPcmHostError("DSD_PCM_HOST_BUS_ERROR", self._errors[0]["detail"])
@@ -611,9 +624,11 @@ class DsdPcmHostRuntime:
         if self._pipeline is None:
             raise DsdPcmHostError("DSD_PCM_HOST_NOT_PREPARED", "no pipeline")
         self._pipeline.set_state(self._gst.State.PAUSED)
+        confirmed = self._confirm(self._gst.State.PAUSED, "PAUSED")
+        self._paused = True
         return {
             "state": "PAUSED",
-            "confirmed": self._confirm(self._gst.State.PAUSED, "PAUSED"),
+            "confirmed": confirmed,
         }
 
     def resume(self, expected: dict[str, Any] | None) -> dict[str, Any]:
@@ -621,9 +636,11 @@ class DsdPcmHostRuntime:
         if not self._committed or self._pipeline is None:
             raise DsdPcmHostError("DSD_PCM_HOST_NOT_COMMITTED", "commit before resume")
         self._pipeline.set_state(self._gst.State.PLAYING)
+        confirmed = self._confirm(self._gst.State.PLAYING, "PLAYING")
+        self._paused = False
         return {
             "state": "PLAYING",
-            "confirmed": self._confirm(self._gst.State.PLAYING, "PLAYING"),
+            "confirmed": confirmed,
         }
 
     def stop(self, expected: dict[str, Any]) -> dict[str, Any]:
@@ -711,6 +728,7 @@ class DsdPcmHostRuntime:
         self._request = None
         self._identity = None
         self._committed = False
+        self._paused = False
         self._pcm_caps = None
         self._sink = None
         self._processing_filter = None
@@ -819,6 +837,7 @@ class DsdPcmHostRuntime:
         self._processing_plan_wire = None
         self._capture_probe = None
         self._committed = False
+        self._paused = False
         self._errors = []
         self._eos = False
         self._advance_pipeline_generation()
