@@ -1376,7 +1376,11 @@ class TestF42AdapterContract:
         # path and atomically verifies CLAIM_PRELOADED_MANAGED without
         # building a pipeline. Shared transport unchanged; hash re-sealed
         # after full regression.
-        "src/michi/infrastructure/audio_engines/gstreamer.py": "2b96b211b911f9f2",
+        # AP2-F10 S16 (2026-11-01): CLAIM_PRELOADED_MANAGED now requires the
+        # positive pipeline generation observed by the host, so a replaced
+        # pipeline can never be adopted. Shared transport unchanged; hash
+        # re-sealed after full regression.
+        "src/michi/infrastructure/audio_engines/gstreamer.py": "7ec89e800b4ad975",
         # F06 sprint 11: lazy QtMultimedia objects (open() no longer creates
         # QMediaPlayer/QAudioOutput). Product behavior unchanged on first use;
         # headless engines no longer enumerate devices at open.
@@ -1399,7 +1403,10 @@ class TestF42AdapterContract:
         # AP2-F10 S15 (2026-11-01): the router delegates the verified
         # preloaded managed adoption to the bound backend without owning
         # policy; existing transport behavior is unchanged.
-        "src/michi/application/audio_transport_router.py": "f55db33123f62232",  # noqa: E501
+        # AP2-F10 S16 (2026-11-01): the adoption is delegated asynchronously
+        # so a blocked host claim never occupies the Qt owner. No policy or
+        # PlaybackState authority moved into the router.
+        "src/michi/application/audio_transport_router.py": "a8f80f4e3a86318a",  # noqa: E501
         # M4-R1/M9-R2.1 authorized additive change: ports.py gained the
         # PlaylistArtworkStorePort boundary (never touches AudioPort).
         # AUDIO RUNTIME RELIABILITY SEAL authorized reopening: ports.py
