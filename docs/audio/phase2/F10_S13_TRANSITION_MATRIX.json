@@ -1,0 +1,348 @@
+{
+  "adversarial": {
+    "a_to_b_to_c": "tests/audio_phase2/test_owner_safe_handover_adversarial.py::test_a_to_b_to_c_keeps_each_handover_independent",
+    "device_selection_aba": "tests/audio_phase2/test_owner_safe_handover_adversarial.py::test_device_selection_aba_during_prepare_aborts_the_target",
+    "foreign_receipt": "tests/audio_phase2/test_owner_safe_handover_adversarial.py::test_foreign_release_receipt_never_prepares_the_target",
+    "host_restart_receipt": "tests/audio_phase2/test_owner_safe_handover_adversarial.py::test_host_restart_receipt_mismatch_rejects_the_release",
+    "obsolete_request_cannot_release_newer_execution": "tests/audio_phase2/test_owner_safe_handover.py::test_obsolete_async_request_never_releases_the_current_execution",
+    "paused_no_autoplay": "tests/audio_phase2/test_family_transitions.py (PAUSED/STOPPED resume policy)",
+    "preflight_failure_before_release": "tests/audio_phase2/test_owner_safe_handover.py::test_preflight_failure_never_releases_the_predecessor",
+    "prepare_failure_after_release": "tests/audio_phase2/test_owner_safe_handover_adversarial.py::test_prepare_failure_after_release_is_terminal",
+    "qt_responsiveness": "tests/audio_phase2/test_owner_safe_handover_adversarial.py::test_qt_loop_stays_free_during_release_and_prepare",
+    "release_rejected": "tests/audio_phase2/test_owner_safe_handover_adversarial.py::test_release_rejected_never_prepares_the_target",
+    "stop_during_prepare": "tests/audio_phase2/test_owner_safe_handover_adversarial.py::test_stop_during_prepare_aborts_the_prepared_candidate",
+    "stop_during_release": "tests/audio_phase2/test_owner_safe_handover_adversarial.py::test_stop_during_release_never_prepares_the_target"
+  },
+  "base_sha": "7c9b7e02e6ebd65895cfcfe0f319a334aa733a34",
+  "closure_review": "NOT_READY",
+  "evidence_classes": {
+    "host_e2e": "real GStreamerHostSupervisor + GStreamerHostedAudioPort (fakesink lab)",
+    "physical": "real ALSA DAC execution, operator audibility still required",
+    "qt_host_e2e": "real QtAsyncCallExecutor + supervised host in one chain",
+    "service_integration": "PlaybackService + OutputSessionService with controlled host receipts",
+    "unit_contract": "focused unit test of the authority contract"
+  },
+  "generated_from_commits": [
+    "f2f774b",
+    "7ea0f40",
+    "c78e895",
+    "dff8b76",
+    "eb1518d",
+    "8273927",
+    "d292157",
+    "cc064eb",
+    "40359b7",
+    "9e0978c",
+    "847a199",
+    "2f9076c",
+    "987ed18"
+  ],
+  "integration": {
+    "host_release": "DoP and DSD->PCM host receipts are native; Native DSD abort and Managed stop publish supervised receipts from the identity the host validated",
+    "output_session": "PREFLIGHT -> VALIDATE -> RELEASE -> RECONCILE -> PREPARE -> READY owner transaction with frozen predecessor identities",
+    "playback": "PlaybackService plans the transition with its own request epoch and only accepts attempt-scoped release evidence",
+    "receipt_validation": "confirmed/RELEASED/SUPERVISED_HOST plus exact plan/execution/device/binding/host identity, attempt id and target family"
+  },
+  "limitations": [
+    "The physical evidence covers Direct compatible A<->B and DoP<->Native DSD handovers on two real USB DACs (alsasink), plus shared/strict/compatible field-suite cycles. The DoP and Native DSD destinations also have laboratory/host proofs.",
+    "Native DSD and Managed destinations require real hardware evidence for physical qualification.",
+    "T09/T10 prove DSP install/bypass on the live DSD->PCM runtime backed by the laboratory fakesink, not on a physical DAC.",
+    "T11 and the T12 DoP receipt proof use controlled host fakes; the physical T12 scope is a Direct compatible A<->B switch on real ALSA, with no identity-bound release receipt on that synchronous path."
+  ],
+  "matrix": {
+    "T01": {
+      "coverage": {
+        "host_e2e": "NOT_RUN",
+        "physical": "NOT_RUN",
+        "qt_host_e2e": "NOT_RUN",
+        "service_integration": "PASS",
+        "unit_contract": "PASS"
+      },
+      "reason": "committed Direct execution releases with the exact plan/execution identity returned by the hosted discard; the receipt is SUPERVISED_HOST only when the host confirms the command",
+      "source": "PCM_DIRECT",
+      "status": "PASS_SERVICE_PATH",
+      "target": "DSD_TO_PCM",
+      "test": "tests/audio_phase2/test_family_handover_matrix.py::test_t01_direct_to_dsd_pcm_records_the_host_release"
+    },
+    "T02": {
+      "coverage": {
+        "host_e2e": "PASS",
+        "physical": "NOT_RUN",
+        "qt_host_e2e": "PASS",
+        "service_integration": "PASS",
+        "unit_contract": "PASS"
+      },
+      "evidence": "real PlaybackService -> OutputSessionService -> GStreamerHostedAudioPort -> GStreamerHostSupervisor; exact release evidence; START confirmed by notify_dop_playing",
+      "qt_host_test": "tests/audio_phase2/test_f10_s13_qt_host_e2e.py::test_e2e_a_qt_host_dsd_pcm_to_dop",
+      "source": "DSD_TO_PCM",
+      "status": "PASS",
+      "target": "DOP",
+      "test": "tests/audio_phase2/test_family_handover_product_e2e.py::test_e2e_a_dsd_pcm_running_to_dop_running"
+    },
+    "T03": {
+      "coverage": {
+        "host_e2e": "NOT_RUN",
+        "physical": "NOT_RUN",
+        "qt_host_e2e": "NOT_RUN",
+        "service_integration": "PASS",
+        "unit_contract": "PASS"
+      },
+      "reason": "transaction and receipt proof with a controlled host receipt; no physical DAC execution",
+      "source": "PCM_MANAGED",
+      "status": "PASS_SERVICE_PATH",
+      "target": "DSD_TO_PCM",
+      "test": "tests/audio_phase2/test_family_handover_matrix.py::test_t03_managed_to_dsd_pcm_releases_before_prepare"
+    },
+    "T04": {
+      "coverage": {
+        "host_e2e": "NOT_RUN",
+        "physical": "NOT_RUN",
+        "qt_host_e2e": "NOT_RUN",
+        "service_integration": "PASS",
+        "unit_contract": "PASS"
+      },
+      "reason": "transaction proof; Managed destination requires a real DAC qualification",
+      "source": "DSD_TO_PCM",
+      "status": "PASS_SERVICE_PATH",
+      "target": "PCM_MANAGED",
+      "test": "tests/audio_phase2/test_family_handover_matrix.py::test_t04_dsd_pcm_to_managed_releases_before_prepare"
+    },
+    "T05": {
+      "coverage": {
+        "host_e2e": "NOT_RUN",
+        "physical": "NOT_RUN",
+        "qt_host_e2e": "NOT_RUN",
+        "service_integration": "PASS",
+        "unit_contract": "PASS"
+      },
+      "reason": "transaction proof with Native abort receipt; physical Native DSD requires hardware",
+      "source": "NATIVE_DSD",
+      "status": "PASS_SERVICE_PATH",
+      "target": "DSD_TO_PCM",
+      "test": "tests/audio_phase2/test_family_handover_matrix.py::test_t05_native_to_dsd_pcm_releases_before_prepare"
+    },
+    "T06": {
+      "coverage": {
+        "host_e2e": "NOT_RUN",
+        "physical": "NOT_RUN",
+        "qt_host_e2e": "NOT_RUN",
+        "service_integration": "PASS",
+        "unit_contract": "PASS"
+      },
+      "reason": "transaction proof; physical Native DSD requires hardware",
+      "source": "DSD_TO_PCM",
+      "status": "PASS_SERVICE_PATH",
+      "target": "NATIVE_DSD",
+      "test": "tests/audio_phase2/test_family_handover_matrix.py::test_t06_dsd_pcm_to_native_releases_before_prepare"
+    },
+    "T07": {
+      "coverage": {
+        "host_e2e": "PASS",
+        "physical": "NOT_RUN",
+        "qt_host_e2e": "PASS",
+        "service_integration": "PASS",
+        "unit_contract": "PASS"
+      },
+      "evidence": "real supervised host; exact DoP release evidence; DSD->PCM start confirmed by notify_dsd_pcm_playing",
+      "qt_host_test": "tests/audio_phase2/test_f10_s13_qt_host_e2e.py::test_e2e_b_qt_host_dop_to_dsd_pcm",
+      "source": "DOP",
+      "status": "PASS",
+      "target": "DSD_TO_PCM",
+      "test": "tests/audio_phase2/test_family_handover_product_e2e.py::test_e2e_b_dop_running_to_dsd_pcm_running"
+    },
+    "T08": {
+      "canonical": "T02",
+      "coverage": {
+        "host_e2e": "PASS",
+        "physical": "NOT_RUN",
+        "qt_host_e2e": "PASS",
+        "service_integration": "PASS",
+        "unit_contract": "PASS"
+      },
+      "reason": "duplicate direction; no separate evidence is claimed",
+      "source": "DSD_TO_PCM",
+      "status": "ALIAS_OF_T02",
+      "target": "DOP"
+    },
+    "T09": {
+      "coverage": {
+        "host_e2e": "PASS_LAB_DSP",
+        "physical": "NOT_RUN",
+        "qt_host_e2e": "NOT_RUN",
+        "service_integration": "PASS",
+        "unit_contract": "PASS"
+      },
+      "reason": "real hosted DSD->PCM run: the processing authority reports EFFECTIVE and the conversion evidence observes DSP_NODE; fakesink laboratory sink, not physical DAC",
+      "source": "DSD_TO_PCM DSP OFF",
+      "status": "PASS_SERVICE_PATH",
+      "target": "DSD_TO_PCM DSP ON",
+      "test": "tests/audio_phase2/test_dsd_pcm_product_dsp_e2e.py::test_selected_profile_is_effective_on_product_dsd_playback"
+    },
+    "T10": {
+      "coverage": {
+        "host_e2e": "PASS_LAB_DSP",
+        "physical": "NOT_RUN",
+        "qt_host_e2e": "NOT_RUN",
+        "service_integration": "PASS",
+        "unit_contract": "PASS"
+      },
+      "reason": "live DSD->PCM run: disable_processing_async proves the bypass, the authority reports BYPASSED and the child identity no longer exposes a processing graph; fakesink laboratory sink",
+      "source": "DSD_TO_PCM DSP ON",
+      "status": "PASS_SERVICE_PATH",
+      "target": "DSD_TO_PCM DSP OFF",
+      "test": "tests/audio_phase2/test_dsd_pcm_product_dsp_e2e.py::test_dsp_on_to_off_while_dsd_pcm_is_running"
+    },
+    "T11": {
+      "coverage": {
+        "host_e2e": "NOT_RUN",
+        "physical": "NOT_RUN",
+        "qt_host_e2e": "NOT_RUN",
+        "service_integration": "PASS",
+        "unit_contract": "PASS"
+      },
+      "reason": "same-family reconfiguration is a destructive handover: exact-identity RELEASE before the host accepts the new quality/rate prepare",
+      "source": "DSD_TO_PCM quality A",
+      "status": "PASS_SERVICE_PATH",
+      "target": "DSD_TO_PCM quality B",
+      "test": "tests/audio_phase2/test_family_handover_matrix.py::test_t11_dsd_pcm_quality_change_releases_before_prepare"
+    },
+    "T12": {
+      "coverage": {
+        "host_e2e": "NOT_RUN",
+        "physical": "PASS",
+        "qt_host_e2e": "NOT_RUN",
+        "service_integration": "PASS",
+        "unit_contract": "PASS"
+      },
+      "evidence": "evidence/dac-v35-110/2026-10-31-f10-physical-handover/handover_matrix.json",
+      "physical": "scripts/f10_physical_dac_handover.py",
+      "reason": "same-family DAC change releases device A with its exact binding before binding device B (controlled-host DoP proof), and a physical Direct compatible A<->B switch was executed on SMSL and KINMAX with real alsasink: plan and locator changed and the transition was reacquire. Direct->Direct uses the synchronous reacquire path and publishes no identity-bound release receipt; audibility stays operator-confirmed.",
+      "source": "DAC A",
+      "status": "PASS_PHYSICAL",
+      "target": "DAC B",
+      "test": "tests/audio_phase2/test_family_handover_matrix.py::test_t12_dop_dac_change_releases_before_prepare"
+    }
+  },
+  "phase": "AP2-F10",
+  "physical_evidence": {
+    "audibility": "REQUIRES_OPERATOR_CONFIRMATION",
+    "certification_claim": "NONE",
+    "dacs": [
+      {
+        "direct_handover": "PASS",
+        "formats": [
+          "S32_LE",
+          "DSD_U32_BE"
+        ],
+        "id": "usb:152a:85dd:3-3.3.2",
+        "locator": "hw:CARD=AUDIO,DEV=0",
+        "mixer": "none exposed",
+        "name": "SMSL USB AUDIO",
+        "shared": "PASS",
+        "transitions": "PARTIAL: strict S16_LE refused with EXACT_TUPLE_UNSUPPORTED; later shared/compatible cycles in that run failed"
+      },
+      {
+        "direct_handover": "PASS",
+        "formats": [
+          "S16_LE",
+          "S24_3LE",
+          "S32_LE",
+          "DSD_U32_BE"
+        ],
+        "id": "usb:2fc6:f882:HA01",
+        "locator": "hw:CARD=HA01,DEV=0",
+        "mixer": "PCM 63%",
+        "name": "KINMAX HA01",
+        "shared": "PASS",
+        "transitions": "PASS: shared, strict S16_LE exact, shared, compatible S32_LE exact, shared"
+      }
+    ],
+    "date": "2026-10-31",
+    "direct_handover": {
+      "ab": {
+        "locator_changed": true,
+        "plan_changed": true,
+        "result": "PASS",
+        "source": "usb:152a:85dd:3-3.3.2",
+        "source_plan": "plan:2784f316aec6ce07",
+        "target": "usb:2fc6:f882:HA01",
+        "target_plan": "plan:7ecad0430860fffd",
+        "transition": "reacquire"
+      },
+      "ba": {
+        "locator_changed": true,
+        "plan_changed": true,
+        "result": "PASS",
+        "source": "usb:2fc6:f882:HA01",
+        "target": "usb:152a:85dd:3-3.3.2",
+        "transition": "reacquire"
+      }
+    },
+    "family_handover": {
+      "audibility": "REQUIRES_OPERATOR_CONFIRMATION",
+      "certification_claim": "NONE",
+      "device_a": {
+        "locator": "hw:CARD=AUDIO,DEV=0",
+        "stable_device_id": "usb:152a:85dd:3-3.3.2"
+      },
+      "device_b": {
+        "locator": "hw:CARD=HA01,DEV=0",
+        "stable_device_id": "usb:2fc6:f882:HA01"
+      },
+      "evidence": "evidence/dac-v35-110/2026-10-31-f10-physical-family-handover/family_handover.json",
+      "phases": [
+        "DOP on device A",
+        "NATIVE_DSD on device B",
+        "DOP on device A"
+      ],
+      "release_receipts": "both directions confirmed SUPERVISED_HOST / RELEASED with exact execution and device identity",
+      "script": "scripts/f10_physical_family_handover.py",
+      "status": "PASS"
+    },
+    "limitations": [
+      "Direct->Direct uses the synchronous reacquire path and publishes no identity-bound release receipt.",
+      "DoP and Native DSD physical handover were not executed.",
+      "Analog output and audibility were not observed.",
+      "DoP<->Native physical handover is proven for runtime identity and release receipts; analog audibility and bit-perfect behaviour still require operator observation."
+    ],
+    "schema": "michi.f10.physical_evidence.v1"
+  },
+  "policy": {
+    "bit_perfect": {
+      "note": "converted or processed DSD paths are never bit-perfect",
+      "status": "NOT_CLAIMED"
+    },
+    "dsp_forbidden_in_dop_native": {
+      "note": "DSP is refused for Native DSD and DoP",
+      "status": "PASS",
+      "test": "tests/audio_phase2/test_dsd_dsp_matrix.py"
+    },
+    "explicit_dsd_conversion": {
+      "note": "no automatic DSD to PCM without consent",
+      "status": "PASS",
+      "test": "tests/audio_phase2/test_dsd_dsp_matrix.py"
+    },
+    "f14": {
+      "note": "F14 stays NOT_RUN; F11-F15 remain LOCKED",
+      "status": "NOT_RUN"
+    },
+    "gapless_honesty": {
+      "note": "destructive transitions are GAPLESS_DEGRADED_REOPEN; no exact-gapless claim",
+      "status": "PASS",
+      "test": "tests/audio_phase2/test_family_transitions_productive.py"
+    },
+    "signal_path_stages": {
+      "note": "REQUESTED, INSTALLED and EFFECTIVE remain distinct",
+      "status": "PASS",
+      "test": "tests/audio_phase2/test_signal_path_service.py::test_installed_stage_is_distinct_from_requested_and_effective"
+    }
+  },
+  "schema_version": 1,
+  "signal_path": {
+    "handover_truth": "PASS \u2014 predecessor RELEASED and target RUNNING events asserted in both E2E tests",
+    "installed": "PASS_MODELED \u2014 SignalPathNode.installed projects the processing commit receipt as a separate stage; a refused install never rewrites EFFECTIVE (tests/audio_phase2/test_signal_path_service.py::test_installed_stage_is_distinct_from_requested_and_effective)",
+    "requested_vs_effective": "PASS \u2014 tests/audio_phase2/test_signal_path_service.py::test_requested_and_effective_are_never_collapsed"
+  },
+  "sprint": "AP2-F10-S13",
+  "status": "PARTIAL"
+}
