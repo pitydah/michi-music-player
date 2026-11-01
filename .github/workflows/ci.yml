@@ -443,14 +443,15 @@ jobs:
           QT_QPA_PLATFORM: offscreen
         run: |
           set -euo pipefail
-          python -m pytest tests/audio_phase2/test_f10_s13_qt_host_e2e.py \
+          QT_HOST_TESTS="tests/audio_phase2/test_f10_s13_qt_host_e2e.py tests/audio_phase2/test_f10_s14_managed_qt_host_e2e.py"
+          python -m pytest $QT_HOST_TESTS \
             --collect-only -q | tee /tmp/qt-host-collect.txt
-          grep -q "4 tests collected" /tmp/qt-host-collect.txt
-          python -m pytest tests/audio_phase2/test_f10_s13_qt_host_e2e.py \
+          grep -q "6 tests collected" /tmp/qt-host-collect.txt
+          python -m pytest $QT_HOST_TESTS \
             -q | tee /tmp/qt-host-run.txt
-          grep -Eq '^4 passed' /tmp/qt-host-run.txt
-          if grep -Eq '[0-9]+ skipped' /tmp/qt-host-run.txt; then
-            echo "SKIP is not PASS: all Qt+host E2E must run" >&2
+          grep -Eq '^6 passed' /tmp/qt-host-run.txt
+          if grep -Eq '[0-9]+ (skipped|xfailed|xpassed)' /tmp/qt-host-run.txt; then
+            echo "SKIP/XFAIL is not PASS: all 6 Qt+host E2E must run" >&2
             exit 1
           fi
 

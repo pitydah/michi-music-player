@@ -105,6 +105,8 @@ class GStreamerHostedAudioPort(AudioPort):
         self._dop_eos_listeners: list[Callable[[str], None]] = []
         self._dsd_pcm_eos_listeners: list[Callable[[str], None]] = []
         self._pcm_active = False
+        self._managed_prepare_pending = False
+        self._managed_prepare_path: Path | None = None
         self._last_state: PlaybackStatus | None = None
         self._termination_kind: str | None = None
         self._runtime_failure_callback: Callable[[int, str], None] | None = None
@@ -377,6 +379,16 @@ class GStreamerHostedAudioPort(AudioPort):
                 # canonical media boundary; it is not a PCM load.
                 self._commit_accepted(Path(path))
                 return {"native_dsd": True, "accepted": True}
+            managed_prepare = self._managed_prepare_pending
+            self._managed_prepare_pending = False
+            resolved = Path(path).resolve()
+            if managed_prepare:
+                self._managed_prepare_path = resolved
+            elif (
+                self._managed_prepare_path is not None
+                and resolved != self._managed_prepare_path
+            ):
+                self._managed_prepare_path = None
             self._command_generation += 1
         try:
             result = self._submit(
@@ -729,6 +741,9 @@ class GStreamerHostedAudioPort(AudioPort):
 
     def stage_managed_execution(self, recipe: dict[str, Any]) -> None:
         """AP2-F06: stage ONE strict managed sink for the selected DAC."""
+        with self._lock:
+            self._managed_prepare_pending = True
+            self._managed_prepare_path = None
         self._submit(
             HostOperation.STAGE_MANAGED,
             {"recipe": dict(recipe)},
@@ -749,6 +764,12 @@ class GStreamerHostedAudioPort(AudioPort):
                 "stop_managed result is not an object",
             )
         if result.get("stopped") is True and result.get("stale") is not True:
+            with self._lock:
+                # The managed execution owned the PCM pipeline; once the
+                # host confirms its release, no PCM output remains active.
+                self._pcm_active = False
+                self._managed_prepare_path = None
+                self._managed_prepare_pending = False
             expected = payload.get("expected")
             if not isinstance(expected, dict):
                 expected = {}
@@ -791,6 +812,61 @@ class GStreamerHostedAudioPort(AudioPort):
                 "managed identity payload is not an object",
             )
         return identity
+
+    def claim_preloaded_managed(self, claim: object) -> dict[str, Any]:
+        """Claim the exact managed execution already loaded by the host.
+
+        This never issues a second LOAD: the child verifies the live managed
+        identity, the loaded path and the generation in one host command.
+        """
+        expected = {
+            "plan_id": str(getattr(claim, "plan_id", "") or ""),
+            "execution_id": str(getattr(claim, "execution_id", "") or ""),
+            "stable_device_id": str(getattr(claim, "stable_device_id", "") or ""),
+            "device": str(getattr(claim, "device_locator", "") or ""),
+            "binding_generation": int(getattr(claim, "binding_generation", 0) or 0),
+            "path": str(getattr(claim, "media_path", "") or ""),
+        }
+        expected_generation = int(getattr(claim, "host_generation", 0) or 0)
+        generation_before = int(self._supervisor.host_generation)
+        if expected_generation != generation_before:
+            return {
+                "claimed": False,
+                "stale": True,
+                "code": "MANAGED_CLAIM_HOST_GENERATION_STALE",
+                "reason": (
+                    "managed claim host generation "
+                    f"{expected_generation} is not the live {generation_before}"
+                ),
+            }
+        payload = self._submit(
+            HostOperation.CLAIM_PRELOADED_MANAGED,
+            {"expected": expected},
+            deadline_s=self._command_deadline_s,
+        )
+        result = payload.get("result")
+        if not isinstance(result, dict):
+            raise OutputHostCommandError(
+                "OUTPUT_HOST_INVALID_RESULT",
+                "claim_preloaded_managed result is not an object",
+            )
+        if int(self._supervisor.host_generation) != generation_before:
+            return {
+                "claimed": False,
+                "stale": True,
+                "code": "MANAGED_CLAIM_HOST_GENERATION_STALE",
+                "reason": "the host generation changed during the managed claim",
+            }
+        return result
+
+    def adopt_preloaded_media(self, claim: object) -> None:
+        """Fail-closed adoption of an already loaded managed execution."""
+        result = self.claim_preloaded_managed(claim)
+        if result.get("claimed") is not True or result.get("stale") is True:
+            raise OutputHostCommandError(
+                str(result.get("code") or "MANAGED_CLAIM_REJECTED"),
+                str(result.get("reason") or "preloaded managed claim rejected"),
+            )
 
     # ── Native DSD (AP2-F08) ─────────────────────────────────────────
     def add_native_eos_listener(self, callback: Callable[[str], None]) -> None:
@@ -2085,6 +2161,16 @@ class GStreamerHostedAudioPort(AudioPort):
             self._enqueue(lambda: self._commit_state(status))
         elif kind == HostEvent.MEDIA_ACCEPTED.value:
             path = Path(str(payload.get("path")))
+            with self._lock:
+                suppressed = (
+                    self._managed_prepare_path is not None
+                    and path.resolve() == self._managed_prepare_path
+                )
+            if suppressed:
+                # AP2-F10-S15: the Managed physical LOAD during PREPARE must
+                # not complete a Playback request before adoption. The owner
+                # publishes acceptance only after CLAIM_PRELOADED_MANAGED.
+                return
             self._enqueue(lambda: self._commit_accepted(path))
         elif kind == HostEvent.MEDIA_REJECTED.value:
             path = Path(str(payload.get("path")))

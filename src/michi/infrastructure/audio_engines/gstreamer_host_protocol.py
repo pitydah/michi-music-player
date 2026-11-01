@@ -97,6 +97,7 @@ class HostOperation(StrEnum):
     STAGE_MANAGED = "stage_managed"
     STOP_MANAGED = "stop_managed"
     QUERY_MANAGED_IDENTITY = "query_managed_identity"
+    CLAIM_PRELOADED_MANAGED = "claim_preloaded_managed"
     ABORT_CANDIDATE = "abort_candidate"
     PREPARE_NATIVE_DSD = "prepare_native_dsd"
     COMMIT_NATIVE_DSD = "commit_native_dsd"

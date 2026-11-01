@@ -622,25 +622,46 @@ class PlaybackService:
         # esta request SÍNCRONICAMENTE dentro de esta llamada.
         backend_load_completed = False
         try:
-            self._audio.load(file_path)
-            backend_load_completed = True
-            # Output preparation resolved the candidate policy before load,
-            # but effective PlaybackState changes only after the old physical
-            # source crossed the backend load boundary successfully.
-            # Native DSD has no PCM volume stage; the host owns the exact
-            # DSD route and the automatic PCM volume sync is skipped.
-            native_dsd = bool(getattr(self._output_tx, "native_dsd_active", False))
-            dop = bool(getattr(self._output_tx, "dop_active", False))
-            dsd_pcm = bool(getattr(self._output_tx, "dsd_pcm_active", False))
-            if native_dsd or dop or dsd_pcm:
-                # The host requires commit BEFORE start. The native media
-                # acceptance arrived during load and was latched; finalize it
-                # now so the output transaction is committed before play().
+            claim = None
+            claim_fn = getattr(self._output_tx, "prepared_transport_claim", None)
+            if callable(claim_fn):
+                claim = claim_fn(new_token, file_path)
+            if claim is not None:
+                # Prepared Managed Transport Adoption: the host already
+                # performed the single physical LOAD during PREPARE. Claim
+                # that exact execution instead of issuing a destructive
+                # second LOAD through the transport router.
+                adopt = getattr(self._audio, "adopt_preloaded_media", None)
+                if not callable(adopt):
+                    raise AudioLoadError(
+                        file_path,
+                        "prepared managed adoption is not supported by the engine",
+                        previous_source_preserved=False,
+                    )
+                adopt(claim)
+                backend_load_completed = True
                 if self._pending_path is not None:
                     self._finalize_media_acceptance(file_path)
             else:
-                applied_volume = self._volume_port.synchronize()
-                self._commit_applied_volume(applied_volume, notify=True)
+                self._audio.load(file_path)
+                backend_load_completed = True
+                # Output preparation resolved the candidate policy before load,
+                # but effective PlaybackState changes only after the old physical
+                # source crossed the backend load boundary successfully.
+                # Native DSD has no PCM volume stage; the host owns the exact
+                # DSD route and the automatic PCM volume sync is skipped.
+                native_dsd = bool(getattr(self._output_tx, "native_dsd_active", False))
+                dop = bool(getattr(self._output_tx, "dop_active", False))
+                dsd_pcm = bool(getattr(self._output_tx, "dsd_pcm_active", False))
+                if native_dsd or dop or dsd_pcm:
+                    # The host requires commit BEFORE start. The native media
+                    # acceptance arrived during load and was latched; finalize it
+                    # now so the output transaction is committed before play().
+                    if self._pending_path is not None:
+                        self._finalize_media_acceptance(file_path)
+                else:
+                    applied_volume = self._volume_port.synchronize()
+                    self._commit_applied_volume(applied_volume, notify=True)
         except Exception as exc:
             if my_epoch != self._request_epoch:
                 raise

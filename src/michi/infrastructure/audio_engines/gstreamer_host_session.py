@@ -1071,6 +1071,23 @@ class HostEngineSession:
             )
         return True, {"identity": identity}
 
+    def _op_claim_preloaded_managed(
+        self, payload: dict[str, Any]
+    ) -> tuple[bool, dict[str, Any]]:
+        expected = payload.get("expected")
+        if not isinstance(expected, dict):
+            raise HostProtocolError(
+                "HOST_PROTOCOL_INVALID_FIELD", "expected identity must be an object"
+            )
+        port = self._require_port()
+        result = port.claim_preloaded_managed(expected)  # type: ignore[attr-defined]
+        if not isinstance(result, dict):
+            raise HostProtocolError(
+                "HOST_PROTOCOL_INVALID_RESULT",
+                "claim_preloaded_managed must return an object",
+            )
+        return True, {"result": result}
+
     # ── help ──────────────────────────────────────────────────────────
     def _require_port(self) -> EnginePort:
         if self._port is None:
@@ -1220,5 +1237,8 @@ _HANDLERS: dict[str, Callable[[HostEngineSession, dict], tuple[bool, dict]]] = {
     HostOperation.STOP_MANAGED.value: HostEngineSession._op_stop_managed,
     HostOperation.QUERY_MANAGED_IDENTITY.value: (
         HostEngineSession._op_query_managed_identity
+    ),
+    HostOperation.CLAIM_PRELOADED_MANAGED.value: (
+        HostEngineSession._op_claim_preloaded_managed
     ),
 }

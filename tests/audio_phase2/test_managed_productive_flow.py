@@ -71,6 +71,7 @@ def _build_graph(tmp_path, **service_kwargs):
     preparation_executor = (
         service_kwargs.pop("output_preparation_executor", None) or _InlineExecutor()
     )
+    extra_capabilities = tuple(service_kwargs.pop("extra_capabilities", ()))
     from michi.application.audio_output_selection_coordinator import (
         AudioOutputSelectionCoordinator,
     )
@@ -118,12 +119,13 @@ def _build_graph(tmp_path, **service_kwargs):
         output_preparation_executor=preparation_executor,
         **service_kwargs,
     )
+    capability_tuples = ((44_100, "S16_LE", 2, 16), *extra_capabilities)
     graph.dac_qualification.cache_evidence(
         DEVICE_ID,
-        (
+        tuple(
             CapabilityEvidence(
                 stable_device_id=DEVICE_ID,
-                tuple=PcmTuple(44_100, "S16_LE", 2, 16),
+                tuple=PcmTuple(*capability),
                 supported=True,
                 strength=EvidenceStrength.OPENED,
                 source="michi-alsa-probe",
@@ -132,7 +134,8 @@ def _build_graph(tmp_path, **service_kwargs):
                     graph.dac_qualification.current_environment_fingerprint(DEVICE_ID)
                 ),
                 evidence_refs=("probe:productive",),
-            ),
+            )
+            for capability in capability_tuples
         ),
     )
     coordinator = AudioOutputSelectionCoordinator(

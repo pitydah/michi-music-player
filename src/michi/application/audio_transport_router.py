@@ -290,6 +290,16 @@ class AudioTransportRouter(AudioPort, AudioTransportBindingPort):
     def load(self, file_path: Path) -> None:
         self._require_backend().load(file_path)
 
+    def adopt_preloaded_media(self, claim: object) -> None:
+        """Delegate adoption of a host-preloaded managed execution."""
+        backend = self._require_backend()
+        adopt = getattr(backend, "adopt_preloaded_media", None)
+        if not callable(adopt):
+            raise AudioTransportUnavailableError(
+                "bound engine does not support prepared managed adoption"
+            )
+        adopt(claim)
+
     def play(self) -> None:
         self._require_backend().play()
 

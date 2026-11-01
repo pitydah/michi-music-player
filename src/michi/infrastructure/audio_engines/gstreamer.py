@@ -1372,6 +1372,7 @@ class GStreamerAudioPort(AudioPort):
         self._pending_managed_recipe = None
         self._pending_managed_execution_id = ""
         self._managed_identity: dict | None = None
+        self._managed_claim_issued = False
         # DAC-V35-050C2: sidecar opcional + handle del pipeline vigente.
         self._direct_executor = direct_executor
         self._active_direct_handle = None
@@ -1867,6 +1868,88 @@ class GStreamerAudioPort(AudioPort):
         self._pending_managed_recipe = recipe
         self._pending_managed_execution_id = str(execution_id)
 
+    def claim_preloaded_managed(self, expected: dict) -> dict:
+        """Atomically claim the CURRENT managed load without a second LOAD.
+
+        The claim proves the child already has the exact managed execution
+        loaded and hands its identity to the owner. It never builds or
+        replaces a pipeline, and it is one-shot: a second claim is rejected.
+        """
+        identity = self._managed_identity
+        if identity is None:
+            return {
+                "claimed": False,
+                "stale": True,
+                "code": "MANAGED_CLAIM_STALE",
+                "reason": "no managed execution is current",
+            }
+        if self._managed_claim_issued:
+            return {
+                "claimed": False,
+                "stale": True,
+                "code": "MANAGED_CLAIM_ALREADY_CONSUMED",
+                "reason": "the managed load was already claimed",
+            }
+        expected_plan = str(expected.get("plan_id") or "")
+        expected_execution = str(expected.get("execution_id") or "")
+        expected_stable = str(expected.get("stable_device_id") or "")
+        expected_device = str(expected.get("device") or "")
+        if (
+            expected_plan != str(identity.get("plan_id") or "")
+            or expected_execution != str(identity.get("execution_id") or "")
+            or expected_stable != str(identity.get("stable_device_id") or "")
+            or expected_device != str(identity.get("device") or "")
+        ):
+            return {
+                "claimed": False,
+                "stale": True,
+                "code": "MANAGED_CLAIM_STALE",
+                "reason": "the managed execution identity does not match",
+            }
+        expected_binding = int(expected.get("binding_generation") or 0)
+        if expected_binding != int(identity.get("binding_generation") or 0):
+            return {
+                "claimed": False,
+                "stale": True,
+                "code": "MANAGED_CLAIM_STALE",
+                "reason": "the managed binding generation does not match",
+            }
+        expected_generation = int(expected.get("pipeline_generation") or 0)
+        if expected_generation and expected_generation != int(
+            identity.get("pipeline_generation") or 0
+        ):
+            return {
+                "claimed": False,
+                "stale": True,
+                "code": "MANAGED_CLAIM_STALE",
+                "reason": "the managed pipeline generation does not match",
+            }
+        current_path = self._current_path
+        expected_path = str(expected.get("path") or "")
+        if current_path is None or not expected_path:
+            return {
+                "claimed": False,
+                "stale": True,
+                "code": "MANAGED_CLAIM_NOT_LOADED",
+                "reason": "the managed pipeline has no accepted media path",
+            }
+        try:
+            same_path = Path(expected_path).resolve() == current_path.resolve()
+        except OSError:
+            same_path = False
+        if not same_path:
+            return {
+                "claimed": False,
+                "stale": True,
+                "code": "MANAGED_CLAIM_PATH_MISMATCH",
+                "reason": "the managed pipeline loaded a different media path",
+            }
+        self._managed_claim_issued = True
+        payload = dict(identity)
+        payload["path"] = str(current_path)
+        payload["loaded"] = True
+        return {"claimed": True, "stale": False, "identity": payload}
+
     def stop_managed(self, expected: dict) -> dict:
         """ATOMICALLY stop ONLY the managed execution matching ``expected``.
 
@@ -1919,6 +2002,7 @@ class GStreamerAudioPort(AudioPort):
         # Clear ownership BEFORE the fallible stop: a later abort cannot
         # match a route that is already being torn down.
         self._managed_identity = None
+        self._managed_claim_issued = False
         self._pending_managed_recipe = None
         self._pending_managed_execution_id = ""
         try:
@@ -1954,6 +2038,9 @@ class GStreamerAudioPort(AudioPort):
             return {"managed": False}
         payload = dict(identity)
         payload["loaded"] = self._current_path is not None
+        payload["path"] = (
+            str(self._current_path) if self._current_path is not None else ""
+        )
         negotiated = self._managed_negotiated_caps()
         payload["negotiated"] = negotiated
         payload["evidence_level"] = (
@@ -2909,6 +2996,7 @@ class GStreamerAudioPort(AudioPort):
         self._pending_managed_recipe = None
         self._pending_managed_execution_id = ""
         self._managed_identity = None
+        self._managed_claim_issued = False
         strict_recipe = direct_load.recipe if direct_load is not None else None
         direct_handle = direct_load.handle if direct_load is not None else None
         candidate_volume = (
@@ -3091,6 +3179,7 @@ class GStreamerAudioPort(AudioPort):
                     "pipeline_generation": self._generation,
                     "lab_sink": lab_used,
                 }
+                self._managed_claim_issued = False
             self._bus = self._bindings.get_bus(pipeline)
             self._bindings.set_uri(pipeline, Path(file_path).resolve().as_uri())
             if self._bindings.supports_pump():

@@ -403,6 +403,26 @@ class ManagedOutputPrepared:
     runtime_identity: dict
 
 
+@dataclass(frozen=True, slots=True)
+class PreloadedManagedClaim:
+    """Owner-issued proof that Managed media is physically loaded and ready.
+
+    Playback may adopt this exact execution instead of issuing a second,
+    destructive generic LOAD. The claim is immutable, single-use and never
+    grants Playback authority to change the plan or the output generation.
+    """
+
+    media_path: Path
+    output_token: str
+    plan_id: str
+    execution_id: str
+    stable_device_id: str
+    device_locator: str
+    binding_generation: int
+    host_generation: int
+    output_generation: int
+
+
 class PreparationPath(StrEnum):
     """Classification of one async preparation request.
 
@@ -1100,6 +1120,7 @@ class OutputSessionService:
         self._plan: OutputPlan | None = None
         self._managed_plan: ManagedPcmOutputPlan | None = None
         self._managed_prepared: ManagedOutputPrepared | None = None
+        self._managed_claim_issued: str | None = None
         self._native_dsd_plan: NativeDsdOutputPlan | None = None
         self._native_dsd_prepared: NativeDsdSessionPrepared | None = None
         self._native_eos_execution: str | None = None
@@ -1423,6 +1444,70 @@ class OutputSessionService:
             ),
             "processing_generation": 0,
         }
+
+    def prepared_transport_claim(
+        self, token: str, path: Path
+    ) -> PreloadedManagedClaim | None:
+        """Owner-only proof that Managed media is already physically loaded.
+
+        Non-managed families keep their historical transport path and return
+        ``None``. A managed session must be READY, own the exact token/path,
+        carry the exact prepared plan/execution and expose a host generation.
+        The claim is issued at most once per session generation.
+        """
+        if self._mode != "managed":
+            return None
+        if self._state is not OutputSessionState.READY:
+            raise OutputSessionError(
+                "MANAGED_CLAIM_NOT_READY",
+                f"managed claim requires READY, current state is {self._state.value}",
+            )
+        if self._token_value != token:
+            raise OutputSessionError(
+                "MANAGED_CLAIM_TOKEN_STALE",
+                "managed claim token does not own the prepared execution",
+            )
+        if self._path != Path(path):
+            raise OutputSessionError(
+                "MANAGED_CLAIM_PATH_MISMATCH",
+                "managed claim path does not match the prepared media",
+            )
+        prepared = self._managed_prepared
+        plan = self._managed_plan
+        if prepared is None or plan is None or plan is not prepared.plan:
+            raise OutputSessionError(
+                "MANAGED_CLAIM_MISSING",
+                "managed claim has no exact prepared plan and execution",
+            )
+        if self._managed_claim_issued is not None:
+            raise OutputSessionError(
+                "MANAGED_CLAIM_ALREADY_CONSUMED",
+                "the prepared managed claim was already issued",
+            )
+        identity = (
+            prepared.runtime_identity
+            if isinstance(prepared.runtime_identity, dict)
+            else {}
+        )
+        host_generation = int(identity.get("host_generation") or 0)
+        if host_generation <= 0:
+            raise OutputSessionError(
+                "MANAGED_CLAIM_HOST_GENERATION_MISSING",
+                "managed claim requires the host generation observed at prepare",
+            )
+        claim = PreloadedManagedClaim(
+            media_path=Path(path),
+            output_token=token,
+            plan_id=str(plan.plan_id),
+            execution_id=str(prepared.execution_id),
+            stable_device_id=str(plan.stable_device_id),
+            device_locator=str(plan.device_locator),
+            binding_generation=int(plan.binding_generation),
+            host_generation=host_generation,
+            output_generation=int(self._generation),
+        )
+        self._managed_claim_issued = token
+        return claim
 
     @property
     def last_release_evidence(self) -> dict | None:
@@ -4294,6 +4379,7 @@ class OutputSessionService:
         self._mode = "managed"
         self._managed_plan = prepared.plan
         self._managed_prepared = prepared
+        self._managed_claim_issued = None
         self._plan = None
         self._path = Path(path)
         self._executor = None

@@ -20,6 +20,7 @@ from michi.domain.audio_output import OutputSessionState
 from michi.infrastructure.qt_async_call import QtAsyncCallExecutor
 from tests.audio_phase2.test_family_handover_product_e2e import _PREFIX
 from tests.audio_phase2.test_managed_productive_flow import (
+    DEVICE_ID,
     FIXTURE,
     _build_graph,
     _close,
@@ -32,21 +33,12 @@ pytestmark = [
         importlib.util.find_spec("gi") is None or _PREFIX is None,
         reason="GStreamer or Gate A michidop prefix unavailable",
     ),
-    # Known blocker: PlaybackService performs the generic router load before the
-    # managed commit, so the host managed execution is no longer addressable and
-    # the predecessor release returns MANAGED_STOP_STALE. Keep the reproducer
-    # strict so a future fix flips it to XPASS and forces this marker to be removed.
-    pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "T03/T04 blocked: PlaybackService generic load bypasses the managed "
-            "host execution; managed release returns MANAGED_STOP_STALE"
-        ),
-    ),
 ]
 
 
 def _run(qapp, tmp_path, monkeypatch, *, first: str, second: str) -> None:
+    from michi.application.settings_service import SettingsService
+    from michi.infrastructure.sqlite_settings import SQLiteSettingsRepository
     from tests.audio_phase2.test_dsd_source_truth import build_dsf
 
     monkeypatch.setenv("MICHI_GST_LAB_SINK", "fakesink")
@@ -54,11 +46,26 @@ def _run(qapp, tmp_path, monkeypatch, *, first: str, second: str) -> None:
     monkeypatch.setenv("MICHI_DOP_PLUGIN_PREFIX", str(_PREFIX))
     monkeypatch.setenv("MICHI_DSD_PCM_CONVERT", "1")
     dsd = tmp_path / "target.dsf"
-    dsd.write_bytes(build_dsf(sample_count=352_800, payload=bytes([0x69]) * 705_600))
+    dsd.write_bytes(build_dsf(sample_count=2_822_400))
     executor = QtAsyncCallExecutor()
-    graph, coordinator = _build_graph(tmp_path, output_preparation_executor=executor)
-    _select_managed(coordinator)
-    graph.set_processing_profile(None)
+    settings = SettingsService(
+        SQLiteSettingsRepository.open_for_startup(tmp_path / "michi.db")
+    )
+    settings.set_dsd_pcm_conversion_consent(True)
+    graph, coordinator = _build_graph(
+        tmp_path,
+        settings_service=settings,
+        output_preparation_executor=executor,
+        extra_capabilities=(
+            (88_200, "F32LE", 2, 32),
+            (176_400, "F32LE", 2, 32),
+        ),
+    )
+    if first == "managed":
+        _select_managed(coordinator)
+    else:
+        coordinator.select_device_for_playback(DEVICE_ID)
+        coordinator.select_path_mode("compatible")
     session = graph.output_session
     playback = graph.playback
     accepted: list[Path] = []
@@ -94,6 +101,16 @@ def _run(qapp, tmp_path, monkeypatch, *, first: str, second: str) -> None:
         assert predecessor_execution and predecessor_plan
 
         sampler.start()
+        if second == "managed":
+            _select_managed(coordinator)
+        else:
+            if first == "managed":
+                # Drop the Managed policy before re-selecting the device:
+                # select_device_for_playback preserves a current Managed
+                # intent and would re-resolve an invalid Managed profile.
+                coordinator.select_path_mode("compatible")
+            coordinator.select_device_for_playback(DEVICE_ID)
+            coordinator.select_path_mode("compatible")
         playback.load_and_play(
             second_path, on_accepted=on_accepted, on_rejected=on_rejected
         )
