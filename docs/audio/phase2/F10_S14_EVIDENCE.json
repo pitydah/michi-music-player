@@ -1,0 +1,121 @@
+{
+  "schema_version": "michi.f10.s14.evidence.v1",
+  "phase": "AP2-F10",
+  "sprint": "AP2-F10-S14",
+  "base_sha": "6d1a8fb64897969c75ee2df6ee967fc2d8171b54",
+  "code_sha": "d4bd8ab990c2fccd7ca6f4e54b4345d5d85ab67f",
+  "ci_sha": "TO_BE_RECORDED_AFTER_PUSH",
+  "generated_at": "2026-11-01",
+  "commits": [
+    "e60c3bf",
+    "708fae6",
+    "d4bd8ab"
+  ],
+  "cuts": {
+    "1_physical_single_flight": {
+      "status": "PASS",
+      "evidence": "A release held on exec:1 rejects B with OUTPUT_RELEASE_IN_FLIGHT; A cannot release exec:2",
+      "tests": [
+        "tests/audio_phase2/test_owner_safe_handover.py::test_single_flight_release_blocks_a_second_attempt_on_the_same_execution",
+        "tests/audio_phase2/test_owner_safe_handover.py::test_release_worker_can_never_target_a_newer_same_family_execution"
+      ]
+    },
+    "2_direct_handover": {
+      "status": "PASS",
+      "evidence": "committed Direct session releases with exact plan/execution and command_confirmed before DSD prepare",
+      "tests": [
+        "tests/audio_phase2/test_family_handover_matrix.py::test_t01_direct_to_dsd_pcm_async_releases_before_target_prepare"
+      ]
+    },
+    "3_managed_native_e2e": {
+      "status": "PARTIAL",
+      "evidence": "T05/T06 Native<->DSD PCM Qt+host PASS with fakesink; T03/T04 Managed cross-family NOT_RUN",
+      "blocker": "managed cross-family requires a real managed plan, terminal evidence and processing authority in the same handover"
+    },
+    "4_dsp_quality": {
+      "status": "NOT_RUN",
+      "blocker": "S13 proves DSP ON/OFF and quality service-path; S14 did not add ON->OFF->ON / A->B->A Qt+host runs"
+    },
+    "5_numeric_closure": {
+      "status": "NOT_RUN",
+      "blocker": "DC versioned reference and isolated resampler stopband pre/post measurement not implemented in S14; S13 v2 remains informational"
+    },
+    "6_adversarial_qt": {
+      "status": "NOT_RUN",
+      "blocker": "release-pending QTimer barrier and DAC disconnect/host restart matrix not extended in S14"
+    },
+    "7_physical": {
+      "status": "NOT_RUN",
+      "blocker": "no S14 physical run; S12 physical Direct/DoP<->Native remains the latest hardware evidence"
+    },
+    "8_matrix_evidence": {
+      "status": "PARTIAL",
+      "evidence": "F10_S14_TRANSITION_MATRIX.json + this evidence + closure readiness; T03/T04 host gaps remain"
+    },
+    "9_regressions_ci": {
+      "status": "PARTIAL",
+      "evidence": "ruff check/format PASS, targeted S14 32 passed, alignment GO; full suite and exact-SHA CI pending push"
+    }
+  },
+  "commands": [
+    {
+      "command": "MICHI_GST_LAB_SINK=fakesink MICHI_DOP_PLUGIN_PREFIX=$PWD/build/lib.linux-x86_64-cpython-311/michi/native/gstreamer-1.0 QT_QPA_PLATFORM=offscreen python -m pytest tests/audio_phase2/test_owner_safe_handover.py tests/audio_phase2/test_owner_safe_handover_adversarial.py tests/audio_phase2/test_family_handover_matrix.py tests/audio_phase2/test_family_handover_product_e2e.py tests/audio_phase2/test_f10_s13_qt_host_e2e.py -q",
+      "result": "32 passed in 2.49s"
+    },
+    {
+      "command": "python -m ruff check src tests scripts",
+      "result": "All checks passed"
+    },
+    {
+      "command": "python -m ruff format --check src tests scripts",
+      "result": "644 files already formatted"
+    }
+  ],
+  "e2e": {
+    "T02": "PASS S13 Qt+host",
+    "T07": "PASS S13 Qt+host",
+    "T05": "PASS S14 Qt+host",
+    "T06": "PASS S14 Qt+host",
+    "T03": "NOT_RUN",
+    "T04": "NOT_RUN"
+  },
+  "numeric": {
+    "status": "S13 v2 PASS for its measured checks; DC NOT_MEASURED; stopband end-to-end 86.35 dB; S14 isolated stopband NOT_RUN",
+    "certification": "NOT_CERTIFIED"
+  },
+  "physical": {
+    "status": "S12 evidence only",
+    "devices": [
+      "usb:152a:85dd:3-3.3.2",
+      "usb:2fc6:f882:HA01"
+    ],
+    "audibility": "REQUIRES_OPERATOR_CONFIRMATION"
+  },
+  "section_196_7": {
+    "decision_table_complete": {
+      "status": "PARTIAL",
+      "reason": "T03/T04 host/Managed and T04/Native destination evidence incomplete"
+    },
+    "new_snapshot_each_transition": {
+      "status": "PARTIAL",
+      "reason": "T05/T06 have new snapshots; T03/T04 do not"
+    },
+    "policy_runtime_coherent_after_failure": {
+      "status": "PASS",
+      "reason": "S13 ReleaseTruth and ownership-uncertain tests plus S14 single-flight"
+    },
+    "stop_pause_replay_converge": {
+      "status": "PARTIAL",
+      "reason": "S13 convergence tests pass; S14 did not add new STOP/PAUSE/REPLAY physical evidence"
+    }
+  },
+  "closure_review": "NOT_READY",
+  "f14": "NOT_RUN",
+  "locked_phases": [
+    "AP2-F11",
+    "AP2-F12",
+    "AP2-F13",
+    "AP2-F14",
+    "AP2-F15"
+  ]
+}
