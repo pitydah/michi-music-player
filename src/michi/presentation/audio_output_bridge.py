@@ -515,6 +515,7 @@ class AudioOutputBridge(QObject):
                         snapshot.identity.stable_device_id
                     ],
                     path_mode=selected_path_mode,
+                    output_state=output_state,
                 )
             )
         physical_rows.sort(
@@ -716,11 +717,41 @@ class AudioOutputBridge(QObject):
         last_failure_code: str,
         identity_presentation: tuple[str, str],
         path_mode: str = "shared",
+        output_state: str = "idle",
     ) -> dict[str, Any]:
         identity = snapshot.identity
         stable_id = identity.stable_device_id
         selected = stable_id == selected_device_id
         active = stable_id == active_device_id
+        pending_states = {
+            OutputSessionState.ACQUIRING.value,
+            OutputSessionState.CONFIGURING.value,
+            OutputSessionState.RECONFIGURING.value,
+            OutputSessionState.RECOVERING.value,
+            OutputSessionState.RELEASING.value,
+        }
+        pending = bool(selected and not active and output_state in pending_states)
+        playback_status = getattr(getattr(self._playback, "state", None), "status", None)
+        quick_status = (
+            "Playing"
+            if active and playback_status is PlaybackStatus.PLAYING
+            else "Paused"
+            if active and playback_status is PlaybackStatus.PAUSED
+            else "Active"
+            if active
+            else "Preparing\u2026"
+            if pending
+            else "Selected"
+            if selected
+            else "Available"
+            if snapshot.available
+            else "Unavailable"
+        )
+        active_label = (
+            "Playing"
+            if active and playback_status is PlaybackStatus.PLAYING
+            else "Active"
+        )
         device_profiles = sorted(
             (item for item in profiles if item.stable_device_id == stable_id),
             key=lambda item: item.profile_id,
@@ -745,6 +776,15 @@ class AudioOutputBridge(QObject):
         playback_bindings = current_playback_bindings(snapshot)
         alsa = playback_bindings[0] if playback_bindings else None
         classification = classify_audio_device(snapshot)
+        icon_type = (
+            "display-audio"
+            if classification.category.value == "display_audio"
+            else "dac"
+            if classification.category.value in {"external_audio", "audio_interface"}
+            else "audio-jack"
+            if classification.category.value == "local_audio"
+            else "audio-output"
+        )
         knowledge = self._device_knowledge_for(stable_id)
         if selected and reconnecting:
             status = "Selected · reconnecting"
@@ -763,6 +803,11 @@ class AudioOutputBridge(QObject):
         else:
             status = "Disconnected"
         connection = "Available" if snapshot.available else "Disconnected"
+        quick_subtitle = " \u00b7 ".join(
+            part
+            for part in (category_label(classification.category), connection)
+            if part
+        )
         evidence = ()
         evidence_failed = False
         if self._qualification is not None and snapshot.available:
@@ -831,6 +876,14 @@ class AudioOutputBridge(QObject):
             "reconnecting": selected and reconnecting,
             "connectionLabel": connection,
             "statusLabel": status,
+            "quickStatus": quick_status,
+            "quickSubtitle": quick_subtitle,
+            "pending": pending,
+            "pendingReason": "Preparing\u2026" if pending else "",
+            "activeLabel": active_label,
+            "iconType": icon_type,
+            "authorityKind": "local",
+            "actionEnabled": bool(snapshot.available and playback_bindings),
             "identityConfidence": identity.confidence.value,
             "alsaLocator": alsa.locator if alsa is not None else "",
             "vendorId": identity.vendor_id or "",
@@ -876,6 +929,12 @@ class AudioOutputBridge(QObject):
             if selected
             else "Available"
         )
+        playback_status = getattr(getattr(self._playback, "state", None), "status", None)
+        active_label = (
+            "Playing"
+            if active and playback_status is PlaybackStatus.PLAYING
+            else "Active"
+        )
         return {
             "stableDeviceId": "",
             "shortenedStableDeviceId": "",
@@ -894,6 +953,14 @@ class AudioOutputBridge(QObject):
             "reconnecting": False,
             "connectionLabel": "Available",
             "statusLabel": status,
+            "quickStatus": active_label if active else ("Selected" if selected else "Available"),
+            "quickSubtitle": "Desktop-managed shared output",
+            "pending": False,
+            "pendingReason": "",
+            "activeLabel": active_label,
+            "iconType": "audio-output",
+            "authorityKind": "local",
+            "actionEnabled": True,
             "identityConfidence": "",
             "alsaLocator": "",
             "vendorId": "",

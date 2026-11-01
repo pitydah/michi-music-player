@@ -107,6 +107,23 @@ def _engine_description(engine_id: AudioEngineId) -> str:
     }.get(engine_id, "")
 
 
+def _engine_quick_subtitle(engine_id: AudioEngineId) -> str:
+    """Presentation-only one-line role; never a runtime capability claim."""
+    return {
+        AudioEngineId.QT_MULTIMEDIA: "System media framework",
+        AudioEngineId.GSTREAMER: "Flexible media pipeline",
+        AudioEngineId.MPD: "Music Player Daemon",
+    }.get(engine_id, "")
+
+
+def _engine_icon_type(engine_id: AudioEngineId) -> str:
+    return {
+        AudioEngineId.QT_MULTIMEDIA: "engine-qt",
+        AudioEngineId.GSTREAMER: "engine-gstreamer",
+        AudioEngineId.MPD: "engine-mpd",
+    }.get(engine_id, "audio-engine")
+
+
 class AudioEngineBridge(QObject):
     """QML surface for the canonical audio engine runtime (M11.3-UI)."""
 
@@ -385,6 +402,8 @@ class AudioEngineBridge(QObject):
             row = dict(facts)
             descriptor = row.pop("descriptor", None)
             row["id"] = engine_id.value
+            row["iconType"] = _engine_icon_type(engine_id)
+            row["quickSubtitle"] = _engine_quick_subtitle(engine_id)
             row["selected"] = engine_id == state.selected_engine_id
             row["active"] = engine_id == state.active_engine_id
             row["switching"] = (

@@ -1,22 +1,16 @@
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../components"
 import "../controls"
 import "../primitives"
 import "../theme"
 
-// AudioEnginePopup — quick engine selection ONLY (M11.3-UI).
-// Simple, fast, no technical clutter. Full configuration lives in
-// Settings > Audio Engine. Never shows DAC/DSD/sample-rate/buffer/
-// pipeline information.
-//
-// M11.3-UI-R1: rows are REAL Buttons (focus + keyboard activation), the
-// popup is LIVE-BOUND to the parent projections (never an imperative
-// snapshot), and competing rows are disabled while a switch is in flight.
+// AudioEnginePopup — quick backend selection (F11).
+// One question: which audio engine is playing? Rows expose selection and
+// active state separately; all runtime policy still belongs to the bridge.
 Popup {
     id: root
-    // P1-03: explicit stable objectName for gate lookups (QML id is not
-    // QObject.objectName).
     objectName: "AudioEnginePopup"
 
     property var engines: []
@@ -26,10 +20,9 @@ Popup {
     property string fallbackFrom: ""
     property bool hasFallback: false
     property string statusSummary: ""
-    // P1-02: truthful readiness — the SAME truth Playback uses to allow
-    // the engine-switch lease (populated from the bridge projection).
     property bool engineSwitchReady: true
     property string engineSwitchBlocker: ""
+    property var focusReturnTarget: null
 
     signal engineSwitchRequested(string engineId)
 
@@ -37,10 +30,9 @@ Popup {
     modal: false
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-    width: 320
+    width: Math.max(320, Math.min(360, (Overlay.overlay
+        ? Overlay.overlay.width : 360) - 24))
     enter: Transition {
-        // P2-01 (M11.3-UI-R2): no decorative fade under reduced motion;
-        // open/close stay deterministic (instant) without animation.
         enabled: !MichiAccessibility.reducedMotion
         NumberAnimation { property: "opacity"; from: 0; to: 1; duration: MichiMotion.panel }
     }
@@ -54,7 +46,6 @@ Popup {
         tileSeed: 8
     }
 
-    // Focus enters the popup predictably: first selectable engine row.
     onOpened: {
         for (var i = 0; i < engineRows.count; i++) {
             var item = engineRows.itemAt(i)
@@ -64,9 +55,11 @@ Popup {
             }
         }
     }
+    onClosed: {
+        if (root.focusReturnTarget)
+            root.focusReturnTarget.forceActiveFocus()
+    }
 
-    // P2-02 (M11.3-UI-R2): Up/Down navigation SKIPS rows that are not
-    // selectable (unavailable / disabled / mid-switch lock). No wrapping.
     function _navigate(fromIndex, delta) {
         var count = engineRows.count
         var i = fromIndex + delta
@@ -80,21 +73,19 @@ Popup {
     }
 
     contentItem: ColumnLayout {
-        spacing: MichiSpacing.xs
+        spacing: MichiSpacing.sm
 
-        MichiText {
-            text: qsTr("Audio Engine")
-            role: "heading"
+        MichiPopupHeader {
             Layout.fillWidth: true
-            Layout.bottomMargin: MichiSpacing.sm
+            iconName: "audio-engine"
+            title: qsTr("Audio Engine")
+            subtitle: qsTr("Choose the backend that plays your music")
         }
 
-        // One-line fallback note (when preferred != active)
         MichiText {
-            visible: root.hasFallback
+            visible: root.statusSummary.length > 0
             text: root.statusSummary
-            role: "technical"
-            technical: true
+            role: "secondary"
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
             Layout.bottomMargin: MichiSpacing.xs
@@ -110,11 +101,9 @@ Popup {
                 required property int index
                 objectName: "enginePopupRow_" + row.modelData.id
                 Layout.fillWidth: true
-                Layout.preferredHeight: 38
+                Layout.preferredHeight: 56
                 focusPolicy: Qt.StrongFocus
                 hoverEnabled: true
-                // Application owns the semantic plan. QML only renders its
-                // action/readiness roles; it never reconstructs switch policy.
                 enabled: row.modelData.selectionAllowed
                     && row.modelData.selectionAction !== "noop"
                     && !row.isSwitching
@@ -132,8 +121,6 @@ Popup {
                         return qsTr("Preferred")
                     if (!row.modelData.canActivate)
                         return qsTr("Not available")
-                    // R0 (§11): canActivate pero bloqueado — la razón es
-                    // VISIBLE, nunca una row inerte sin explicación.
                     if (!row.modelData.selectionAllowed
                             && row.modelData.selectionBlocker)
                         return qsTr("Switch blocked — %1")
@@ -142,12 +129,8 @@ Popup {
                 }
 
                 onClicked: root.engineSwitchRequested(row.modelData.id)
-                // AbstractButton activates on Space only — add Return/Enter
-                // (verified: no double activation with the built-in Space).
                 Keys.onReturnPressed: row.clicked()
                 Keys.onEnterPressed: row.clicked()
-                // Up/Down navigation between ENABLED engine rows only
-                // (disabled/unavailable rows are skipped; no wrapping).
                 KeyNavigation.up: root._navigate(index, -1)
                 KeyNavigation.down: root._navigate(index, 1)
 
@@ -168,45 +151,87 @@ Popup {
                 contentItem: RowLayout {
                     spacing: MichiSpacing.md
 
+                    // Selection intent (separate from the Active badge).
                     Rectangle {
-                        Layout.preferredWidth: 12
-                        Layout.preferredHeight: 12
-                        radius: 6
-                        color: row.isActive
+                        Layout.preferredWidth: 16
+                        Layout.preferredHeight: 16
+                        radius: 8
+                        color: "transparent"
+                        border.width: row.isSelected ? 5 : 1
+                        border.color: row.isSelected
+                            ? MichiPalette.auroraBlue
+                            : MichiPalette.textDisabled
+                        opacity: row.modelData.canActivate || row.isActive ? 1 : 0.45
+                    }
+
+                    MichiIcon {
+                        name: row.modelData.iconType || "audio-engine"
+                        width: MichiMetrics.iconMedium
+                        height: width
+                        strokeWidth: 1.7
+                        iconColor: row.isActive
                             ? MichiPalette.auroraCyan
-                            : "transparent"
-                        border.width: row.isActive ? 0 : 1
-                        border.color: MichiPalette.textDisabled
-                        visible: row.modelData.canActivate || row.isActive
+                            : row.modelData.canActivate
+                                ? MichiPalette.textSecondary
+                                : MichiPalette.textDisabled
                     }
-                    MichiText {
-                        text: row.modelData.displayName
-                        role: "primary"
-                        elide: Text.ElideRight
+
+                    ColumnLayout {
                         Layout.fillWidth: true
-                        color: row.isActive
-                            ? MichiPalette.textPrimary
-                            : MichiPalette.textSecondary
+                        spacing: 1
+                        MichiText {
+                            text: row.modelData.displayName
+                            role: "body"
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                            color: row.isActive
+                                ? MichiPalette.textPrimary
+                                : row.modelData.canActivate
+                                    ? MichiPalette.textPrimary
+                                    : MichiPalette.textMuted
+                        }
+                        MichiText {
+                            text: row.modelData.quickSubtitle || row.modelData.shortIdentity
+                            role: "caption"
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                            color: MichiPalette.textMuted
+                        }
                     }
+
+                    MichiStatusChip {
+                        visible: row.isActive
+                        text: qsTr("Active")
+                        tone: "active"
+                    }
+
                     MichiText {
                         objectName: "enginePopupRowStatus_" + row.modelData.id
                         text: row.statusLabel()
                         role: "technical"
                         technical: true
-                        color: row.isActive
+                        visible: text.length > 0 && !row.isActive
+                        color: row.isSwitching
                             ? MichiPalette.auroraCyan
-                            : MichiPalette.textMuted
+                            : row.modelData.canActivate
+                                ? MichiPalette.textMuted
+                                : MichiPalette.warning
                     }
                 }
 
                 background: Rectangle {
-                    radius: MichiRadius.sm
+                    radius: MichiRadius.md
                     color: row.pressed
                         ? MichiSemanticColors.surfacePressed
                         : row.hovered ? MichiSemanticColors.surfaceHover
+                        : row.isSelected ? MichiSemanticColors.surfaceSelected
                         : "transparent"
-                    border.width: row.visualFocus ? 1 : 0
-                    border.color: MichiSemanticColors.focusRing
+                    border.width: row.visualFocus ? 1
+                        : row.isSelected ? 1 : 0
+                    border.color: row.visualFocus
+                        ? MichiSemanticColors.focusRing
+                        : MichiSemanticColors.borderSubtle
+                    MichiFocusRing { visualFocus: row.visualFocus }
                 }
             }
         }
