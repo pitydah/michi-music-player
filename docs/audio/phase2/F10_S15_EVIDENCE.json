@@ -36,7 +36,8 @@
     },
     "F_dsp_quality": {
       "status": "PARTIAL",
-      "evidence": "T09 selected profile effective, T10 DSP ON->OFF, T11 quality A->B. Open: OFF->ON->OFF->ON, A->B->A, PAUSED/EOS/stale binding/host restart."
+      "evidence": "T09 selected profile effective, T10 DSP ON->OFF, T11 quality A->B. Open: OFF->ON->OFF->ON, A->B->A, PAUSED/EOS/stale binding/host restart.",
+      "blocker": "DSP_CAPS_NOT_NEGOTIATED: a live OFF->ON reapply on the DSD->PCM configured-caps runtime is rejected because the generic apply path requires negotiated working caps. The blocked extension is not reported as PASS."
     },
     "G_certification": {
       "status": "PARTIAL",
