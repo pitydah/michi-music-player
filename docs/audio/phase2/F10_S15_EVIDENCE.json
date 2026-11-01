@@ -1,0 +1,110 @@
+{
+  "schema_version": "michi.f10.s15.evidence.v1",
+  "phase": "AP2-F10",
+  "sprint": "S15",
+  "base_sha": "259143dddf16a6800264d5a4ae84d2a6294b74ee",
+  "code_sha": "02ac5f2",
+  "test_sha": "8c9267a",
+  "ci_sha": "TO_BE_RECORDED_AFTER_PUSH",
+  "generated_at": "2026-11-01",
+  "commits": [
+    "02ac5f2",
+    "8c9267a"
+  ],
+  "cuts": {
+    "A_claim_identity": {
+      "status": "PASS",
+      "tests": "tests/audio_phase2/test_managed_preloaded_claim.py (5 passed)",
+      "evidence": "Exact claim identity, single use, wrong token, wrong path, missing host generation, post-abort rejection."
+    },
+    "B_host_atomic_claim": {
+      "status": "PASS",
+      "evidence": "HostOperation.CLAIM_PRELOADED_MANAGED verifies managed identity, loaded path, plan/execution/device/binding and generation without building a pipeline."
+    },
+    "C_router_playback_adoption": {
+      "status": "PASS",
+      "evidence": "AudioTransportRouter.adopt_preloaded_media delegates the claim; PlaybackService adopts instead of a second AudioPort.load."
+    },
+    "D_t03_t04_e2e": {
+      "status": "PASS",
+      "tests": "tests/audio_phase2/test_f10_s14_managed_qt_host_e2e.py (2 passed in 1.84 s)",
+      "evidence": "Managed -> DSD_TO_PCM and DSD_TO_PCM -> Managed on the real Qt owner loop and supervised GStreamer host."
+    },
+    "E_adversarial": {
+      "status": "PARTIAL",
+      "evidence": "Existing owner-safe adverarial suite (9) plus claim identity suite (5). Open: STOP during claim, managed A->B->C, claim-boundary host restart, DAC disconnect, PLAY failure, PAUSED/STOPPED, Qt responsiveness while CLAIM is held."
+    },
+    "F_dsp_quality": {
+      "status": "PARTIAL",
+      "evidence": "T09 selected profile effective, T10 DSP ON->OFF, T11 quality A->B. Open: OFF->ON->OFF->ON, A->B->A, PAUSED/EOS/stale binding/host restart."
+    },
+    "G_certification": {
+      "status": "PARTIAL",
+      "evidence": "Targeted 59 passed; six Qt+host E2E 6 passed. Full suite running; exact-SHA CI pending push approval."
+    }
+  },
+  "e2e": {
+    "T02": "PASS",
+    "T03": "PASS",
+    "T04": "PASS",
+    "T05": "PASS",
+    "T06": "PASS",
+    "T07": "PASS",
+    "T08": "ALIAS_OF_T02",
+    "six_qt_host": "6 passed in 3.03 s",
+    "environment": "fakesink lab sink, Gate A DoP prefix, offscreen Qt"
+  },
+  "managed_transport": {
+    "first_physical_load": "ManagedPcmExecutor.execute -> GStreamerHostedAudioPort.load",
+    "later_load": "CLAIM_PRELOADED_MANAGED, zero HostOperation.LOAD",
+    "adoption": "Prepared Managed Transport Adoption",
+    "early_acceptance": "Managed PREPARE MEDIA_ACCEPTED suppressed until exact claim confirmation",
+    "single_use_claim": true
+  },
+  "commands": [
+    {
+      "command": "python -m pytest tests/audio_phase2/test_f10_s14_managed_qt_host_e2e.py -q",
+      "result": "2 passed in 1.84 s"
+    },
+    {
+      "command": "python -m pytest tests/audio_phase2/test_f10_s13_qt_host_e2e.py tests/audio_phase2/test_f10_s14_managed_qt_host_e2e.py -q",
+      "result": "6 passed in 3.03 s"
+    },
+    {
+      "command": "python -m pytest tests/audio_phase2/test_managed_preloaded_claim.py -q",
+      "result": "5 passed in 3.48 s"
+    },
+    {
+      "command": "targeted managed/adoption/owner-safe batch",
+      "result": "59 passed in 19.88 s"
+    }
+  ],
+  "section_196_7": {
+    "decision_table": "PASS",
+    "per_transition_snapshot": "PARTIAL",
+    "policy_runtime_coherence_after_failure": "PASS",
+    "stop_pause_replay_convergence": "PARTIAL"
+  },
+  "section_415": {
+    "request_freshness": "PASS",
+    "no_autoplay_after_non_playing_predecessor": "PASS",
+    "no_false_restore": "PASS",
+    "explicit_dsd_pcm_conversion": "PASS",
+    "target_family_and_generation_checked": "PASS",
+    "transition_receipts_exact_identity": "PASS"
+  },
+  "closure_review": "READY_FOR_CLOSURE_REVIEW",
+  "open_items": [
+    "Extended managed-adoption adversarial cases.",
+    "Extended DSP/quality cycles.",
+    "Full suite and exact-SHA CI."
+  ],
+  "f14": "NOT_RUN",
+  "locked_phases": [
+    "F11",
+    "F12",
+    "F13",
+    "F14",
+    "F15"
+  ]
+}
