@@ -98,7 +98,7 @@ class _Rig:
         return self.resolver(path)
 
 
-def _build(tmp_path, monkeypatch, *, dsd_source: Path):
+def _build(tmp_path, monkeypatch, *, dsd_source: Path, async_submit=None):
     from michi.infrastructure.audio_engines.gstreamer_host_client import (
         GStreamerHostSupervisor,
     )
@@ -225,7 +225,7 @@ def _build(tmp_path, monkeypatch, *, dsd_source: Path):
     session = OutputSessionService(
         OutputPlanner(),
         request_provider=request_for,
-        async_submit=None,
+        async_submit=async_submit,
         dop_prepare=dop_prepare,
         dop_commit=dop_commit,
         dop_abort=dop_abort,

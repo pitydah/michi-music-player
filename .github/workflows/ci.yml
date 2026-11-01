@@ -404,6 +404,26 @@ jobs:
             tests/audio_phase2/test_family_transition_host_receipt.py \
             tests/audio_phase2/test_family_handover_exclusivity.py -q
 
+      - name: Qt + supervised host family handover E2E (fail closed)
+        env:
+          MICHI_DOP_PREFIX: ${{ runner.temp }}/michi-dop-gate-a
+          MICHI_DOP_PLUGIN_PREFIX: ${{ runner.temp }}/michi-dop-gate-a
+          GST_PLUGIN_PATH: ${{ runner.temp }}/michi-dop-gate-a/lib/gstreamer-1.0
+          MICHI_GST_LAB_SINK: fakesink
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          set -euo pipefail
+          python -m pytest tests/audio_phase2/test_f10_s13_qt_host_e2e.py \
+            --collect-only -q | tee /tmp/qt-host-collect.txt
+          grep -q "2 tests collected" /tmp/qt-host-collect.txt
+          python -m pytest tests/audio_phase2/test_f10_s13_qt_host_e2e.py \
+            -q | tee /tmp/qt-host-run.txt
+          grep -Eq '^2 passed' /tmp/qt-host-run.txt
+          if grep -Eq '[0-9]+ skipped' /tmp/qt-host-run.txt; then
+            echo "SKIP is not PASS: both Qt+host E2E must run" >&2
+            exit 1
+          fi
+
       - name: Build and install platform wheel
         run: |
           MICHI_BUILD_DOP=1 python -m build --wheel --outdir dist-native
