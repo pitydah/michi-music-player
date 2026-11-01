@@ -455,6 +455,23 @@ jobs:
             exit 1
           fi
 
+      - name: Managed adoption, live DSP and quality gates (fail closed)
+        env:
+          MICHI_DOP_PREFIX: ${{ runner.temp }}/michi-dop-gate-a
+          MICHI_DOP_PLUGIN_PREFIX: ${{ runner.temp }}/michi-dop-gate-a
+          GST_PLUGIN_PATH: ${{ runner.temp }}/michi-dop-gate-a/lib/gstreamer-1.0
+          MICHI_GST_LAB_SINK: fakesink
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          set -euo pipefail
+          F10_TESTS="tests/audio_phase2/test_managed_adoption_async.py tests/audio_phase2/test_managed_preloaded_claim.py tests/audio_phase2/test_dsd_pcm_dsp_reconfiguration.py tests/audio_phase2/test_family_handover_matrix.py tests/audio_phase2/test_dsd_pcm_product_dsp_e2e.py"
+          python -m pytest $F10_TESTS -q | tee /tmp/f10-managed.txt
+          grep -Eq '^[0-9]+ passed' /tmp/f10-managed.txt
+          if grep -Eq '[0-9]+ (skipped|xfailed|xpassed|error)' /tmp/f10-managed.txt; then
+            echo "SKIP/XFAIL is not PASS: managed adoption, DSP and quality gates must run" >&2
+            exit 1
+          fi
+
       - name: Build and install platform wheel
         run: |
           MICHI_BUILD_DOP=1 python -m build --wheel --outdir dist-native
