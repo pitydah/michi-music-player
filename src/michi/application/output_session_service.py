@@ -421,6 +421,7 @@ class PreloadedManagedClaim:
     binding_generation: int
     host_generation: int
     output_generation: int
+    pipeline_generation: int
 
 
 class PreparationPath(StrEnum):
@@ -1393,6 +1394,19 @@ class OutputSessionService:
             "managed": AudioFamily.PCM_MANAGED,
         }.get(self._mode)
 
+    @property
+    def managed_active(self) -> bool:
+        return self._mode == "managed" and self._managed_prepared is not None
+
+    def notify_managed_playing(self, execution_id: str | None) -> bool:
+        """Confirm START for the exact managed execution already committed."""
+        prepared = self._managed_prepared
+        if self._mode != "managed" or prepared is None:
+            return False
+        if execution_id is not None and str(execution_id) != str(prepared.execution_id):
+            return False
+        return self._state is OutputSessionState.RUNNING
+
     def preview_family(self, path: Path) -> AudioFamily | None:
         """Resolve the target family without mutating output ownership."""
         request = self._request_provider(path)
@@ -1495,6 +1509,12 @@ class OutputSessionService:
                 "MANAGED_CLAIM_HOST_GENERATION_MISSING",
                 "managed claim requires the host generation observed at prepare",
             )
+        pipeline_generation = int(identity.get("pipeline_generation") or 0)
+        if pipeline_generation <= 0:
+            raise OutputSessionError(
+                "MANAGED_CLAIM_PIPELINE_GENERATION_MISSING",
+                "managed claim requires the pipeline generation observed at prepare",
+            )
         claim = PreloadedManagedClaim(
             media_path=Path(path),
             output_token=token,
@@ -1505,6 +1525,7 @@ class OutputSessionService:
             binding_generation=int(plan.binding_generation),
             host_generation=host_generation,
             output_generation=int(self._generation),
+            pipeline_generation=pipeline_generation,
         )
         self._managed_claim_issued = token
         return claim

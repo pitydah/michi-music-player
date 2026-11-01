@@ -1915,9 +1915,15 @@ class GStreamerAudioPort(AudioPort):
                 "reason": "the managed binding generation does not match",
             }
         expected_generation = int(expected.get("pipeline_generation") or 0)
-        if expected_generation and expected_generation != int(
-            identity.get("pipeline_generation") or 0
-        ):
+        if expected_generation <= 0:
+            return {
+                "claimed": False,
+                "stale": True,
+                "code": "MANAGED_CLAIM_PIPELINE_GENERATION_MISSING",
+                "reason": "the managed claim carries no observed pipeline generation",
+            }
+        actual_generation = int(identity.get("pipeline_generation") or 0)
+        if actual_generation <= 0 or expected_generation != actual_generation:
             return {
                 "claimed": False,
                 "stale": True,

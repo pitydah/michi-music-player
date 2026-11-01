@@ -825,6 +825,7 @@ class GStreamerHostedAudioPort(AudioPort):
             "stable_device_id": str(getattr(claim, "stable_device_id", "") or ""),
             "device": str(getattr(claim, "device_locator", "") or ""),
             "binding_generation": int(getattr(claim, "binding_generation", 0) or 0),
+            "pipeline_generation": int(getattr(claim, "pipeline_generation", 0) or 0),
             "path": str(getattr(claim, "media_path", "") or ""),
         }
         expected_generation = int(getattr(claim, "host_generation", 0) or 0)
@@ -867,6 +868,44 @@ class GStreamerHostedAudioPort(AudioPort):
                 str(result.get("code") or "MANAGED_CLAIM_REJECTED"),
                 str(result.get("reason") or "preloaded managed claim rejected"),
             )
+
+    def adopt_preloaded_media_async(
+        self,
+        claim: object,
+        *,
+        on_done: Callable[[dict[str, Any]], None],
+        on_failed: Callable[[Exception], None],
+    ) -> None:
+        """Verify the claim off the owner thread and report back on the owner."""
+
+        def work() -> dict[str, Any]:
+            return self.claim_preloaded_managed(claim)
+
+        def completed(result: object) -> None:
+            if not isinstance(result, dict):
+                on_failed(
+                    OutputHostCommandError(
+                        "OUTPUT_HOST_INVALID_RESULT",
+                        "managed adoption result is not an object",
+                    )
+                )
+                return
+            if result.get("claimed") is not True or result.get("stale") is True:
+                on_failed(
+                    OutputHostCommandError(
+                        str(result.get("code") or "MANAGED_CLAIM_REJECTED"),
+                        str(result.get("reason") or "preloaded managed claim rejected"),
+                    )
+                )
+                return
+            on_done(result)
+
+        self._run_worker(
+            work,
+            on_done=completed,
+            on_failed=on_failed,
+            name="managed-adopt",
+        )
 
     # ── Native DSD (AP2-F08) ─────────────────────────────────────────
     def add_native_eos_listener(self, callback: Callable[[str], None]) -> None:

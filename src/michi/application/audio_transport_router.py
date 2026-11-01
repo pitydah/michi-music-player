@@ -300,6 +300,25 @@ class AudioTransportRouter(AudioPort, AudioTransportBindingPort):
             )
         adopt(claim)
 
+    def adopt_preloaded_media_async(
+        self,
+        claim: object,
+        *,
+        on_done: Callable[[object], None],
+        on_failed: Callable[[Exception], None],
+    ) -> None:
+        """Delegate the non-blocking managed adoption to the bound backend."""
+        backend = self._require_backend()
+        adopt = getattr(backend, "adopt_preloaded_media_async", None)
+        if not callable(adopt):
+            on_failed(
+                AudioTransportUnavailableError(
+                    "bound engine does not support prepared managed adoption"
+                )
+            )
+            return
+        adopt(claim, on_done=on_done, on_failed=on_failed)
+
     def play(self) -> None:
         self._require_backend().play()
 

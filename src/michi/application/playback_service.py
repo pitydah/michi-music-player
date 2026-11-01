@@ -628,20 +628,12 @@ class PlaybackService:
                 claim = claim_fn(new_token, file_path)
             if claim is not None:
                 # Prepared Managed Transport Adoption: the host already
-                # performed the single physical LOAD during PREPARE. Claim
-                # that exact execution instead of issuing a destructive
-                # second LOAD through the transport router.
-                adopt = getattr(self._audio, "adopt_preloaded_media", None)
-                if not callable(adopt):
-                    raise AudioLoadError(
-                        file_path,
-                        "prepared managed adoption is not supported by the engine",
-                        previous_source_preserved=False,
-                    )
-                adopt(claim)
-                backend_load_completed = True
-                if self._pending_path is not None:
-                    self._finalize_media_acceptance(file_path)
+                # performed the single physical LOAD during PREPARE. The claim
+                # is verified asynchronously so the Qt owner never blocks on
+                # the host command; commit and acceptance happen only after
+                # the owner validates the completion.
+                self._begin_managed_adoption(claim, file_path, my_epoch, new_token)
+                return False
             else:
                 self._audio.load(file_path)
                 backend_load_completed = True
@@ -799,36 +791,49 @@ class PlaybackService:
         NO usa _clear_pending(): _pending_resume_position_ms debe
         sobrevivir hasta _apply_prepare_seek().
         """
-        if self._pending_path is None or file_path != self._pending_path:
+        if not self._commit_pending_output_once(file_path):
             return
+        self._publish_pending_acceptance_once(file_path)
+
+    def _commit_pending_output_once(self, file_path: Path) -> bool:
+        """Commit the output transaction exactly once, without acceptance."""
+        if self._pending_path is None or file_path != self._pending_path:
+            return False
         token = self._output_token
-        if token is not None:
-            try:
-                self._output_tx.commit_media(token, file_path)
-            except Exception as exc:  # noqa: BLE001 - output commit boundary
-                # Backend acceptance is not sufficient: output commit is the
-                # final fail-closed gate. Retire the candidate and stop the
-                # accepted transport before publishing a typed rejection.
-                self._output_token = None
-                try:
-                    self._output_tx.abort_media(token, "output_commit_failed")
-                except Exception:  # pragma: no cover - secondary cleanup
-                    logger.debug("output commit abort failed", exc_info=True)
-                try:
-                    self._audio.stop()
-                except Exception:  # pragma: no cover - primary stays output
-                    logger.debug("output commit safety stop failed", exc_info=True)
-                on_rejected = self._pending_on_rejected
-                self._clear_pending()
-                self._intent = False
-                self._accepted = False
-                self._state.status = PlaybackStatus.STOPPED
-                self._state.error_message = str(exc)
-                self._notify()
-                if on_rejected is not None:
-                    on_rejected(file_path, str(exc))
-                return
+        if token is None:
+            return True
+        try:
+            self._output_tx.commit_media(token, file_path)
+        except Exception as exc:  # noqa: BLE001 - output commit boundary
+            # Backend acceptance is not sufficient: output commit is the
+            # final fail-closed gate. Retire the candidate and stop the
+            # accepted transport before publishing a typed rejection.
             self._output_token = None
+            try:
+                self._output_tx.abort_media(token, "output_commit_failed")
+            except Exception:  # pragma: no cover - secondary cleanup
+                logger.debug("output commit abort failed", exc_info=True)
+            try:
+                self._audio.stop()
+            except Exception:  # pragma: no cover - primary stays output
+                logger.debug("output commit safety stop failed", exc_info=True)
+            on_rejected = self._pending_on_rejected
+            self._clear_pending()
+            self._intent = False
+            self._accepted = False
+            self._state.status = PlaybackStatus.STOPPED
+            self._state.error_message = str(exc)
+            self._notify()
+            if on_rejected is not None:
+                on_rejected(file_path, str(exc))
+            return False
+        self._output_token = None
+        return True
+
+    def _publish_pending_acceptance_once(self, file_path: Path) -> bool:
+        """Publish terminal acceptance for an already committed request."""
+        if self._pending_path is None or file_path != self._pending_path:
+            return False
         on_accepted = self._pending_on_accepted
         purpose = self._pending_purpose
         self._pending_path = None
@@ -859,6 +864,154 @@ class PlaybackService:
             self._complete_engine_switch_rehydration(
                 MediaRequestTerminalStatus.ACCEPTED, file_path
             )
+        return True
+
+    def _begin_managed_adoption(
+        self,
+        claim: object,
+        file_path: Path,
+        my_epoch: int,
+        token: str,
+    ) -> None:
+        """Verify the host-preloaded managed claim without blocking the owner."""
+        adopt = getattr(self._audio, "adopt_preloaded_media_async", None)
+        if not callable(adopt):
+            raise AudioLoadError(
+                file_path,
+                "prepared managed adoption is not supported by the engine",
+                previous_source_preserved=False,
+            )
+
+        def completed(_result: object) -> None:
+            self._on_managed_adopted(claim, file_path, my_epoch, token)
+
+        def failed(exc: Exception) -> None:
+            self._on_managed_adoption_failed(exc, file_path, my_epoch, token)
+
+        adopt(claim, on_done=completed, on_failed=failed)
+
+    def _managed_adoption_is_current(
+        self,
+        file_path: Path,
+        my_epoch: int,
+        token: str,
+        *,
+        token_required: bool,
+    ) -> bool:
+        if my_epoch != self._request_epoch:
+            return False
+        if self._pending_path != file_path:
+            return False
+        return not (token_required and self._output_token != token)
+
+    def _on_managed_adopted(
+        self,
+        claim: object,
+        file_path: Path,
+        my_epoch: int,
+        token: str,
+    ) -> None:
+        if not self._managed_adoption_is_current(
+            file_path, my_epoch, token, token_required=True
+        ):
+            return
+        if not self._commit_pending_output_once(file_path):
+            return
+        self._start_managed_after_commit(file_path, my_epoch, token)
+
+    def _on_managed_adoption_failed(
+        self,
+        exc: Exception,
+        file_path: Path,
+        my_epoch: int,
+        token: str,
+    ) -> None:
+        if not self._managed_adoption_is_current(
+            file_path, my_epoch, token, token_required=True
+        ):
+            return
+        self._abort_output_token("managed_adopt_failed")
+        on_rejected = self._pending_on_rejected
+        self._clear_pending()
+        self._intent = False
+        self._accepted = False
+        self._state.status = PlaybackStatus.STOPPED
+        self._state.error_message = str(exc)
+        try:
+            self._audio.stop()
+        except Exception:  # pragma: no cover - preserve primary failure
+            logger.debug("managed adoption safety stop failed", exc_info=True)
+        self._notify()
+        if on_rejected is not None:
+            on_rejected(file_path, str(exc))
+
+    def _start_managed_after_commit(
+        self,
+        file_path: Path,
+        my_epoch: int,
+        token: str,
+    ) -> None:
+        if not self._managed_adoption_is_current(
+            file_path, my_epoch, token, token_required=False
+        ):
+            return
+        self._user_play_play_phase_complete = False
+        try:
+            self._audio.play()
+        except Exception as exc:
+            on_rejected = self._pending_on_rejected
+            try:
+                self._output_tx.abort_media(token, "managed_play_failed")
+            except Exception:  # pragma: no cover - secondary cleanup
+                logger.debug("managed play abort failed", exc_info=True)
+            try:
+                self._audio.stop()
+            except Exception:  # pragma: no cover - primary stays play
+                logger.debug("managed play safety stop failed", exc_info=True)
+            self._clear_pending()
+            self._intent = False
+            self._accepted = False
+            self._state.status = PlaybackStatus.STOPPED
+            self._state.error_message = str(exc)
+            self._notify()
+            if on_rejected is not None:
+                on_rejected(file_path, str(exc))
+            return
+        if not self._managed_adoption_is_current(
+            file_path, my_epoch, token, token_required=False
+        ):
+            return
+        self._user_play_play_phase_complete = True
+        execution_id = getattr(self._output_tx, "active_execution_id", None)
+        notify_playing = getattr(self._output_tx, "notify_managed_playing", None)
+        started = False
+        if callable(notify_playing) and bool(
+            getattr(self._output_tx, "managed_active", False)
+        ):
+            started = bool(notify_playing(execution_id))
+        if not started:
+            on_rejected = self._pending_on_rejected
+            try:
+                self._output_tx.abort_media(token, "managed_start_unconfirmed")
+            except Exception:  # pragma: no cover - secondary cleanup
+                logger.debug("managed start abort failed", exc_info=True)
+            try:
+                self._audio.stop()
+            except Exception:  # pragma: no cover - primary stays start
+                logger.debug("managed start safety stop failed", exc_info=True)
+            self._clear_pending()
+            self._intent = False
+            self._accepted = False
+            self._state.status = PlaybackStatus.STOPPED
+            self._state.error_message = "managed start was not confirmed"
+            self._notify()
+            if on_rejected is not None:
+                on_rejected(file_path, "managed start was not confirmed")
+            return
+        self._publish_pending_acceptance_once(file_path)
+        self._state.status = PlaybackStatus.STOPPED
+        self._state.error_message = None
+        self._notify()
 
     def _abort_output_token(self, reason: str) -> None:
         """§0H.2: abort best-effort del output transaction pendiente.
