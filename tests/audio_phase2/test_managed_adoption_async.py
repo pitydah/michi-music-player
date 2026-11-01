@@ -47,6 +47,7 @@ class _ManagedTx:
     def __init__(self) -> None:
         self.committed: Path | None = None
         self.aborted: list[tuple[str, str]] = []
+        self.confirm_start = True
 
     def prepared_transport_claim(self, token: str, path: Path):
         return object()
@@ -62,10 +63,22 @@ class _ManagedTx:
         return "exec:managed:1"
 
     def notify_managed_playing(self, execution_id: str) -> bool:
-        return execution_id == "exec:managed:1"
+        return self.confirm_start and execution_id == "exec:managed:1"
 
     def release_active(self, reason: str) -> None:
         self.aborted.append(("release", reason))
+
+
+class _ImmediateAdoptionAudio(FakeAudioPort):
+    fail_play = False
+
+    def adopt_preloaded_media_async(self, claim, *, on_done, on_failed) -> None:
+        on_done({"claimed": True})
+
+    def play(self) -> None:
+        if self.fail_play:
+            raise RuntimeError("play rejected")
+        super().play()
 
 
 def test_stop_during_managed_adoption_never_accepts_a_late_claim(qapp) -> None:
@@ -98,6 +111,66 @@ def test_stop_during_managed_adoption_never_accepts_a_late_claim(qapp) -> None:
     assert tx.committed is None
     assert accepted == []
     assert tx.aborted == [("release", "stop")]
+
+
+def test_play_failure_after_managed_commit_never_publishes_acceptance() -> None:
+    audio = _ImmediateAdoptionAudio()
+    audio.fail_play = True
+    playback = PlaybackService(audio)
+    playback._request_epoch = 1
+    tx = _ManagedTx()
+    playback._output_tx = tx
+    accepted: list[Path] = []
+    rejected: list[tuple[Path, str]] = []
+    path = Path("/tmp/managed-adoption-play-failure.wav")
+
+    playback._continue_prepared_load(
+        path,
+        "output-tx:managed:play-failure",
+        1,
+        False,
+        False,
+        accepted.append,
+        lambda rejected_path, message: rejected.append((rejected_path, message)),
+        None,
+    )
+
+    assert tx.committed == path
+    assert accepted == []
+    assert rejected and rejected[0][0] == path
+    assert "play rejected" in rejected[0][1]
+    assert ("output-tx:managed:play-failure", "managed_play_failed") in tx.aborted
+
+
+def test_unconfirmed_managed_start_never_publishes_acceptance() -> None:
+    audio = _ImmediateAdoptionAudio()
+    playback = PlaybackService(audio)
+    playback._request_epoch = 1
+    tx = _ManagedTx()
+    tx.confirm_start = False
+    playback._output_tx = tx
+    accepted: list[Path] = []
+    rejected: list[tuple[Path, str]] = []
+    path = Path("/tmp/managed-adoption-start-unconfirmed.wav")
+
+    playback._continue_prepared_load(
+        path,
+        "output-tx:managed:start-unconfirmed",
+        1,
+        False,
+        False,
+        accepted.append,
+        lambda rejected_path, message: rejected.append((rejected_path, message)),
+        None,
+    )
+
+    assert tx.committed == path
+    assert accepted == []
+    assert rejected and "not confirmed" in rejected[0][1]
+    assert (
+        "output-tx:managed:start-unconfirmed",
+        "managed_start_unconfirmed",
+    ) in tx.aborted
 
 
 def test_managed_claim_never_blocks_the_qt_owner(qapp) -> None:
