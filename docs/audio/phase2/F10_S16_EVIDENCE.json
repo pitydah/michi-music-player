@@ -68,20 +68,48 @@
   },
   "commands": [
     {
-      "command": "python -m pytest tests/audio_phase2/test_f10_s14_managed_qt_host_e2e.py -q",
-      "result": "2 passed in 1.84 s"
-    },
-    {
-      "command": "python -m pytest tests/audio_phase2/test_f10_s13_qt_host_e2e.py tests/audio_phase2/test_f10_s14_managed_qt_host_e2e.py -q",
-      "result": "6 passed in 3.03 s"
+      "command": "python -m pytest tests/audio_phase2/test_managed_adoption_async.py -q",
+      "result": "7 passed in 0.48 s"
     },
     {
       "command": "python -m pytest tests/audio_phase2/test_managed_preloaded_claim.py -q",
-      "result": "5 passed in 3.48 s"
+      "result": "7 passed in 4.39 s"
     },
     {
-      "command": "targeted managed/adoption/owner-safe batch",
-      "result": "59 passed in 19.88 s"
+      "command": "MICHI_GST_LAB_SINK=fakesink ... pytest tests/audio_phase2/test_dsd_pcm_dsp_reconfiguration.py tests/audio_phase2/test_dsd_pcm_product_dsp_e2e.py tests/audio_phase2/test_dsd_pcm_host.py::test_dsd_pcm_f06_peq_processes_real_f32_frames -q",
+      "result": "4 passed in 10.57 s"
+    },
+    {
+      "command": "pytest tests/audio_phase2/test_family_handover_matrix.py -q",
+      "result": "10 passed in 0.41 s"
+    },
+    {
+      "command": "F10 CI gate subset (managed adoption, claim, live DSP, quality matrix, DSD-PCM DSP E2E)",
+      "result": "26 passed in 12.32 s"
+    },
+    {
+      "command": "targeted managed/adoption/owner-safe/quality batch",
+      "result": "48 passed in 15.41 s"
+    },
+    {
+      "command": "python -m ruff check src tests scripts",
+      "result": "All checks passed"
+    },
+    {
+      "command": "python -m ruff format --check src tests scripts",
+      "result": "648 files already formatted"
+    },
+    {
+      "command": "python scripts/verify_audio_phase2_repository_alignment.py --phase AP2-F10",
+      "result": "GO, phase ACTIVE, spec sha 4f0e41eb..."
+    },
+    {
+      "command": "python scripts/verify_dac_repository_alignment.py",
+      "result": "aligned YES; all critical hashes OK"
+    },
+    {
+      "command": "python -m pytest tests/ -q",
+      "result": "PENDING after server restart"
     }
   ],
   "section_196_7": {
