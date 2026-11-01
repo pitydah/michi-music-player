@@ -4,7 +4,7 @@
   "sprint": "S15",
   "base_sha": "259143dddf16a6800264d5a4ae84d2a6294b74ee",
   "code_sha": "02ac5f2",
-  "test_sha": "8c9267a",
+  "test_sha": "f787352",
   "ci_sha": "TO_BE_RECORDED_AFTER_PUSH",
   "generated_at": "2026-11-01",
   "commits": [
@@ -32,7 +32,7 @@
     },
     "E_adversarial": {
       "status": "PARTIAL",
-      "evidence": "Existing owner-safe adverarial suite (9) plus claim identity suite (5). Open: STOP during claim, managed A->B->C, claim-boundary host restart, DAC disconnect, PLAY failure, PAUSED/STOPPED, Qt responsiveness while CLAIM is held."
+      "evidence": "Owner-safe adversarial suite (9), managed claim identity suite (7, including single-use, wrong token/path, binding tamper and replaced host generation), plus T03/T04 Qt+host handover. Open: STOP during claim, managed A->B->C, claim-boundary host restart, DAC disconnect, PLAY failure, PAUSED/STOPPED, Qt responsiveness while CLAIM is held."
     },
     "F_dsp_quality": {
       "status": "PARTIAL",

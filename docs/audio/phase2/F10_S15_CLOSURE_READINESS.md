@@ -10,7 +10,7 @@ for the formal closure review.
 
 - Baseline HEAD: `259143dddf16a6800264d5a4ae84d2a6294b74ee`
 - Production commit: `02ac5f2` (`fix(audio): adopt the host-preloaded managed transport`)
-- Claim-contract tests: `8c9267a` (`test(audio): pin the preloaded managed claim identity`)
+- Claim-contract tests: `8c9267a` (`test(audio): pin the preloaded managed claim identity`) and `f787352` (`test(audio): reject tampered managed claims at the host boundary`); 7 tests cover exact identity, single use, wrong token, wrong path, missing host generation, post-abort rejection, binding tamper and replaced host generation.
 - CI SHA: recorded after the push; workflow artifacts associate to `GITHUB_SHA`.
 
 ## Defect and solution

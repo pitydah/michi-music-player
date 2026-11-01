@@ -11,7 +11,10 @@
     "qt_responsiveness": "tests/audio_phase2/test_owner_safe_handover_adversarial.py::test_qt_loop_stays_free_during_release_and_prepare",
     "release_rejected": "tests/audio_phase2/test_owner_safe_handover_adversarial.py::test_release_rejected_never_prepares_the_target",
     "stop_during_prepare": "tests/audio_phase2/test_owner_safe_handover_adversarial.py::test_stop_during_prepare_aborts_the_prepared_candidate",
-    "stop_during_release": "tests/audio_phase2/test_owner_safe_handover_adversarial.py::test_stop_during_release_never_prepares_the_target"
+    "stop_during_release": "tests/audio_phase2/test_owner_safe_handover_adversarial.py::test_stop_during_release_never_prepares_the_target",
+    "managed_claim_single_use": "tests/audio_phase2/test_managed_preloaded_claim.py::test_claim_carries_the_exact_managed_identity_and_is_single_use",
+    "managed_claim_binding_tamper": "tests/audio_phase2/test_managed_preloaded_claim.py::test_host_claim_rejects_a_tampered_binding_generation",
+    "managed_claim_host_generation_replaced": "tests/audio_phase2/test_managed_preloaded_claim.py::test_host_claim_rejects_a_replaced_host_generation"
   },
   "base_sha": "259143dddf16a6800264d5a4ae84d2a6294b74ee",
   "closure_review": "READY_FOR_CLOSURE_REVIEW",
