@@ -1,0 +1,118 @@
+{
+  "baseline_sha": "7c9b7e02e6ebd65895cfcfe0f319a334aa733a34",
+  "closure_blockers": [
+    "T03-T06 remain service-integration proofs without host E2E or physical Managed/Native qualification",
+    "managed and native physical DAC qualification was not executed",
+    "T01 and T11-T12 Direct/DAC paths do not publish an identity-bound Direct release receipt",
+    "operator audibility remains unconfirmed"
+  ],
+  "closure_review": "NOT_READY",
+  "code_commits": [
+    "847a199",
+    "2f9076c",
+    "987ed18"
+  ],
+  "commands": [
+    {
+      "command": "python scripts/phase2_context.py --phase AP2-F10 --receipt-json",
+      "result": "spec_sha256=4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12"
+    },
+    {
+      "command": "python scripts/verify_audio_phase2_repository_alignment.py --phase AP2-F10",
+      "repo_head": "987ed1810f2362be8b231a5f22b4d5d7d1c85909",
+      "result": "GO"
+    },
+    {
+      "command": "python scripts/verify_dac_repository_alignment.py",
+      "result": "OK"
+    },
+    {
+      "command": "ruff check src tests scripts",
+      "result": "PASS"
+    },
+    {
+      "command": "ruff format --check src tests scripts",
+      "result": "PASS (644 files)"
+    },
+    {
+      "command": "pytest targeted S13 files (owner-safe, adversarial, product E2E, preparation Qt, matrix, release truth, Qt+host)",
+      "result": "51 passed, 0 skipped"
+    },
+    {
+      "command": "python -m pytest tests/ -q",
+      "result": "6378 passed, 28 skipped, 0 failed in 1864.62s"
+    },
+    {
+      "command": "python tools/audio_phase2/dsd2pcm_conformance.py --corpus --target-rate 88200 --profile HIGH --json docs/audio/phase2/dsd2pcm_corpus_dsd64_v2.json",
+      "result": "PASS"
+    }
+  ],
+  "cuts": {
+    "A_release_truth": "PASS",
+    "B_attempt_isolation_and_exact_receipts": "PASS",
+    "C_qt_host_e2e": "PASS",
+    "D_numeric_conformance": "PASS",
+    "E_matrix_and_signal_truth": "PASS",
+    "F_regressions": "PASS"
+  },
+  "e2e": {
+    "cleanup_confirmed": true,
+    "e2e_a_dsd_pcm_to_dop_qt_host": "PASS",
+    "e2e_a_host_only": "PASS",
+    "e2e_b_dop_to_dsd_pcm_qt_host": "PASS",
+    "e2e_b_host_only": "PASS",
+    "no_simultaneous_exclusive_ownership": true,
+    "qt_owner_thread_ticks_during_handover": true,
+    "single_terminal_callback_per_request": true
+  },
+  "exact_sha": "987ed1810f2362be8b231a5f22b4d5d7d1c85909",
+  "f11_f15": "LOCKED",
+  "f14": "NOT_RUN",
+  "generated_at": "2026-11-01",
+  "numeric_conformance": {
+    "bit_perfect_claim": "NOT_CLAIMED",
+    "corpus": "dsd64_v2",
+    "dc_gain": "NOT_MEASURED",
+    "dc_offset_linear": true,
+    "eos": "PASS",
+    "inter_channel_gain_mismatch_db": 0.0,
+    "inter_channel_latency_samples": 0,
+    "nan_inf": 0,
+    "profile": "HIGH",
+    "profile_rule": "PASS",
+    "response_checks": {
+      "100hz": "PASS",
+      "10khz": "PASS",
+      "1khz": "PASS",
+      "20hz": "PASS",
+      "20khz": "PASS",
+      "30khz": "PASS"
+    },
+    "stopband_80khz_rejection_db": 86.35478984804543,
+    "stopband_requirement_db": 80.0,
+    "stopband_status": "PASS",
+    "target_rate_hz": 88200,
+    "unexpected_clipping": 0
+  },
+  "phase": "AP2-F10",
+  "schema_version": 1,
+  "section_196_7": {
+    "decision_table_complete": {
+      "note": "T01-T12 accounted; T08 is explicitly ALIAS_OF_T02 rather than duplicated evidence",
+      "status": "PASS"
+    },
+    "new_snapshot_per_transition": {
+      "note": "Signal Truth events and transition_snapshot in the host and Qt+host E2E",
+      "status": "PASS"
+    },
+    "policy_runtime_coherent_after_failures": {
+      "note": "rejected release keeps the live predecessor and blocks acquisitions; confirmed release plus target failure never restores",
+      "status": "PASS"
+    },
+    "stop_pause_replay_converge": {
+      "note": "STOP and PAUSED paths preserve no-autoplay; replay uses the same authorities",
+      "status": "PASS"
+    }
+  },
+  "sprint": "AP2-F10-S13"
+}
