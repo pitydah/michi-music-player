@@ -485,6 +485,23 @@ class _HandoverAttempt:
     managed_instance_id: str
 
 
+@dataclass(frozen=True, slots=True)
+class _ReleaseReservation:
+    """Single-flight lease over one or more exact physical executions.
+
+    A reservation exists only while a RELEASE worker is in flight. A second
+    handover that would release any of the same identities must not dispatch
+    its own command; the host must never receive two concurrent releases for
+    one execution, and the owner must never let a late attempt adopt a newer
+    execution as its release target.
+    """
+
+    attempt_id: str
+    prepare_generation: int
+    identity_keys: frozenset[tuple[object, ...]]
+    attempt: _HandoverAttempt
+
+
 #: Families whose execution names ONE specific DAC (never Shared/desktop).
 _SPECIFIC_DEVICE_FAMILIES = frozenset(
     {
@@ -1118,6 +1135,7 @@ class OutputSessionService:
         self._handover_state: HandoverState | None = None
         self._handover_boundary_crossed = False
         self._handover_release_truth = ReleaseTruth.NOT_REQUESTED
+        self._release_reservation: _ReleaseReservation | None = None
         self._last_handover_release_evidence: dict | None = None
         self._subscribers: list[Callable[[], None]] = []
 
@@ -1910,6 +1928,32 @@ class OutputSessionService:
                 )
             )
             return
+        identity_keys = frozenset(
+            self._handover_identity_key(snapshot) for snapshot in candidate.predecessors
+        )
+        reservation = self._release_reservation
+        if (
+            reservation is not None
+            and identity_keys
+            and identity_keys & reservation.identity_keys
+        ):
+            error = OutputSessionError(
+                "OUTPUT_RELEASE_IN_FLIGHT",
+                "another handover is already releasing this exact execution; "
+                "retry after the in-flight release resolves",
+            )
+            error.boundary_crossed = False  # type: ignore[attr-defined]
+            # The rejected request never became the owner's current attempt.
+            # Restore the in-flight attempt (it may have been cleared by the
+            # request's evidence reset) and roll back only the staleness clock
+            # this request advanced, so the release can still converge.
+            self._handover_attempt = reservation.attempt
+            self._handover_state = HandoverState.RELEASE
+            self._handover_boundary_crossed = True
+            self._handover_release_truth = ReleaseTruth.RELEASE_REQUESTED
+            self._async_prepare_generation = reservation.prepare_generation
+            on_failed(error)
+            return
         attempt = _HandoverAttempt(
             attempt_id=f"handover:{next(_HANDOVER_SEQ)}",
             prepare_generation=generation,
@@ -1957,9 +2001,21 @@ class OutputSessionService:
                 attempt, results, error, on_prepared, on_failed
             )
 
+        if identity_keys:
+            self._release_reservation = _ReleaseReservation(
+                attempt.attempt_id,
+                attempt.prepare_generation,
+                identity_keys,
+                attempt,
+            )
         self._handover_boundary_crossed = True
         self._handover_release_truth = ReleaseTruth.RELEASE_REQUESTED
-        self._submit_async_work(release_work, release_completed)
+        try:
+            self._submit_async_work(release_work, release_completed)
+        except Exception as exc:  # noqa: BLE001 - submission boundary
+            self._release_reservation = None
+            self._handover_state = HandoverState.FAILED
+            on_failed(exc)
 
     def _preflight_handover(self, attempt: _HandoverAttempt) -> None:
         """Validate the whole target BEFORE the destructive boundary."""
@@ -2062,6 +2118,19 @@ class OutputSessionService:
                 )
             plan.append((snapshot, abort))
         return tuple(plan)
+
+    @staticmethod
+    def _handover_identity_key(snapshot: _PredecessorSnapshot) -> tuple[object, ...]:
+        """Exact physical identity protected by the single-flight lease."""
+        return (
+            snapshot.family,
+            snapshot.plan_id,
+            snapshot.execution_id,
+            snapshot.stable_device_id,
+            snapshot.device,
+            snapshot.binding_generation,
+            snapshot.host_generation,
+        )
 
     def _handover_identity_is_current(self, snapshot: _PredecessorSnapshot) -> bool:
         current: object | None
@@ -2246,6 +2315,11 @@ class OutputSessionService:
         on_prepared: Callable[[str], None],
         on_failed: Callable[[Exception], None],
     ) -> None:
+        if (
+            self._release_reservation is not None
+            and self._release_reservation.attempt_id == attempt.attempt_id
+        ):
+            self._release_reservation = None
         stale = (
             self._handover_attempt is not attempt
             or attempt.prepare_generation != self._async_prepare_generation

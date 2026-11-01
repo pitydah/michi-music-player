@@ -477,3 +477,96 @@ def test_preflight_failure_never_releases_the_predecessor(
         "DSD_PCM_OUTPUT_UNAVAILABLE"
     ]
     assert session.handover_state is HandoverState.FAILED
+
+
+def test_single_flight_release_blocks_a_second_attempt_on_the_same_execution(
+    tmp_path: Path,
+) -> None:
+    """Two handovers may never dispatch concurrent releases of one execution."""
+    dop = _dop_plan(execution_id="exec:1")
+    dsd = _dsd_pcm_plan()
+    requests = {
+        "predecessor.dsf": OutputRequest.dop(dop, "profile:dop"),
+        "first.dsf": OutputRequest.dsd_to_pcm(dsd, dsd.stable_device_id, "profile:dsd"),
+        "second.dsf": OutputRequest.dsd_to_pcm(
+            dsd, dsd.stable_device_id, "profile:dsd"
+        ),
+    }
+    tx = _Tx()
+    deferred = _Deferred()
+    session = _session(requests, tx, deferred)
+    session.prepare_for_media(tmp_path / "predecessor.dsf")
+
+    tokens_a: list[str] = []
+    failures_a: list[Exception] = []
+    session.prepare_for_media_async(
+        tmp_path / "first.dsf", tokens_a.append, failures_a.append
+    )
+    deferred.run_one()
+    assert deferred.pending  # the first attempt is now in RELEASE
+
+    tokens_b: list[str] = []
+    failures_b: list[Exception] = []
+    session.prepare_for_media_async(
+        tmp_path / "second.dsf", tokens_b.append, failures_b.append
+    )
+    # Run only the second request's characterization while RELEASE is held.
+    work, completed = deferred.pending.pop()
+    value = work()
+    completed(value, None)
+
+    assert [getattr(error, "code", None) for error in failures_b] == [
+        "OUTPUT_RELEASE_IN_FLIGHT"
+    ]
+    assert tx.aborted == []
+    assert tx.dsd_pcm_prepare_calls == 0
+    assert tokens_b == []
+
+    deferred.drive()
+
+    assert failures_a == []
+    assert tx.aborted == [("dop", "exec:1", "handover_to_dsd_pcm")]
+    assert tx.dsd_pcm_prepare_calls == 1
+    assert len(tokens_a) == 1
+
+
+def test_release_worker_can_never_target_a_newer_same_family_execution(
+    tmp_path: Path,
+) -> None:
+    """A held release keeps its captured identity even after a newer commit."""
+    dop_one = _dop_plan(execution_id="exec:1")
+    dop_two = _dop_plan(execution_id="exec:2")
+    dsd = _dsd_pcm_plan()
+    requests = {
+        "predecessor.dsf": OutputRequest.dop(dop_one, "profile:dop"),
+        "handover.dsf": OutputRequest.dsd_to_pcm(
+            dsd, dsd.stable_device_id, "profile:dsd"
+        ),
+        "current.dsf": OutputRequest.dop(dop_two, "profile:dop"),
+    }
+    tx = _Tx()
+    deferred = _Deferred()
+    session = _session(requests, tx, deferred)
+    session.prepare_for_media(tmp_path / "predecessor.dsf")
+
+    tokens: list[str] = []
+    failures: list[Exception] = []
+    session.prepare_for_media_async(
+        tmp_path / "handover.dsf", tokens.append, failures.append
+    )
+    deferred.run_one()  # characterization -> RELEASE submitted and held
+
+    session.prepare_for_media(tmp_path / "current.dsf")
+    current = session._dop_prepared
+    assert current is not None
+    assert current.execution_id == "exec:2"
+
+    deferred.run_one()  # the held RELEASE now resolves its captured identity
+
+    assert current is session._dop_prepared
+    assert tx.dsd_pcm_prepare_calls == 0
+    assert tokens == []
+    assert [getattr(error, "code", None) for error in failures] == [
+        "OUTPUT_PREPARATION_STALE"
+    ]
+    assert {entry[1] for entry in tx.aborted} == {"exec:1"}
