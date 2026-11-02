@@ -96,7 +96,7 @@ Implemented widths:
 - Advanced Equalizer: 760 ideal / 680 minimum, centered in the overlay, height
   640 ideal / 480 minimum with fixed header and footer, scrollable body.
 - Audio Engine: 360 ideal / 320 minimum.
-- Signal Truth: 440 ideal / 400 minimum.
+- Signal Truth: 480 ideal / viewport-safe minimum (V2; see F11_VR_UI_SPEC).
 - Audio Output: 380 ideal / 340 minimum.
 
 Visual exclusivity is implemented in `NowPlayingBar.closeOtherAudioPopups()`.
@@ -158,9 +158,13 @@ bridge cannot apply. No advanced control writes DSP state directly.
 ## 7. Signal Truth
 
 Signal Truth is a projection of the canonical `SignalTruthRecorder` and the
-existing output bridge. It renders exactly five stages:
+existing output bridge. It renders the base stages
 
-`SOURCE → DECODE → PROCESSING → OUTPUT → DAC / DEVICE`.
+`SOURCE → DECODE → PROCESSING → OUTPUT → DAC / DEVICE`
+
+and inserts only observed transformation stages (resample, channel remap,
+FIR) when runtime evidence proves them. Historical snapshots are labelled and
+never presented as the active path. See `F11_VR_SIGNAL_TRUTH_SPEC.md`.
 
 Headlines are restricted to observed or explicitly unknown states: `Direct
 path`, `Direct · container adapted`, `Resampled`, `Channel remix`, `Processing
@@ -170,8 +174,9 @@ end-to-end` without a future explicit proof authority. With no active media it
 shows `Not verified`, source `No active media`, processing `bypassed` where
 that is the observed state, and DAC/Device `Not selected` when unresolved.
 
-Configuration chevrons emit only `NONE`, `OPEN_ENGINE`, `OPEN_PROCESSING`,
-`OPEN_OUTPUT` or `OPEN_DEVICE_SETUP`; AppShell/NowPlaying owns navigation. The
+Node details are disclosed before any configuration action. Configuration
+buttons emit only `NONE`, `OPEN_ENGINE`, `OPEN_PROCESSING`, `OPEN_OUTPUT` or
+`OPEN_DEVICE_SETUP`; AppShell/NowPlaying owns navigation. The
 popup owns no recorder and no independent truth.
 
 ## 8. Audio Engine and Audio Output
