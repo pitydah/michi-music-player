@@ -1,7 +1,9 @@
 # F11 Closure Readiness
 
-Verdict: **READY_FOR_CLOSURE_REVIEW**.
-F11 status: **ACTIVE**. F10: **CLOSED**. F12/F13/F14/F15: **LOCKED**; F14
+Verdict: **NO-GO for closure after KILLCRITIC X10 Visual Recovery R1**.
+F11 status: **ACTIVE**. See `F11_VR_CLOSURE_REPORT.md` for the current
+active-runtime and KWin gaps. The previous `84c7c3c` CI remains historical
+certification of the earlier surface, not of the new visual-recovery code. F10: **CLOSED**. F12/F13/F14/F15: **LOCKED**; F14
 **NOT_RUN**.
 
 This is a presentation phase. No physical DAC, analog audibility, bit-perfect
@@ -50,8 +52,9 @@ or F14 claim is made.
 - Ruff check and format: clean.
 - AP2-F11 alignment gate: GO.
 - DAC repository alignment gate: OK.
-- KWin visual review: full, compact, narrow, stress, high contrast and reduced
-  motion, plus all five audio surfaces.
+- KWin visual review in the prior sprint: full, compact, narrow, stress, high
+  contrast and reduced motion, plus all five audio surfaces. The new
+  visual-recovery captures are idle-only and documented separately.
 
 ## §197 status
 
@@ -66,7 +69,7 @@ or F14 claim is made.
 | 7. Signal Truth observed facts only | PASS |
 | 8. QML runtime warnings zero | PASS |
 | 9. Keyboard/focus/screenreader/high contrast/reduced motion | PASS_WITH_AUTOMATED_AND_AT_SPI_EVIDENCE |
-| 10. Full/compact/narrow + KWin review | PASS |
+| 10. Full/compact/narrow + KWin review | PARTIAL — idle/compact/stress captured; active playback and W1–W9 NOT_RUN |
 | 11. F06/F10/DAC/AudioEngine/M9 regressions | PASS |
 | 12. Exact-SHA CI | PASS (`41375199479`, `7bd75a0`) |
 
@@ -85,3 +88,16 @@ or F14 claim is made.
 - F14 remains NOT_RUN and F12/F13/F15 remain LOCKED.
 
 No test was disabled, weakened or skipped to obtain this result.
+
+
+## KILLCRITIC X10 follow-up (2026-11-02)
+
+The earlier READY_FOR_CLOSURE_REVIEW verdict was based on idle captures and
+hash-only visual checks. KILLCRITIC found active/historical collapse, a
+`hasTrack` success indicator, fixed five-stage rail semantics, Quick EQ
+draft/effective ambiguity, Advanced dead chips and sidebar artifacts.
+
+Visual Recovery R1 corrected the authority and surface defects and recorded
+honest evidence in `F11_VR_*`. It remains **NO-GO** until active playback
+ST-02/03/07/08/09/11, the sidebar W1–W9 matrix, high-contrast/reduced-motion
+captures, Advanced capability contracts and new exact-SHA CI are complete.
