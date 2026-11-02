@@ -4,9 +4,12 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from michi.domain.audio_evidence import PcmTuple
 from michi.domain.signal_truth import (
     DecodedRuntimeEvidence,
+    EngineRuntimeEvidence,
     OutputPlanEvidence,
     SignalTruthIdentity,
     SignalTruthRecorder,
@@ -155,6 +158,33 @@ def test_candidate_snapshot_is_pending_not_effective() -> None:
     assert bridge.historical is False
     assert bridge.indicatorState == "pending"
     assert "Preparation" in bridge.headline or "Preparing" in bridge.headline
+
+
+def test_standard_converters_do_not_claim_dsp_processing() -> None:
+    snapshot = _snapshot()
+    engine = EngineRuntimeEvidence(
+        identity=snapshot.identity,
+        effective_pcm=PcmTuple(44_100, "S16LE", 2, 16),
+        sink_factory="alsasink",
+        sink_device="hw:0,0",
+        graph_factories=("audioconvert", "audioresample", "alsasink"),
+        graph_inspection_complete=True,
+        software_gain=None,
+        muted=None,
+        sink_provides_clock=None,
+        sink_clock_is_pipeline_clock=None,
+        slave_method=None,
+    )
+    bridge = SignalPathBridge(
+        _recorder_with_active(replace(snapshot, engine_effective=engine)),
+        _Output(),
+        _Processing(),
+    )
+
+    processing = next(stage for stage in bridge.stages if stage["id"] == "processing")
+    assert processing["state"] == "observed"
+    assert processing["summary"] == "Bypassed"
+    assert "DSP observed" not in processing["summary"]
 
 
 def test_mismatched_processing_runtime_never_claims_effective_dsp() -> None:

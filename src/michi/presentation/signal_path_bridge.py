@@ -375,7 +375,19 @@ class SignalPathBridge(QObject):
         engine_graph_factories = [
             str(item) for item in engine.get("graph_factories", []) or []
         ]
-        has_engine_dsp = bool(engine_graph_factories)
+        has_engine_dsp = any(
+            keyword in factory.casefold()
+            for factory in engine_graph_factories
+            for keyword in (
+                "equalizer",
+                "peq",
+                "parametric",
+                "preamp",
+                "fir",
+                "convolution",
+                "dsp",
+            )
+        )
         processing_rows: list[tuple[str, str]] = []
         if processing_matches:
             processing_summary = "DSP active"
