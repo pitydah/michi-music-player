@@ -96,7 +96,7 @@ def test_observed_snapshot_projects_canonical_facts_and_no_future_claims() -> No
     bridge = SignalPathBridge(recorder, _Output(), _Processing())
 
     assert bridge.headline == "Direct path"
-    assert bridge.proofLevel == "Source · host · transport"
+    assert bridge.proofLevel == "Source · host"
     assert bridge.stages[0]["summary"] == "flac · FLAC"
     assert bridge.stages[2]["summary"] == "Bypassed"
     serialized = str(bridge.stages) + bridge.headline + bridge.proofLevel

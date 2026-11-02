@@ -367,9 +367,17 @@ class SignalPathBridge(QObject):
             action = stage["configAction"]
             if action != "NONE" and action not in actions:
                 actions.append(action)
+        proof_parts: list[str] = []
+        if source:
+            proof_parts.append("Source")
+        if decoded is not None or engine:
+            proof_parts.append("host")
+        if alsa is not None:
+            proof_parts.append("transport")
+        proof_level = " · ".join(proof_parts) or "Not verified"
         self._projection = {
             "headline": headline,
-            "proofLevel": "Source · host · transport",
+            "proofLevel": proof_level,
             "generation": self._generation,
             "sourceIdentity": str(path or ""),
             "stages": stages,
