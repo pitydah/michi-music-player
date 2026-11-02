@@ -77,5 +77,16 @@
     "Quick EQ during DSD-to-PCM remains unavailable without a decoded PCM provider.",
     "No physical audibility or bit-perfect claim; F14 remains NOT_RUN."
   ],
-  "verdict": "NO_GO_FOR_F11_CLOSURE"
+  "verdict": "NO_GO_FOR_F11_CLOSURE",
+  "ci": {
+    "run": 41515209527,
+    "sha": "266f6e98ee7fb805c1fe31b6fa32bdc465459b9f",
+    "status": "success",
+    "jobs": {
+      "check": "success",
+      "dac-v35-software-closure": "success",
+      "dop-native-gate-a": "success",
+      "min-qt": "success"
+    }
+  }
 }

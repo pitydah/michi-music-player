@@ -23,6 +23,9 @@ active-runtime visual matrix.
 
 ## Evidence
 
+- Exact-SHA CI: run `41515209527` at `266f6e9` — 4/4 success
+  (`check`, `dac-v35-software-closure`, `dop-native-gate-a`, `min-qt`).
+
 - `F11_VR_BASELINE.md`, `F11_VR_CONTRACTS.md`, `F11_VR_SIGNAL_TRUTH_SPEC.md`,
   `F11_VR_UI_SPEC.md`, `F11_VR_LEGACY_EQ_EXTRACTION.md`,
   `F11_VR_PERFORMANCE.md`, `F11_VR_RISK_REGISTER.json`.
