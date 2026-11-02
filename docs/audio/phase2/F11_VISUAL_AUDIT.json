@@ -123,6 +123,11 @@
       "sha256": "a45cb270e7a82500c4fe8d68ccde415535cfe767875bc7134dd03b2ffe3bdb53"
     }
   ],
+  "runtime_log": {
+    "file": "evidence/f11/2026-11-01-f11-surfaces/f11_kwin_runtime_log.txt",
+    "sha256": "f6c931f497b8564dab91c2459c52954485a4f7d0d388f5f6f629bdb329328251",
+    "interpretation": "Only Qt AT-SPI adaptor diagnostics; no QML TypeError, ReferenceError, binding warning or undefined assignment while exercising all five audio surfaces."
+  },
   "checks": {
     "nowplaying_height_154": "PASS",
     "nowplaying_output_grid_exact": "PASS",

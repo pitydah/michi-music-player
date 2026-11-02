@@ -45,3 +45,21 @@ def test_visual_audit_covers_the_required_surfaces_and_viewports() -> None:
     assert audit["checks"]["nowplaying_height_154"] == "PASS"
     assert audit["checks"]["popup_mutual_exclusivity"] == "PASS"
     assert audit["checks"]["automated_pixel_golden_diff"] == "NOT_RUN"
+
+
+def test_runtime_log_has_no_qml_warning_fingerprints() -> None:
+    audit = _audit()
+    runtime_log = audit["runtime_log"]
+    path = _ROOT / runtime_log["file"]
+    assert path.is_file()
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == runtime_log["sha256"]
+    text = path.read_text(encoding="utf-8")
+    for fingerprint in (
+        "TypeError",
+        "ReferenceError",
+        "Unable to assign",
+        "Cannot read property",
+        "QML",
+    ):
+        assert fingerprint not in text
+    assert "AtSpiAdaptor" in text
