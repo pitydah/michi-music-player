@@ -1,0 +1,201 @@
+{
+  "schema_version": "michi.f11.ui_contract_evidence.v1",
+  "phase": "AP2-F11",
+  "sprint": "F11",
+  "generated_at": "2026-11-01",
+  "code_sha": "dd02a8f",
+  "ci_sha": "PENDING",
+  "ci_status": "PENDING",
+  "verdict": "READY_FOR_CLOSURE_REVIEW",
+  "f11_status": "ACTIVE",
+  "commits": [
+    "95db637",
+    "c891a7e",
+    "dd02a8f"
+  ],
+  "contracts": {
+    "nowplaying": {
+      "height_px": 154,
+      "scroll": false,
+      "transport": "unchanged centered transport; no transport redesign",
+      "grid": {
+        "row0": ["dacVolumeControl:span2", "settingsButton:equalizer", "queueButton"],
+        "row1": ["audioEngineButton", "qualityBadge:signalTruth", "outputDeviceButton", "empty"],
+        "row2": ["empty:span4"]
+      },
+      "status": "PASS"
+    },
+    "popups": {
+      "exclusive": true,
+      "widths": {
+        "EqualizerPopup": "440 ideal / 420 minimum",
+        "AdvancedEqualizerPopup": "760 ideal / 680 minimum",
+        "AudioEnginePopup": "360 ideal / 320 minimum",
+        "SignalTruthPopup": "440 ideal / 400 minimum",
+        "AudioOutputPopup": "380 ideal / 340 minimum"
+      },
+      "focus_return": true,
+      "same_window_overlay": true,
+      "status": "PASS"
+    },
+    "basic_equalizer": {
+      "centers_hz": [31.25, 62.5, 125, 250, 500, 1000, 2000, 4000, 8000, 16000],
+      "labels": ["31", "62", "125", "250", "500", "1K", "2K", "4K", "8K", "16K"],
+      "filter_type": "PEAK",
+      "q": "sqrt(2)",
+      "gain_range_db": [-12, 12],
+      "gain_step_db": 0.5,
+      "graph": "PreampNode + single ParametricEqNode with 10 PEAK bands",
+      "draft_then_commit": true,
+      "effective_state_source": "AudioProcessingService.processing_truth",
+      "presets": ["flat"],
+      "native_dsd": "unavailable with explicit conversion requirement; no automatic conversion",
+      "status": "PASS"
+    },
+    "advanced_equalizer": {
+      "tabs": ["Graphic", "Parametric", "Convolution / FIR", "Signal / Resampling", "Profiles"],
+      "graphic": "31 ISO bands unavailable with explicit reason",
+      "parametric": "current ten PEAK bands read-only with mapping limitation",
+      "convolution": "no asset authority claimed",
+      "signal_resampling": "observed processing/request state only; output rate policy not owned",
+      "profiles": "reviewed factory presets only; no simulated CRUD/A-B/association",
+      "status": "PASS_WITH_CAPABILITY_GATES"
+    },
+    "signal_truth": {
+      "stages": ["source", "decode", "processing", "output", "device"],
+      "allowed_headlines": [
+        "Direct path",
+        "Direct · container adapted",
+        "Resampled",
+        "Channel remix",
+        "Processing active",
+        "Output mismatch",
+        "Not verified"
+      ],
+      "future_only_claims": [
+        "Bit-perfect playback",
+        "Exclusive verified",
+        "Native DSD preserved",
+        "DoP verified end-to-end"
+      ],
+      "configuration_actions": [
+        "NONE",
+        "OPEN_ENGINE",
+        "OPEN_PROCESSING",
+        "OPEN_OUTPUT",
+        "OPEN_DEVICE_SETUP"
+      ],
+      "status": "PASS"
+    },
+    "engine": {
+      "row_height_px": 56,
+      "selection_separate_from_active": true,
+      "icon_and_subtitle_from_bridge": true,
+      "disabled_blocker_copy": true,
+      "keyboard_navigation": true,
+      "status": "PASS"
+    },
+    "output": {
+      "row_height_px": 62,
+      "selected_pending_active_distinct": true,
+      "playing_badge_only_when_active": true,
+      "section_headers_non_clickable": true,
+      "display_audio_expansion": true,
+      "recovery_actions_real": true,
+      "fixed_settings_footer": true,
+      "status": "PASS"
+    }
+  },
+  "tests": {
+    "bridge_equalizer": {
+      "path": "tests/audio_phase2/test_f11_audio_processing_bridge.py",
+      "count": 6,
+      "status": "PASS"
+    },
+    "bridge_signal_truth": {
+      "path": "tests/audio_phase2/test_f11_signal_path_bridge.py",
+      "count": 3,
+      "status": "PASS"
+    },
+    "productive_processing": {
+      "path": "tests/audio_phase2/test_f11_processing_bridge_productive.py",
+      "count": 1,
+      "status": "PASS",
+      "evidence": "real bootstrap graph, hosted GStreamer fakesink, effective revision >= 1, bypass returns bypassed"
+    },
+    "qml_contract": {
+      "path": "tests/test_f11_qml_contract.py",
+      "count": 7,
+      "status": "PASS"
+    },
+    "qml_runtime_regressions": {
+      "paths": [
+        "tests/test_qml_runtime_gate.py",
+        "tests/test_m11_3_ui_qml_runtime.py",
+        "tests/test_m9_qml.py",
+        "tests/test_m9_now_playing_golden.py",
+        "tests/test_m9_design_canon.py",
+        "tests/test_m11_3_ui_audio_engine.py",
+        "tests/test_v35_090_qml_audio_output.py"
+      ],
+      "last_targeted_result": "198 passed, 3 warnings",
+      "status": "PASS"
+    }
+  },
+  "commands": [
+    {
+      "command": "python -m ruff check src tests scripts",
+      "result": "PASS"
+    },
+    {
+      "command": "python -m ruff format --check src tests scripts",
+      "result": "PASS"
+    },
+    {
+      "command": "QT_QPA_PLATFORM=offscreen python -m pytest tests/test_f11_qml_contract.py tests/audio_phase2/test_f11_audio_processing_bridge.py tests/audio_phase2/test_f11_signal_path_bridge.py tests/test_v35_090_qml_audio_output.py tests/test_qml_runtime_gate.py tests/test_m11_3_ui_qml_runtime.py tests/test_m11_3_ui_audio_engine.py tests/test_m9_qml.py tests/test_m9_now_playing_golden.py tests/test_m9_design_canon.py -q",
+      "result": "198 passed, 3 warnings"
+    },
+    {
+      "command": "MICHI_GST_LAB_SINK=fakesink QT_QPA_PLATFORM=offscreen python -m pytest tests/audio_phase2/test_f11_processing_bridge_productive.py -q",
+      "result": "1 passed"
+    }
+  ],
+  "section_197": {
+    "1_context_alignment_ownership": "PASS",
+    "2_buttons_real_capability_action": "PASS_WITH_CAPABILITY_GATED_DISABLED_CONTROLS",
+    "3_nowplaying_golden_conscious": "PASS",
+    "4_basic_eq_contract": "PASS",
+    "5_advanced_eq_no_simulated_extras": "PASS_WITH_CAPABILITY_GATES",
+    "6_engine_output_live_binding": "PASS",
+    "7_signal_truth_no_false_proof": "PASS",
+    "8_qml_runtime_warning_gate": "PASS",
+    "9_accessibility": "PASS_WITH_AUTOMATED_AND_AT_SPI_EVIDENCE",
+    "10_responsive_and_kwin": "PASS",
+    "11_phase_regressions": "PENDING_FULL_SUITE",
+    "12_exact_sha_ci": "PENDING"
+  },
+  "section_416": {
+    "forbidden_files_absent": [
+      "DacQuickPopup.qml",
+      "AudioProcessingPopup.qml",
+      "SignalPathPopup.qml",
+      "MichiColors.qml"
+    ],
+    "second_theme_system": false,
+    "second_dsp_authority": false,
+    "ui_owned_effective_state": false,
+    "presentation_bridges_owner_thread": true
+  },
+  "visual_evidence": {
+    "audit": "docs/audio/phase2/F11_VISUAL_AUDIT.json",
+    "directory": "evidence/f11/2026-11-01-f11-surfaces",
+    "captures": 12,
+    "reviewed": true
+  },
+  "limitations": [
+    "Advanced Graphic, Convolution/FIR and Profiles CRUD are capability-gated because no proven backend contract exists; the UI does not simulate them.",
+    "The KWin captures are reviewed sprint evidence, not an automated pixel-diff golden.",
+    "No physical DAC, analog audibility or bit-perfect claim is made by F11.",
+    "F14 remains NOT_RUN; F12/F13/F15 remain LOCKED."
+  ]
+}

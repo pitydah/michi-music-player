@@ -1,0 +1,166 @@
+{
+  "schema_version": "michi.f11.visual_audit.v1",
+  "phase": "AP2-F11",
+  "sprint": "F11",
+  "generated_at": "2026-11-01",
+  "code_sha": "dd02a8f",
+  "status": "REVIEWED_WITH_CAPTURED_LIMITATIONS",
+  "environment": {
+    "session": "isolated kwin_wayland MCP session",
+    "compositor": "kwin 6.8.1",
+    "platform": "KDE Plasma Wayland",
+    "screen": "1920x1080",
+    "scale": 1,
+    "theme": "dark",
+    "qt": "6.11.1",
+    "pyside6": "6.11.1",
+    "app_entry": "/home/cristian/.pyenv/versions/3.11.15/bin/python -m michi",
+    "pythonpath": "/home/cristian/michi-music-player/src:/home/cristian/.local/lib/python3.11/site-packages",
+    "fixture": "empty local library; no active media",
+    "screenshot_downscale": "1600x900"
+  },
+  "viewports": [
+    {"name": "full", "window": "1920x1000"},
+    {"name": "compact", "window": "1100x700"},
+    {"name": "narrow", "window": "1024x700"},
+    {"name": "stress", "window": "900x600"}
+  ],
+  "captures": [
+    {
+      "file": "evidence/f11/2026-11-01-f11-surfaces/f11_nowplaying_full_idle.png",
+      "surface": "NowPlayingBar",
+      "viewport": "full",
+      "state": "idle, no media, no popup",
+      "reviewed": true,
+      "sha256": "5484ddd0f8291152b5ef33880db1eefb7f2d08ff1b3267a91e0db92e1c137542"
+    },
+    {
+      "file": "evidence/f11/2026-11-01-f11-surfaces/f11_nowplaying_compact_idle.png",
+      "surface": "NowPlayingBar",
+      "viewport": "compact",
+      "state": "idle, no media, no popup",
+      "reviewed": true,
+      "sha256": "22ec94965fa03eccb4093c51bb942c50a92b16e5c4dced26463722b9f82d65b6"
+    },
+    {
+      "file": "evidence/f11/2026-11-01-f11-surfaces/f11_nowplaying_narrow.png",
+      "surface": "NowPlayingBar",
+      "viewport": "narrow",
+      "state": "idle, no media, no popup",
+      "reviewed": true,
+      "sha256": "d54fb8d1e0f0db75e064ad9760f9b0388cc5288bc9098091a32592d23227fe24"
+    },
+    {
+      "file": "evidence/f11/2026-11-01-f11-surfaces/f11_nowplaying_stress_900x600.png",
+      "surface": "NowPlayingBar",
+      "viewport": "stress",
+      "state": "idle, sidebar collapsed, no popup",
+      "reviewed": true,
+      "sha256": "a92821f94c3273ccb087c13471218ae162b26e51e1d004d13ac8ad7348400a3f"
+    },
+    {
+      "file": "evidence/f11/2026-11-01-f11-surfaces/f11_eq_flat.png",
+      "surface": "EqualizerPopup",
+      "viewport": "compact",
+      "state": "Flat, bypass off, ten rails at 0 dB",
+      "reviewed": true,
+      "sha256": "aa02ea0a214cea275d89d0394f59f9a6b83c39fd13d9342b6ae7c67d1fbda119"
+    },
+    {
+      "file": "evidence/f11/2026-11-01-f11-surfaces/f11_eq_stress_900x600.png",
+      "surface": "EqualizerPopup",
+      "viewport": "stress",
+      "state": "Flat, popup fully inside a 900x600 window",
+      "reviewed": true,
+      "sha256": "834363d4c08b64e7860a9934f8c895119b22e80c767e600d68109c697d9fcf8a"
+    },
+    {
+      "file": "evidence/f11/2026-11-01-f11-surfaces/f11_signal_not_verified.png",
+      "surface": "SignalTruthPopup",
+      "viewport": "compact",
+      "state": "no media, Not verified, five stages",
+      "reviewed": true,
+      "sha256": "d5afc5eedcf3a4a050ee485d887972807c73abf51d975f5d32da0f6ae1fe564e"
+    },
+    {
+      "file": "evidence/f11/2026-11-01-f11-surfaces/f11_advanced_parametric.png",
+      "surface": "AdvancedEqualizerPopup",
+      "viewport": "compact",
+      "state": "Graphic tab selected, 31-band view unavailable with reason, footer visible",
+      "reviewed": true,
+      "sha256": "c24c498529b6e97b4e2434671bc7425e75edfbecc9e78c7b8d6bde238930c481"
+    },
+    {
+      "file": "evidence/f11/2026-11-01-f11-surfaces/f11_engine_active.png",
+      "surface": "AudioEnginePopup",
+      "viewport": "compact",
+      "state": "Qt Multimedia active, GStreamer preferred, MPD available; selection separate from Active badge",
+      "reviewed": true,
+      "sha256": "a3bf0950712db8ecae18b9672662203ef6c33b00263b797fcc9837069b7bc8c7"
+    },
+    {
+      "file": "evidence/f11/2026-11-01-f11-surfaces/f11_output_local_dac.png",
+      "surface": "AudioOutputPopup",
+      "viewport": "compact",
+      "state": "System Output selected; external KINMAX and SMSL rows; display section collapsed; settings footer",
+      "reviewed": true,
+      "sha256": "c48c7e0dc572d0bdc869d46fe2505751bafa8f47b61582c57badc087deebacfa"
+    },
+    {
+      "file": "evidence/f11/2026-11-01-f11-surfaces/f11_accessibility_high_contrast.png",
+      "surface": "NowPlayingBar",
+      "viewport": "compact",
+      "state": "high contrast enabled",
+      "reviewed": true,
+      "sha256": "a79f6df64964f73bf6441c16e207269747c8299144e60c569e66bfdadf16e735"
+    },
+    {
+      "file": "evidence/f11/2026-11-01-f11-surfaces/f11_reduced_motion.png",
+      "surface": "NowPlayingBar",
+      "viewport": "compact",
+      "state": "reduced motion enabled; static capture cannot prove animation suppression",
+      "reviewed": true,
+      "sha256": "a45cb270e7a82500c4fe8d68ccde415535cfe767875bc7134dd03b2ffe3bdb53"
+    }
+  ],
+  "checks": {
+    "nowplaying_height_154": "PASS",
+    "nowplaying_output_grid_exact": "PASS",
+    "no_clipping_full_compact_narrow_stress": "PASS",
+    "popup_inside_window": "PASS",
+    "popup_mutual_exclusivity": "PASS",
+    "popup_focus_return_defined": "PASS",
+    "equalizer_ten_bands": "PASS",
+    "equalizer_preset_deduplicated": "PASS",
+    "signal_truth_no_future_claims": "PASS",
+    "engine_selection_vs_active": "PASS",
+    "output_selected_vs_active": "PASS",
+    "high_contrast_tokens": "PASS",
+    "reduced_motion_gates": "PASS_STATIC_WITH_QML_TESTS",
+    "automated_pixel_golden_diff": "NOT_RUN"
+  },
+  "defects_found": [
+    "Equalizer and Signal Truth popups measured against the 34 px opener and collapsed on the real Wayland window.",
+    "Advanced Equalizer inherited the opener as parent and used the opener width for sizing.",
+    "Audio popups could stack because visual exclusivity was not implemented.",
+    "Factory preset list exposed Flat twice.",
+    "Advanced EQ warning clipped instead of wrapping.",
+    "Quick EQ showed ten permanent 0.0 labels that collided with the rails.",
+    "The quick EQ bypass control rendered as an unstyled basic switch."
+  ],
+  "resolutions": [
+    "Popup width now derives from Overlay.overlay; NowPlaying anchors the popup with opener width offset.",
+    "Advanced Equalizer is centered in Overlay.overlay with overlay-relative width and height.",
+    "NowPlayingBar.closeOtherAudioPopups() plus EqualizerPopup.closeAllSurfaces() close competing audio surfaces.",
+    "Factory preset loader deduplicates by id and a test pins unique ids.",
+    "Advanced warning uses preferred width and Text.WordWrap.",
+    "EqSlider value readout is conditional on hover, focus, press or non-zero gain.",
+    "Header bypass uses MichiSwitch with the existing theme track."
+  ],
+  "limitations": [
+    "Screenshots are sprint evidence, not an automated pixel-diff golden.",
+    "Reduced motion is proven by QML gates, not by a static screenshot.",
+    "Advanced Graphic, Convolution/FIR and Profiles CRUD remain capability-gated; the UI reports the missing authority instead of simulating it.",
+    "No physical DAC or analog audibility is claimed by this visual phase."
+  ]
+}
