@@ -55,8 +55,10 @@ def test_without_truth_the_bridge_never_claims_verification() -> None:
     recorder = SignalTruthRecorder()
     bridge = SignalPathBridge(recorder, _Output(), _Processing())
 
-    assert bridge.headline == "Not verified"
+    assert bridge.headline == "No active path"
     assert bridge.proofLevel == "Not verified"
+    assert bridge.status == "NOT_ACTIVE"
+    assert bridge.indicatorState == "none"
     assert len(bridge.stages) == 5
     assert [stage["id"] for stage in bridge.stages] == [
         "source",
@@ -65,6 +67,9 @@ def test_without_truth_the_bridge_never_claims_verification() -> None:
         "output",
         "device",
     ]
+    assert bridge.stages[0]["state"] == "unknown"
+    assert bridge.stages[0]["first"] is True
+    assert bridge.stages[-1]["last"] is True
     assert all(forbidden not in bridge.headline for forbidden in _FORBIDDEN)
 
 
@@ -96,12 +101,118 @@ def test_observed_snapshot_projects_canonical_facts_and_no_future_claims() -> No
     bridge = SignalPathBridge(recorder, _Output(), _Processing())
 
     assert bridge.headline == "Direct path"
-    assert bridge.proofLevel == "Source · host"
+    assert bridge.proofLevel == "Source · host · device"
+    assert bridge.status == "ACTIVE"
+    assert bridge.active is True
+    assert bridge.historical is False
+    assert bridge.indicatorState == "observed"
     assert bridge.stages[0]["summary"] == "flac · FLAC"
+    assert bridge.stages[0]["first"] is True
+    assert bridge.stages[-1]["last"] is True
     assert bridge.stages[2]["summary"] == "Bypassed"
     serialized = str(bridge.stages) + bridge.headline + bridge.proofLevel
     for forbidden in _FORBIDDEN:
         assert forbidden not in serialized
+
+
+def test_historical_snapshot_is_never_presented_as_active() -> None:
+    recorder = SignalTruthRecorder()
+    snapshot = _snapshot()
+    recorder._last = snapshot
+    bridge = SignalPathBridge(recorder, _Output(), _Processing())
+
+    assert bridge.status == "HISTORICAL"
+    assert bridge.active is False
+    assert bridge.historical is True
+    assert bridge.headline == "Last playback · historical"
+    assert bridge.indicatorState == "historical"
+    assert all(stage["state"] == "historical" for stage in bridge.stages)
+    assert bridge.statusLabel == "Last playback · historical"
+
+
+def test_candidate_snapshot_is_pending_not_effective() -> None:
+    recorder = SignalTruthRecorder()
+    recorder._candidate = _snapshot()
+    bridge = SignalPathBridge(recorder, _Output(), _Processing())
+
+    assert bridge.status == "PENDING"
+    assert bridge.active is False
+    assert bridge.historical is False
+    assert bridge.indicatorState == "pending"
+    assert "Preparation" in bridge.headline or "Preparing" in bridge.headline
+
+
+def test_mismatched_processing_runtime_never_claims_effective_dsp() -> None:
+    class _Mismatched(_Processing):
+        truth = {
+            "effective_state": "effective",
+            "effective_revision": 7,
+            "effective_plan_id": "plan:other",
+        }
+
+    bridge = SignalPathBridge(
+        _recorder_with_active(_snapshot()),
+        _Output(),
+        _Mismatched(),
+    )
+
+    processing = next(stage for stage in bridge.stages if stage["id"] == "processing")
+    assert processing["state"] == "unknown"
+    assert "identity unverified" in processing["summary"]
+    assert processing["detail"]
+
+
+def test_matching_processing_receipt_is_the_only_dsp_claim() -> None:
+    class _Matched(_Processing):
+        truth = {
+            "effective_state": "effective",
+            "effective_revision": 7,
+            "effective_plan_id": "plan:f11",
+        }
+        bands = [{"gainDb": 6.0}, {"gainDb": 0.0}]
+
+    bridge = SignalPathBridge(
+        _recorder_with_active(_snapshot()),
+        _Output(),
+        _Matched(),
+    )
+
+    processing = next(stage for stage in bridge.stages if stage["id"] == "processing")
+    assert processing["state"] == "transformed"
+    assert processing["summary"] == "DSP active"
+    assert "bands" not in processing["summary"]
+    assert bridge.indicatorState == "transformed"
+
+
+def _snapshot() -> SignalTruthSnapshot:
+    identity = SignalTruthIdentity(
+        plan_id="plan:f11",
+        execution_generation=1,
+        port_generation=1,
+        binding_generation=1,
+        stable_device_id="usb:f11",
+        stable_endpoint_signature=None,
+    )
+    pcm = PcmTuple(44_100, "S16LE", 2, 16)
+    return SignalTruthSnapshot(
+        identity=identity,
+        plan=OutputPlanEvidence(identity, pcm, "alsasink", "hw:0,0", False),
+        source_file_facts=SourceFileFactsEvidence(
+            identity, container="FLAC", codec="flac", nominal_pcm=pcm
+        ),
+        decoded_runtime=DecodedRuntimeEvidence(identity, pcm),
+        engine_effective=None,
+        device_negotiated=None,
+        anomalies=(),
+        verdict=SignalTruthVerdict.DIRECT,
+        reasons=(),
+    )
+
+
+def _recorder_with_active(snapshot: SignalTruthSnapshot) -> SignalTruthRecorder:
+    recorder = SignalTruthRecorder()
+    recorder._active = snapshot
+    return recorder
 
 
 def test_configuration_action_is_an_intent_only() -> None:

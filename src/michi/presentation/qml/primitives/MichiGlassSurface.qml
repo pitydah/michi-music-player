@@ -24,6 +24,10 @@ Item {
     // Always-on backdrop blur (true smoke glass) for hero surfaces like
     // the sidebar — overrides the high-quality-only gate.
     property bool forceBlur: false
+    // Safe compositor fallback: a surface that would sample itself in the
+    // backdrop source disables live blur while keeping smoked glass, grain
+    // and shadow.
+    property bool allowBackdropBlur: true
     // Explicit material opacity override (0..1); -1 keeps the quality-based
     // default. Lower values make the glass more translucent.
     property real materialOpacityOverride: -1
@@ -43,7 +47,8 @@ Item {
     // Real backdrop blur (QtQuick.Effects) — only at high glass quality and
     // on non-subtle surfaces, where the render cost is justified. Falls back
     // to the tinted-gradient material otherwise (no window in tests → off).
-    readonly property bool blurEnabled: root.Window.window !== null
+    readonly property bool blurEnabled: root.allowBackdropBlur
+        && root.Window.window !== null
         && (root.forceBlur
             || (materialSpec.blurEligible && MichiThemeState.glassQuality === "high"
                 && root.elevation !== "subtle"))

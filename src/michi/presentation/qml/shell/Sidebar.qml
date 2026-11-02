@@ -18,7 +18,12 @@ MichiGlassSurface {
     // Backdrop blur stays (explicit smoke request), but the material and
     // texture follow the library toolbar's treatment: standard glass
     // opacity, grain and brand glint — no extra ambient tint layer.
-    forceBlur: true
+    // Live backdrop blur sampled the window contentItem that contains this
+    // sidebar, producing rectangular self-sampling artifacts on KWin/Wayland.
+    // Keep the smoked material, grain and shadow; disable only the recursive
+    // backdrop blur.
+    forceBlur: false
+    allowBackdropBlur: false
     accented: true
     // Single accent per surface: cyan (the functional active state) —
     // the previous auroraPurple glass accent competed with the cyan

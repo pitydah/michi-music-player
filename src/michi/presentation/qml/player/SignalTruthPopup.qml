@@ -17,25 +17,28 @@ Popup {
 
     readonly property var stages: signalPathBridge ? signalPathBridge.stages : []
     readonly property string headline: signalPathBridge
-        ? signalPathBridge.headline : qsTr("Not verified")
+        ? signalPathBridge.headline : qsTr("No active path")
     readonly property string proofLevel: signalPathBridge
         ? signalPathBridge.proofLevel : qsTr("Not verified")
-
-    function bridgeValue(name, fallback) {
-        if (!signalPathBridge)
-            return fallback
-        var value = signalPathBridge[name]
-        return value === undefined ? fallback : value
-    }
+    readonly property string statusLabel: signalPathBridge
+        ? signalPathBridge.statusLabel : qsTr("No active path")
+    readonly property string indicatorState: signalPathBridge
+        ? signalPathBridge.indicatorState : "none"
+    readonly property string indicatorTooltip: signalPathBridge
+        ? signalPathBridge.indicatorTooltip : qsTr("Signal Truth: no active playback")
+    readonly property string expandedKey: signalPathBridge
+        ? "stage:" + signalPathBridge.generation : "stage:0"
+    property string expandedStageId: ""
 
     padding: MichiSpacing.lg
     modal: false
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-    // The opener is a small capsule; the popup must measure the window
-    // overlay, never its parent item, or the Signal Truth surface collapses.
-    width: Math.max(400, Math.min(440, (Overlay.overlay
+    // The opener is a small capsule; the popup measures the window overlay.
+    width: Math.max(320, Math.min(480, (Overlay.overlay
         ? Overlay.overlay.width : 480) - 24))
+    height: Math.min(Overlay.overlay ? Overlay.overlay.height * 0.78 : 760, 760)
+
     enter: Transition {
         enabled: !MichiAccessibility.reducedMotion
         NumberAnimation {
@@ -63,7 +66,10 @@ Popup {
         materialOpacityOverride: 1.0
     }
 
-    onOpened: closeButton.forceActiveFocus()
+    onOpened: {
+        root.expandedStageId = ""
+        closeButton.forceActiveFocus()
+    }
     onClosed: if (focusReturnTarget) focusReturnTarget.forceActiveFocus()
 
     contentItem: ColumnLayout {
@@ -72,68 +78,66 @@ Popup {
         MichiPopupHeader {
             iconName: "output-status"
             title: qsTr("Signal Truth")
-            subtitle: qsTr("Actual audio signal path")
-            badgeText: root.proofLevel
-            badgeTone: root.bridgeValue("headlineTone", "neutral") === "warning"
-                ? "warning"
-                : root.bridgeValue("headlineTone", "neutral") === "error"
-                    ? "error" : "neutral"
+            subtitle: qsTr("Observed signal path")
+            badgeText: root.statusLabel
+            badgeTone: root.indicatorState === "error" ? "error"
+                : root.indicatorState === "pending" ? "active"
+                : root.indicatorState === "observed"
+                    || root.indicatorState === "transformed" ? "success"
+                : "neutral"
         }
 
         RowLayout {
             Layout.fillWidth: true
+            spacing: MichiSpacing.sm
+            MichiSignalIndicator {
+                indicatorState: root.indicatorState
+                tooltip: root.indicatorTooltip
+                Layout.alignment: Qt.AlignTop
+                Layout.topMargin: 3
+            }
             MichiText {
                 text: root.headline
                 role: "body"
-                color: root.bridgeValue("headlineTone", "neutral") === "error"
-                    ? MichiPalette.error
-                    : root.bridgeValue("headlineTone", "neutral") === "warning"
-                        ? MichiPalette.warning : MichiPalette.textPrimary
+                font.weight: Font.DemiBold
+                color: root.indicatorState === "error" ? MichiPalette.error
+                    : root.indicatorState === "pending" ? MichiPalette.auroraBlue
+                    : MichiPalette.textPrimary
                 Layout.fillWidth: true
-            }
-            MichiButton {
-                id: closeButton
-                text: qsTr("Close")
-                variant: "ghost"
-                implicitHeight: MichiMetrics.controlSmall
-                onClicked: root.close()
+                wrapMode: Text.WordWrap
             }
         }
 
-        ColumnLayout {
+        ScrollView {
+            id: stagesScroll
+            objectName: "signalTruthStagesScroll"
             Layout.fillWidth: true
-            spacing: 0
-            Repeater {
-                model: root.stages
-                delegate: MichiSignalNode {
-                    required property var modelData
-                    Layout.fillWidth: true
-                    iconName: modelData.id === "source" ? "track"
-                        : modelData.id === "decode" ? "audio-engine"
-                        : modelData.id === "processing" ? "equalizer"
-                        : modelData.id === "output" ? "audio-output"
-                        : "device"
-                    title: modelData.title
-                    summary: modelData.summary
-                    detail: modelData.detail
-                    configAction: modelData.configAction
-                    stageState: modelData.state
-                    onConfigurationRequested: action => {
-                        root.close()
-                        if (root.signalPathBridge)
-                            root.signalPathBridge.request_configuration(action)
-                        root.configurationAction(action)
-                    }
+            Layout.fillHeight: true
+            contentWidth: availableWidth
+            clip: true
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+
+            MichiSignalPathView {
+                width: stagesScroll.availableWidth
+                stages: root.stages
+                expandedStageId: root.expandedStageId
+                onConfigurationRequested: action => {
+                    root.close()
+                    if (root.signalPathBridge)
+                        root.signalPathBridge.request_configuration(action)
+                    root.configurationAction(action)
                 }
             }
         }
 
         MichiPopupFooter {
             note: qsTr("Proof scope · %1").arg(root.proofLevel)
-            MichiText {
-                text: qsTr("Observed facts only")
-                role: "micro"
-                color: MichiPalette.textMuted
+            MichiButton {
+                id: closeButton
+                text: qsTr("Close")
+                variant: "ghost"
+                implicitHeight: MichiMetrics.controlSmall
+                onClicked: root.close()
             }
         }
     }

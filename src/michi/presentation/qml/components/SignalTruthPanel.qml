@@ -10,6 +10,7 @@ ColumnLayout {
     property string verdictLabel: qsTr("Not verified")
     property var stages: []
     property var reasonCodes: []
+    property string expandedStageId: ""
     spacing: MichiSpacing.xs
 
     RowLayout {
@@ -17,7 +18,7 @@ ColumnLayout {
         MichiText {
             Layout.fillWidth: true
             text: qsTr("Signal Truth")
-            role: "primary"
+            role: "section"
             font.weight: Font.DemiBold
         }
         MichiStatusChip {
@@ -26,25 +27,12 @@ ColumnLayout {
         }
     }
 
-    Repeater {
-        model: root.stages
-        delegate: RowLayout {
-            id: stage
-            required property var modelData
-            Layout.fillWidth: true
-            MichiText {
-                Layout.preferredWidth: 92
-                text: stage.modelData.title
-                role: "secondary"
-            }
-            MichiText {
-                Layout.fillWidth: true
-                text: stage.modelData.summary
-                role: "technical"
-                technical: true
-                wrapMode: Text.Wrap
-            }
-        }
+    MichiSignalPathView {
+        Layout.fillWidth: true
+        stages: root.stages
+        expandedStageId: root.expandedStageId
+        compact: true
+        onConfigurationRequested: root.expandedStageId = ""
     }
 
     MichiText {

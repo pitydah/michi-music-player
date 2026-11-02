@@ -106,8 +106,7 @@ class SignalPathBridge(QObject):
     # ------------------------------------------------------------------
     # projection
     # ------------------------------------------------------------------
-    def _snapshot_diagnostics(self) -> dict[str, Any] | None:
-        snapshot = self._recorder.active_snapshot or self._recorder.last_snapshot
+    def _snapshot_diagnostics(self, snapshot) -> dict[str, Any] | None:
         if snapshot is None:
             return None
         try:
@@ -134,6 +133,26 @@ class SignalPathBridge(QObject):
             }
         return diagnostics
 
+    def _snapshot_choice(self):
+        """Choose ONE evidence source and label its temporal status.
+
+        ACTIVE and HISTORICAL are mutually exclusive. A candidate is PENDING:
+        it is not a completed execution and can never publish ACTIVE proof.
+        """
+        active = self._recorder.active_snapshot
+        if active is not None:
+            return active, "ACTIVE"
+        try:
+            candidate = self._recorder.candidate_snapshot
+        except RuntimeError:
+            candidate = None
+        if candidate is not None:
+            return candidate, "PENDING"
+        last = self._recorder.last_snapshot
+        if last is not None:
+            return last, "HISTORICAL"
+        return None, "NONE"
+
     def _processing_truth(self) -> dict[str, Any]:
         try:
             return self._processing.truth
@@ -155,7 +174,16 @@ class SignalPathBridge(QObject):
         detail: str = "",
         config_action: str = "NONE",
         state: str = "observed",
+        detail_rows: tuple[tuple[str, str], ...] = (),
     ) -> dict[str, Any]:
+        allowed = {
+            "unknown",
+            "pending",
+            "observed",
+            "transformed",
+            "historical",
+            "error",
+        }
         return {
             "id": stage_id,
             "title": title,
@@ -164,11 +192,31 @@ class SignalPathBridge(QObject):
             "configAction": config_action
             if config_action in _CONFIG_ACTIONS
             else "NONE",
-            "state": state,
+            "state": state if state in allowed else "unknown",
+            "detailRows": [list(row) for row in detail_rows],
+            "expanded": False,
         }
 
+    def _decorate_stages(
+        self, stages: list[dict[str, Any]], *, historical: bool = False
+    ) -> list[dict[str, Any]]:
+        count = len(stages)
+        decorated: list[dict[str, Any]] = []
+        for index, stage in enumerate(stages):
+            row = dict(stage)
+            if historical and row["state"] != "error":
+                row["state"] = "historical"
+            row["index"] = index
+            row["count"] = count
+            row["first"] = index == 0
+            row["last"] = index == count - 1
+            row["expandable"] = bool(row.get("detail") or row.get("detailRows"))
+            decorated.append(row)
+        return decorated
+
     def _rebuild(self) -> None:
-        diagnostics = self._snapshot_diagnostics()
+        snapshot, temporal_status = self._snapshot_choice()
+        diagnostics = self._snapshot_diagnostics(snapshot)
         truth = self._processing_truth()
         output_label = str(self._output_value("signalTruthLabel", "") or "")
         path = (
@@ -177,18 +225,19 @@ class SignalPathBridge(QObject):
             else ""
         )
         if diagnostics is None:
-            headline = output_label or "Not verified"
-            tone = (
-                "warning"
-                if output_label in {"Output mismatch", "Not verified", ""}
-                else "neutral"
+            has_media = bool(path)
+            headline = (
+                output_label or "Signal path not verified"
+                if has_media
+                else "No active path"
             )
+            tone = "warning" if has_media else "neutral"
             stages = [
                 self._stage(
                     "source",
                     "Source",
                     path.rsplit("/", 1)[-1] if path else "No active media",
-                    detail="No verified execution",
+                    detail="No verified execution" if has_media else "Idle",
                     state="unknown",
                 ),
                 self._stage(
@@ -229,11 +278,23 @@ class SignalPathBridge(QObject):
                 "proofLevel": "Not verified",
                 "generation": self._generation,
                 "sourceIdentity": path,
-                "stages": stages,
+                "stages": self._decorate_stages(stages),
                 "reasonCodes": list(
                     self._output_value("signalTruthReasonCodes", []) or []
                 ),
                 "headlineTone": tone,
+                "active": False,
+                "historical": False,
+                "status": "NOT_ACTIVE",
+                "statusLabel": "No active path" if not has_media else "Pending",
+                "pathVerdict": "unknown",
+                "indicatorState": "none" if not has_media else "unknown",
+                "indicatorTooltip": (
+                    "Signal Truth: no active playback"
+                    if not has_media
+                    else "Signal Truth: path not verified"
+                ),
+                "identity": {},
                 "configurationActions": [
                     "OPEN_ENGINE",
                     "OPEN_PROCESSING",
@@ -245,8 +306,6 @@ class SignalPathBridge(QObject):
 
         verdict = diagnostics.get("verdict", {})
         verdict_state = str(verdict.get("state", "unknown"))
-        # The recorder is the authority. The output bridge label is only a
-        # fallback when the canonical snapshot has no classified verdict.
         canonical_headline = _VERDICT_HEADLINES.get(verdict_state, "Not verified")
         headline = (
             canonical_headline
@@ -259,6 +318,7 @@ class SignalPathBridge(QObject):
         alsa = diagnostics.get("alsa")
         transform = diagnostics.get("transform") or {}
         plan = diagnostics.get("plan") or {}
+        identity = diagnostics.get("identity") or {}
         reasons = list(verdict.get("reason_codes", []))
         tone = "neutral"
         if verdict_state == "contradicted":
@@ -273,53 +333,134 @@ class SignalPathBridge(QObject):
         ) or (path.rsplit("/", 1)[-1] if path else "Source observed")
         nominal = source.get("nominal_pcm")
         source_detail = _pcm_label(nominal) if nominal else "Nominal format unknown"
+        source_rows: list[tuple[str, str]] = []
+        if source_container:
+            source_rows.append(("Container", source_container))
+        if source_codec:
+            source_rows.append(("Codec", source_codec))
+        if nominal:
+            source_rows.append(("Nominal", _pcm_label(nominal)))
 
         decode_action = "OPEN_ENGINE" if decoded is None else "NONE"
         decode_state = "observed" if decoded is not None else "unknown"
+        decode_rows: list[tuple[str, str]] = []
+        if decoded:
+            decode_rows.append(("Decoded", _pcm_label(decoded)))
+            decode_rows.append(
+                ("Port generation", str(identity.get("port_generation", "unknown")))
+            )
 
         effective_state = str(truth.get("effective_state", "unknown"))
-        processing_bits: list[str] = []
-        if effective_state == "effective":
-            bands = getattr(self._processing, "bands", [])
-            active = sum(
-                1
-                for band in bands
-                if isinstance(band, dict) and float(band.get("gainDb", 0.0)) != 0.0
-            )
-            processing_bits.append(
-                f"Graphic EQ · {active or len(bands)} bands" if bands else "Processing"
-            )
-        elif effective_state == "bypassed":
-            processing_bits.append("Bypassed")
-        elif effective_state == "unavailable":
-            processing_bits.append("Unavailable")
-        else:
-            processing_bits.append("Not verified")
-        preamp = getattr(self._processing, "preampDb", 0.0)
-        if effective_state == "effective":
-            processing_bits.append(f"Preamp {float(preamp):+.1f} dB")
-        processing_summary = " · ".join(processing_bits)
-        processing_state = (
-            "observed" if effective_state in {"effective", "bypassed"} else "unknown"
+        effective_plan_id = str(truth.get("effective_plan_id") or "")
+        snapshot_plan_id = str(identity.get("plan_id") or "")
+        processing_matches = bool(
+            effective_state == "effective"
+            and effective_plan_id
+            and snapshot_plan_id
+            and effective_plan_id == snapshot_plan_id
         )
+        engine_graph_factories = [
+            str(item) for item in engine.get("graph_factories", []) or []
+        ]
+        has_engine_dsp = bool(engine_graph_factories)
+        processing_rows: list[tuple[str, str]] = []
+        if processing_matches:
+            processing_summary = "DSP active"
+            processing_detail = "Readback confirmed for this signal path"
+            processing_state = "transformed"
+            processing_rows.extend(
+                (
+                    ("Plan", effective_plan_id),
+                    (
+                        "Revision",
+                        str(truth.get("effective_revision", 0)),
+                    ),
+                    ("Readback", "confirmed"),
+                )
+            )
+        elif effective_state == "effective":
+            processing_summary = "Processing active · identity unverified"
+            processing_detail = (
+                "The effective processing runtime does not match this signal path"
+            )
+            processing_state = "unknown"
+            processing_rows.append(("Effective plan", effective_plan_id or "unknown"))
+            processing_rows.append(("Signal plan", snapshot_plan_id or "unknown"))
+        elif effective_state == "bypassed":
+            processing_summary = "Bypassed"
+            processing_detail = "Processing is bypassed"
+            processing_state = "observed"
+            processing_rows.append(
+                ("Revision", str(truth.get("effective_revision", 0)))
+            )
+        elif effective_state == "unavailable":
+            processing_summary = "Unavailable"
+            processing_detail = "No effective processing authority"
+            processing_state = "unknown"
+        else:
+            processing_summary = "Not verified"
+            processing_detail = "No processing receipt for this path"
+            processing_state = "unknown"
+        if not processing_matches and has_engine_dsp:
+            processing_summary = "DSP observed · identity unverified"
+            processing_detail = (
+                "The engine reports DSP graph nodes but no matching receipt "
+                "was found for this execution"
+            )
+            processing_state = "unknown"
+            processing_rows.append(
+                ("Graph factories", ", ".join(engine_graph_factories))
+            )
 
         requested = plan.get("requested") or {}
-        output_format = _pcm_label(alsa or engine or None)
+        output_observed = alsa or engine or None
+        output_format = _pcm_label(output_observed)
+        output_state = "observed" if output_observed else "unknown"
+        output_detail = (
+            "Negotiated device format"
+            if alsa is not None
+            else "Engine output format"
+            if output_observed
+            else "No negotiated evidence"
+        )
+        output_rows: list[tuple[str, str]] = []
         if requested:
-            requested_text = _pcm_label(requested)
-            output_format = f"{requested_text} → {output_format}"
+            output_rows.append(("Requested", _pcm_label(requested)))
+            if output_observed and requested != output_observed:
+                output_format = f"{_pcm_label(requested)} → {output_format}"
+        if alsa is not None:
+            output_rows.append(("Negotiated", _pcm_label(alsa)))
+        if plan.get("sink_factory"):
+            output_rows.append(("Sink", str(plan.get("sink_factory"))))
+        if plan.get("sink_device"):
+            output_rows.append(("Sink device", str(plan.get("sink_device"))))
         output_action = "OPEN_OUTPUT"
-        output_state = "observed" if alsa is not None else "unknown"
-        if transform.get("resampler_transforming"):
-            output_format = f"Resampled · {output_format}"
 
-        device = str(self._output_value("activeDeviceId", "") or "")
-        device_summary = device or "Device not selected"
+        snapshot_device = str(identity.get("stable_device_id") or "")
+        selected_device = str(self._output_value("activeDeviceId", "") or "")
+        device_summary = snapshot_device or selected_device or "Device not selected"
         device_detail = str(self._output_value("signalTruthSummary", "") or "")
-        device_action = "OPEN_DEVICE_SETUP" if not device else "NONE"
-        device_state = "observed" if device else "unknown"
-        if "ST_BINDING_MISMATCH" in reasons or "ST_DEVICE_MISMATCH" in reasons:
+        device_action = "OPEN_DEVICE_SETUP"
+        device_state = "observed" if snapshot_device else "unknown"
+        device_rows: list[tuple[str, str]] = []
+        if snapshot_device:
+            device_rows.append(("Stable ID", snapshot_device))
+        if selected_device:
+            device_rows.append(("Active selection", selected_device))
+        if snapshot_device and selected_device and snapshot_device != selected_device:
             device_state = "error"
+            device_detail = "Observed device identity differs from the active selection"
+        elif "ST_BINDING_MISMATCH" in reasons or "ST_DEVICE_MISMATCH" in reasons:
+            device_state = "error"
+            device_detail = "Runtime report contradicts the device binding"
+        if identity.get("binding_generation") is not None:
+            device_rows.append(
+                ("Binding generation", str(identity.get("binding_generation")))
+            )
+        if identity.get("port_generation") is not None:
+            device_rows.append(
+                ("Port generation", str(identity.get("port_generation")))
+            )
 
         stages = [
             self._stage(
@@ -327,7 +468,8 @@ class SignalPathBridge(QObject):
                 "Source",
                 source_name,
                 detail=source_detail,
-                state="observed",
+                state="observed" if source else "unknown",
+                detail_rows=tuple(source_rows),
             ),
             self._stage(
                 "decode",
@@ -336,32 +478,104 @@ class SignalPathBridge(QObject):
                 detail="Runtime decoder evidence" if decoded else "Not observed",
                 config_action=decode_action,
                 state=decode_state,
+                detail_rows=tuple(decode_rows),
             ),
             self._stage(
                 "processing",
                 "Processing",
                 processing_summary,
-                detail=f"Revision {truth.get('effective_revision', 0)} · {effective_state}",
+                detail=processing_detail,
                 config_action="OPEN_PROCESSING",
                 state=processing_state,
-            ),
-            self._stage(
-                "output",
-                "Output",
-                output_format,
-                detail="Negotiated device format" if alsa else "No negotiated evidence",
-                config_action=output_action,
-                state=output_state,
-            ),
-            self._stage(
-                "device",
-                "DAC / Device",
-                device_summary,
-                detail=device_detail or "Observed route",
-                config_action=device_action,
-                state=device_state,
+                detail_rows=tuple(processing_rows),
             ),
         ]
+
+        if transform.get("resampler_transforming"):
+            input_rate = (decoded or {}).get("rate_hz") if decoded else None
+            output_rate = (alsa or {}).get("rate_hz") if alsa else None
+            if input_rate and output_rate:
+                resample_summary = (
+                    f"{float(input_rate) / 1000:g} kHz → "
+                    f"{float(output_rate) / 1000:g} kHz"
+                )
+            else:
+                resample_summary = "Resampling observed"
+            stages.append(
+                self._stage(
+                    "resample",
+                    "Sample rate conversion",
+                    resample_summary,
+                    detail="Observed resampler transform",
+                    config_action="OPEN_OUTPUT",
+                    state="transformed",
+                )
+            )
+        if transform.get("remix_transforming"):
+            stages.append(
+                self._stage(
+                    "channel-remap",
+                    "Channel remap",
+                    "Channel layout changed",
+                    detail="Observed channel remap",
+                    config_action="OPEN_OUTPUT",
+                    state="transformed",
+                )
+            )
+        if any(
+            "fir" in factory.casefold() or "convolution" in factory.casefold()
+            for factory in engine_graph_factories
+        ):
+            stages.append(
+                self._stage(
+                    "fir",
+                    "Convolution / FIR",
+                    "FIR graph observed",
+                    detail="Runtime graph factory reported FIR; latency is not measured",
+                    config_action="OPEN_PROCESSING",
+                    state="transformed",
+                )
+            )
+
+        stages.extend(
+            [
+                self._stage(
+                    "output",
+                    "Output",
+                    output_format,
+                    detail=output_detail,
+                    config_action=output_action,
+                    state=output_state,
+                    detail_rows=tuple(output_rows),
+                ),
+                self._stage(
+                    "device",
+                    "DAC / Device",
+                    device_summary,
+                    detail=device_detail or "Observed route",
+                    config_action=device_action,
+                    state=device_state,
+                    detail_rows=tuple(device_rows),
+                ),
+            ]
+        )
+
+        historical = temporal_status == "HISTORICAL"
+        pending = temporal_status == "PENDING"
+        if historical:
+            headline = "Last playback · historical"
+            tone = "neutral"
+            stages = self._decorate_stages(stages, historical=True)
+        elif pending:
+            headline = "Preparing signal path"
+            tone = "neutral"
+            for stage in stages:
+                if stage["state"] in {"observed", "transformed"}:
+                    stage["state"] = "pending"
+            stages = self._decorate_stages(stages)
+        else:
+            stages = self._decorate_stages(stages)
+
         actions: list[str] = []
         for stage in stages:
             action = stage["configAction"]
@@ -374,7 +588,33 @@ class SignalPathBridge(QObject):
             proof_parts.append("host")
         if alsa is not None:
             proof_parts.append("transport")
+        if snapshot_device:
+            proof_parts.append("device")
         proof_level = " · ".join(proof_parts) or "Not verified"
+        if historical:
+            indicator_state = "historical"
+            indicator_tooltip = "Signal Truth: last playback (historical)"
+            status_label = "Last playback · historical"
+        elif pending:
+            indicator_state = "pending"
+            indicator_tooltip = "Signal Truth: path in preparation"
+            status_label = "Preparing"
+        elif tone == "error":
+            indicator_state = "error"
+            indicator_tooltip = "Signal Truth: output mismatch"
+            status_label = "Error"
+        elif any(stage["state"] == "transformed" for stage in stages):
+            indicator_state = "transformed"
+            indicator_tooltip = "Signal Truth: processing observed"
+            status_label = "Active"
+        elif verdict_state in {"direct", "direct_container_adapted"}:
+            indicator_state = "observed"
+            indicator_tooltip = "Signal Truth: path observed"
+            status_label = "Active"
+        else:
+            indicator_state = "unknown"
+            indicator_tooltip = "Signal Truth: path not verified"
+            status_label = "Active"
         self._projection = {
             "headline": headline,
             "proofLevel": proof_level,
@@ -383,6 +623,14 @@ class SignalPathBridge(QObject):
             "stages": stages,
             "reasonCodes": reasons,
             "headlineTone": tone,
+            "active": temporal_status == "ACTIVE",
+            "historical": historical,
+            "status": temporal_status,
+            "statusLabel": status_label,
+            "pathVerdict": verdict_state,
+            "indicatorState": indicator_state,
+            "indicatorTooltip": indicator_tooltip,
+            "identity": identity,
             "configurationActions": actions,
         }
 
@@ -419,6 +667,38 @@ class SignalPathBridge(QObject):
     @Property(str, notify=state_changed)
     def headlineTone(self) -> str:
         return str(self._get("headlineTone", "neutral"))
+
+    @Property(bool, notify=state_changed)
+    def active(self) -> bool:
+        return bool(self._get("active", False))
+
+    @Property(bool, notify=state_changed)
+    def historical(self) -> bool:
+        return bool(self._get("historical", False))
+
+    @Property(str, notify=state_changed)
+    def status(self) -> str:
+        return str(self._get("status", "NONE"))
+
+    @Property(str, notify=state_changed)
+    def statusLabel(self) -> str:
+        return str(self._get("statusLabel", "No active path"))
+
+    @Property(str, notify=state_changed)
+    def pathVerdict(self) -> str:
+        return str(self._get("pathVerdict", "unknown"))
+
+    @Property(str, notify=state_changed)
+    def indicatorState(self) -> str:
+        return str(self._get("indicatorState", "none"))
+
+    @Property(str, notify=state_changed)
+    def indicatorTooltip(self) -> str:
+        return str(self._get("indicatorTooltip", "Signal Truth: no active playback"))
+
+    @Property("QVariantMap", notify=state_changed)
+    def identity(self) -> dict[str, Any]:
+        return dict(self._get("identity", {}) or {})
 
     @Property("QVariantList", notify=state_changed)
     def configurationActions(self) -> list[str]:

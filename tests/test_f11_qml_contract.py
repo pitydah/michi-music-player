@@ -123,8 +123,8 @@ def test_quality_badge_is_a_real_signal_truth_button():
     assert "Button" in prefix
     assert "signalTruthPopup.open()" in block
     assert "Accessible.role: Accessible.Button" in block
-    assert "width: 7" in block
-    assert "height: 7" in block
+    assert "MichiSignalIndicator" in block
+    assert "indicatorState" in block
     assert "GradientStop" not in block
 
 
@@ -192,9 +192,9 @@ def test_signal_truth_popup_never_claims_unproven_truth(qapp):
             "DoP verified end-to-end",
         ):
             assert forbidden not in source
-        assert source.count("MichiSignalNode") >= 1
-        assert "model: root.stages" in source
-        assert 'id === "source"' in source
-        assert '"device"' in source
+        assert "MichiSignalPathView" in source
+        assert "stages: root.stages" in source
+        assert "expandedStageId" in source
+        assert "signalTruthStagesScroll" in source
     finally:
         popup.deleteLater()

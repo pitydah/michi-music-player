@@ -645,7 +645,11 @@ Item {
                 focusPolicy: Qt.StrongFocus
                 hoverEnabled: true
                 Accessible.role: Accessible.Button
-                Accessible.name: qsTr("Signal Truth: %1").arg(root.qualityText())
+                Accessible.name: root.signalPathBridge
+                    ? root.signalPathBridge.indicatorTooltip
+                    : qsTr("Signal Truth: path not verified")
+                Accessible.description: qsTr("Nominal format: %1").arg(
+                    root.qualityText())
                 onClicked: {
                     root.closeOtherAudioPopups("truth")
                     signalTruthPopup.open()
@@ -654,13 +658,13 @@ Item {
                 contentItem: Row {
                     anchors.centerIn: parent
                     spacing: MichiSpacing.xs
-                    Rectangle {
+                    MichiSignalIndicator {
                         anchors.verticalCenter: parent.verticalCenter
-                        width: 7
-                        height: 7
-                        radius: 4
-                        color: root.hasTrack
-                            ? MichiPalette.auroraGreen : MichiPalette.textMuted
+                        indicatorState: root.signalPathBridge
+                            ? root.signalPathBridge.indicatorState : "unknown"
+                        tooltip: root.signalPathBridge
+                            ? root.signalPathBridge.indicatorTooltip
+                            : qsTr("Signal Truth: path not verified")
                     }
                     MichiText {
                         anchors.verticalCenter: parent.verticalCenter

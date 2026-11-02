@@ -476,6 +476,10 @@ Item {
             } else if (root.name === "close") {
                 line(ctx, 6, 6, 18, 18)
                 line(ctx, 18, 6, 6, 18)
+            } else if (root.name === "check") {
+                ctx.moveTo(5, 12.5)
+                line(ctx, 5, 12.5, 9.5, 17)
+                line(ctx, 9.5, 17, 19, 7)
             } else if (root.name === "zoom-out") {
                 ctx.arc(10.5, 10.5, 5.5, 0, Math.PI * 2)
                 line(ctx, 14.5, 14.5, 19.5, 19.5)

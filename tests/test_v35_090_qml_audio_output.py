@@ -529,9 +529,9 @@ def test_ui90_26_advanced_disclosure_expands_without_changing_authority(qapp) ->
 
 def test_ui90_27_signal_truth_panel_has_four_runtime_stages() -> None:
     source = _source("components/SignalTruthPanel.qml")
-    assert "model: root.stages" in source
-    assert "modelData.title" in source
-    assert "modelData.summary" in source
+    assert "MichiSignalPathView" in source
+    assert "stages: root.stages" in source
+    assert "expandedStageId: root.expandedStageId" in source
 
 
 def test_ui90_28_diagnostics_expose_bounded_evidence_fields() -> None:

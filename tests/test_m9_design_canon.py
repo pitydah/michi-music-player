@@ -482,9 +482,11 @@ def test_precision_pass_uses_resizable_smoked_surfaces_without_accent_rules() ->
     # sidebar must NOT stack its own MichiMaterialTexture on top
     assert "textured: true" in sidebar
     assert "MichiMaterialTexture" not in sidebar
-    # true smoke glass: always-on blur, translucent smoked material,
-    # single cyan accent (no purple chromatic noise)
-    assert "forceBlur: true" in sidebar
+    # KX11-08: live backdrop blur self-sampled the window contentItem and
+    # produced rectangular artifacts. Keep smoked glass + grain + shadow,
+    # disable only the recursive blur.
+    assert "forceBlur: false" in sidebar
+    assert "allowBackdropBlur: false" in sidebar
     # sidebar texture follows the library toolbar treatment:
     # standard glass material (no translucency override, no ambient tint)
     assert "materialOpacityOverride" not in sidebar
@@ -502,8 +504,8 @@ def test_precision_pass_uses_resizable_smoked_surfaces_without_accent_rules() ->
     quality = bar.split('objectName: "qualityBadge"', 1)[1].split(
         'objectName: "queueButton"', 1
     )[0]
-    assert "width: 7" in quality
-    assert "height: 7" in quality
+    assert "MichiSignalIndicator" in quality
+    assert "indicatorState" in quality
     assert "GradientStop" not in quality
 
 
