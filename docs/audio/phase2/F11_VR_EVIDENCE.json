@@ -1,0 +1,76 @@
+{
+  "schema_version": "michi.f11.vr.evidence.v1",
+  "phase": "AP2-F11",
+  "sprint": "F11 Visual Recovery R1",
+  "base_sha": "84c7c3cde92795067015ff80f31226311aca0da0",
+  "code_sha": "d59b332",
+  "commits": [
+    "acfe6e4",
+    "d8643f1",
+    "779545d",
+    "e15aaab",
+    "d59b332"
+  ],
+  "tests": {
+    "targeted_qml_and_contracts": "236 passed, 3 warnings",
+    "signal_path_bridge": "7 passed",
+    "quick_eq_bridge": "15 passed",
+    "eq_response": "4 passed",
+    "biquad": "18 passed",
+    "qml_contract": "10 passed",
+    "productive_dsp_bridge": "5 passed including real hosted GStreamer graph"
+  },
+  "killcritic": {
+    "KX11-01": "FIXED_TESTED: NowPlaying indicator is bound to SignalPathBridge.indicatorState, not hasTrack",
+    "KX11-02": "FIXED_TESTED: rail uses first/last/index/count",
+    "KX11-03": "FIXED_TESTED: closed state tokens, glyph and text; color is not the only carrier",
+    "KX11-04": "PARTIAL: resample/remix/FIR stages are appended only from observed runtime evidence; full DSD/DoP visual matrix NOT_RUN",
+    "KX11-05": "FIXED: node details disclosure precedes configuration action",
+    "KX11-06": "FIXED: MichiSignalPathView is shared by popup and DAC panel",
+    "KX11-07": "FIXED: 31 dead chips replaced by compact capability gate",
+    "KX11-08": "MITIGATED_CAPTURED: recursive sidebar backdrop blur disabled; compact and stress captures have no rectangular blocks",
+    "KX11-09": "FIXED_TESTED: ACTIVE/PENDING/HISTORICAL separation; historical stages neutralized",
+    "KX11-10": "FIXED_CODE_REVIEW: bootstrap EQ signal uses active decoded runtime only; no F32LE metadata assumption",
+    "KX11-11": "FIXED_TESTED: Draft/Applying/Effective/Bypassed/Error stateLabel and busy edit guard",
+    "KX11-12": "PARTIAL: Advanced shows read-only current filters and draft preset label; no fake committed state",
+    "KX11-13": "PARTIAL: SHA-pinned captures exist, active playback/pixel diff NOT_RUN",
+    "KX11-14": "FIXED: viewport-safe popup widths for F11 surfaces",
+    "KX11-15": "FIXED: new VR docs carry current evidence and limitations"
+  },
+  "matrices": {
+    "ST_01_idle_no_track": "PASS_VISUAL",
+    "ST_02_pcm_direct": "NOT_RUN",
+    "ST_03_pcm_peq": "UNIT_CONTRACT_ONLY",
+    "ST_07_native_dsd": "NOT_RUN",
+    "ST_08_dop": "NOT_RUN",
+    "ST_09_dsd_to_pcm": "UNIT_CONTRACT_ONLY",
+    "ST_11_stop_eos": "UNIT_CONTRACT_ONLY",
+    "ST_15_apply_failed": "PASS_UNIT",
+    "ST_17_requested_gt_effective": "UNIT_CONTRACT_ONLY"
+  },
+  "eq_matrix": {
+    "EQ_02_peak10_preamp": "PASS_UNIT_AND_PRODUCTIVE",
+    "EQ_03_release_commit": "PASS_STRUCTURAL_AND_BRIDGE",
+    "EQ_05_reset_bypassed": "PASS_UNIT",
+    "EQ_06_failed_apply_keeps_draft": "PASS_UNIT",
+    "EQ_08_above_nyquist": "PASS_UNIT",
+    "EQ_09_native_dop_refusal": "PASS_UNIT",
+    "EQ_13_curve_numeric": "PASS_UNIT",
+    "EQ_20_reduced_motion_high_contrast": "NOT_RUN_VISUAL"
+  },
+  "visual": {
+    "manifest": "docs/audio/phase2/F11_VR_VISUAL_AUDIT.json",
+    "screenshots": "evidence/f11/2026-11-02-f11-vr/",
+    "active_playback": "NOT_RUN",
+    "pixel_diff": "NOT_RUN"
+  },
+  "limitations": [
+    "No active-playback or DSD/DoP Signal Truth screenshot was captured; the isolated library was empty.",
+    "Sidebar W1-W9 isolation matrix was not run; only post-fix compact/stress states were reviewed.",
+    "Advanced Graphic31/FIR/Profiles CRUD remain capability-gated and are not editable.",
+    "Quick EQ during DSD-to-PCM remains unavailable without a decoded PCM provider.",
+    "No physical DAC, analog audibility or bit-perfect claim.",
+    "F14 remains NOT_RUN; F12/F13/F15 LOCKED."
+  ],
+  "verdict": "NO_GO_FOR_F11_CLOSURE"
+}

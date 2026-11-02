@@ -1,0 +1,61 @@
+{
+  "schema_version": "michi.f11.vr.risk_register.v1",
+  "phase": "AP2-F11",
+  "base_sha": "84c7c3cde92795067015ff80f31226311aca0da0",
+  "risks": [
+    {
+      "id": "KX11-08",
+      "risk": "sidebar backdrop blur self-samples the window content item and renders rectangular artifacts",
+      "mitigation": "disable recursive backdrop blur on Sidebar; retain smoked material, grain and shadow; capture KWin after fix",
+      "status": "MITIGATED_PENDING_W1_W9_REVIEW"
+    },
+    {
+      "id": "KX11-09",
+      "risk": "historical Signal Truth snapshot presented as active",
+      "mitigation": "explicit ACTIVE/PENDING/HISTORICAL selection and neutralized historical stage states",
+      "status": "MITIGATED_TESTED"
+    },
+    {
+      "id": "KX11-10",
+      "risk": "EQ signal invented from library metadata as F32LE",
+      "mitigation": "active decoded runtime snapshot only; fail closed without it",
+      "status": "MITIGATED_CODE_REVIEW"
+    },
+    {
+      "id": "KX11-11",
+      "risk": "Quick EQ ON reflects draft intent, not effective processing",
+      "mitigation": "stateLabel separates Draft/Applying/Effective/Bypassed/Error; busy edit guards",
+      "status": "MITIGATED_TESTED"
+    },
+    {
+      "id": "KX11-12",
+      "risk": "Advanced filters/profiles imply committed state that does not exist",
+      "mitigation": "read-only current filters, compact capability blocker, draft preset label",
+      "status": "PARTIAL_CAPABILITY_GATED"
+    },
+    {
+      "id": "KX11-13",
+      "risk": "visual evidence is hash-only and idle-only",
+      "mitigation": "retain SHA manifest; add active/LAB capture only when playback fixture exists; no pixel golden yet",
+      "status": "PARTIAL"
+    },
+    {
+      "id": "F11-NO-ADVANCED-EDIT",
+      "risk": "Graphic31/FIR/Profiles CRUD could ship as dead controls",
+      "mitigation": "unavailable card with exact backend dependency; no editable controls",
+      "status": "DOCUMENTED_LIMITATION"
+    },
+    {
+      "id": "F11-DSD-PCM-SIGNAL",
+      "risk": "Quick EQ cannot apply during DSD-to-PCM without a decoded PCM provider",
+      "mitigation": "bridge refuses with typed reason; no F32LE assumption",
+      "status": "DOCUMENTED_LIMITATION"
+    }
+  ],
+  "not_claimed": [
+    "physical DAC certification",
+    "bit-perfect playback",
+    "measured EQ response",
+    "automated pixel-diff golden"
+  ]
+}

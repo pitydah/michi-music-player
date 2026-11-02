@@ -1,0 +1,77 @@
+{
+  "schema_version": "michi.f11.vr.visual_audit.v1",
+  "phase": "AP2-F11",
+  "base_sha": "84c7c3cde92795067015ff80f31226311aca0da0",
+  "code_sha": "d59b332",
+  "date": "2026-11-02",
+  "environment": {
+    "session": "isolated KWin Wayland",
+    "screen": "1920x1080",
+    "window": "1100x700 and 900x600",
+    "qt": "PySide6 6.11.1",
+    "evidence_source": "production UI, isolated HOME, empty library, no playback"
+  },
+  "captures": [
+    {
+      "name": "f11_vr_nowplaying_compact",
+      "file": "evidence/f11/2026-11-02-f11-vr/f11_vr_nowplaying_compact.png",
+      "sha256": "af1c02e72854239409ddb3ba633b5a3e50c29ac9a9ecbcf44343f83bb16829e1",
+      "viewport": "1100x700",
+      "state": "idle, no active media"
+    },
+    {
+      "name": "f11_vr_signal_no_active",
+      "file": "evidence/f11/2026-11-02-f11-vr/f11_vr_signal_no_active.png",
+      "sha256": "310dccca01c7acd6ae4e39f98daa97424d593c992cc795a25e62a7e4af9c472a",
+      "viewport": "1100x700",
+      "state": "Signal Truth, no active path"
+    },
+    {
+      "name": "f11_vr_equalizer_draft",
+      "file": "evidence/f11/2026-11-02-f11-vr/f11_vr_equalizer_draft.png",
+      "sha256": "dfd9b0b8730ffd835ad0626230b75272d8c4e1448f53c2987c078126d7de92da",
+      "viewport": "1100x700",
+      "state": "Quick EQ, bypassed runtime, no decoded PCM"
+    },
+    {
+      "name": "f11_vr_advanced_graphic_gate",
+      "file": "evidence/f11/2026-11-02-f11-vr/f11_vr_advanced_graphic_gate.png",
+      "sha256": "1ae92f3ace5608cadbe6d33ae1ce92ad676e6b387d2fc0578f77c283ceaa0d93",
+      "viewport": "1100x700",
+      "state": "Advanced Graphic capability gate"
+    },
+    {
+      "name": "f11_vr_stress_900x600",
+      "file": "evidence/f11/2026-11-02-f11-vr/f11_vr_stress_900x600.png",
+      "sha256": "8a3131c52640b99bcb73dc8dd3135f8a5f83c7f95bf1255c2faae17c777251f9",
+      "viewport": "900x600",
+      "state": "stress layout, empty library"
+    }
+  ],
+  "runtime_log": {
+    "file": "evidence/f11/2026-11-02-f11-vr/f11_vr_runtime.txt",
+    "sha256": "d631d7a009773d6f26e02ce352bf8580d0d39ec102ce4e97cec505fbcb7dec14",
+    "qml_warning_fingerprints": "none"
+  },
+  "checks": {
+    "nowplaying_height_154": "PASS",
+    "signal_rail_first_last": "PASS",
+    "signal_status_text_and_glyph": "PASS",
+    "eq_state_labels": "PASS",
+    "advanced_no_dead_31_chips": "PASS",
+    "sidebar_compact_artifacts": "PASS_CAPTURED",
+    "sidebar_w1_w9_isolation_matrix": "NOT_RUN",
+    "active_playback_capture": "NOT_RUN",
+    "dsd_dop_signal_capture": "NOT_RUN",
+    "high_contrast_capture": "NOT_RUN",
+    "reduced_motion_capture": "NOT_RUN",
+    "automated_pixel_golden_diff": "NOT_RUN"
+  },
+  "limitations": [
+    "All captures are idle because the isolated library had no imported track.",
+    "Sidebar W1-W9 blur/texture/shadow isolation was not executed; only the post-fix compact/stress states were captured.",
+    "No active PCM/DSD/DoP Signal Truth capture exists; unit/host tests carry the functional evidence.",
+    "High-contrast capture was attempted but did not visually change in the isolated session, so it is NOT_RUN.",
+    "No automated pixel/perceptual diff is claimed."
+  ]
+}

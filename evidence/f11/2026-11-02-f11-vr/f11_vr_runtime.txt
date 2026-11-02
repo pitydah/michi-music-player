@@ -1,0 +1,6 @@
+qt.qpa.services: Failed to register with host portal QDBusError("org.freedesktop.portal.Error.Failed", "Could not register app ID: App info not found for ''")
+qt.accessibility.atspi: AtSpiAdaptor::applicationInterface does not implement "GetApplicationBusAddress" "/org/a11y/atspi/accessible/root"
+file:///home/cristian/michi-music-player/src/michi/presentation/qml/components/MichiEqResponsePlot.qml:25: TypeError: Cannot read property 'hz' of undefined
+file:///home/cristian/michi-music-player/src/michi/presentation/qml/components/MichiEqResponsePlot.qml:25: TypeError: Cannot read property 'hz' of undefined
+file:///home/cristian/michi-music-player/src/michi/presentation/qml/components/MichiEqResponsePlot.qml:25: TypeError: Cannot read property 'hz' of undefined
+file:///home/cristian/michi-music-player/src/michi/presentation/qml/components/MichiEqResponsePlot.qml:25: TypeError: Cannot read property 'hz' of undefined
