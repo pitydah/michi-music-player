@@ -90,6 +90,14 @@ Item {
                 opacity: root.inactive ? 0.45 : 1
 
                 Rectangle {
+                    x: 0
+                    y: (parent.height - height) / 2
+                    width: parent.width
+                    height: 1
+                    color: MichiSemanticColors.borderStrong
+                }
+
+                Rectangle {
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.bottom: parent.bottom

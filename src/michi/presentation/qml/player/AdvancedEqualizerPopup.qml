@@ -170,6 +170,12 @@ Popup {
                         wrapMode: Text.WordWrap
                         Layout.fillWidth: true
                     }
+                    MichiEqResponsePlot {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 170
+                        points: root.bridgeValue("responseCurve", [])
+                        sampleRate: 0
+                    }
                 }
             }
 

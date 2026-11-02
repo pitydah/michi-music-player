@@ -128,6 +128,24 @@ def test_quality_badge_is_a_real_signal_truth_button():
     assert "GradientStop" not in block
 
 
+def test_signal_node_rail_uses_index_and_state_semantics():
+    node = (QML_DIR / "components" / "MichiSignalNode.qml").read_text(encoding="utf-8")
+    assert "root.y > 0" not in node
+    assert "root.first" in node
+    assert "root.last" in node
+    assert "stageIndex" in node
+    assert "stateText" in node
+    assert "segmentColor" in node
+
+
+def test_nowplaying_indicator_is_bound_to_the_signal_path_bridge():
+    source = NOW_PLAYING.read_text(encoding="utf-8")
+    block = _block(source, "qualityBadge")
+    assert "signalPathBridge.indicatorState" in block
+    assert "signalPathBridge.indicatorTooltip" in block
+    assert "hasTrack" not in block
+
+
 def test_audio_popups_are_mutually_exclusive():
     source = NOW_PLAYING.read_text(encoding="utf-8")
     assert "function closeOtherAudioPopups(exceptId)" in source

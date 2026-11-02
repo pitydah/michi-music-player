@@ -119,7 +119,7 @@ class AudioProcessingBridge(QObject):
         self._error_message = ""
         self._committed_bands = self._flat_bands()
         self._committed_preamp = 0.0
-        self._committed_bypass = True
+        self._committed_bypass = False
         self._factory_presets = self._load_factory_presets()
         self._curve_key: tuple | None = None
         self._curve_points: list[dict[str, float]] = []
@@ -581,7 +581,7 @@ class AudioProcessingBridge(QObject):
         if bypassed:
             self._committed_bands = [dict(item) for item in self._bands]
             self._committed_preamp = self._preamp_db
-            self._committed_bypass = True
+            self._committed_bypass = False
             self._clear_error()
         else:
             self._set_error(

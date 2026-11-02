@@ -48,7 +48,10 @@ Item {
         : root.stageState === "pending" ? "history"
         : "info"
     readonly property color segmentColor: root.stageState === "transformed"
-        ? MichiPalette.auroraCyan : MichiSemanticColors.borderStrong
+        ? MichiPalette.auroraCyan
+        : root.stageState === "error" ? MichiPalette.error
+        : root.stageState === "pending" ? MichiPalette.auroraBlue
+        : MichiPalette.textMuted
 
     implicitHeight: content.implicitHeight + MichiSpacing.sm
     Accessible.role: Accessible.StaticText
@@ -76,6 +79,7 @@ Item {
                 width: 2
                 height: 12
                 color: root.segmentColor
+                opacity: root.stageState === "unknown" ? 0.38 : 0.7
             }
             Rectangle {
                 visible: !root.last
@@ -84,6 +88,7 @@ Item {
                 width: 2
                 height: Math.max(0, parent.height - 12)
                 color: root.segmentColor
+                opacity: root.stageState === "unknown" ? 0.38 : 0.7
             }
             Rectangle {
                 width: 24
