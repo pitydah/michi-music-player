@@ -2,14 +2,14 @@
   "schema_version": "michi.f11.vr.visual_audit.v1",
   "phase": "AP2-F11",
   "base_sha": "84c7c3cde92795067015ff80f31226311aca0da0",
-  "code_sha": "64d9f34",
+  "code_sha": "670c317",
   "date": "2026-11-02",
   "environment": {
     "session": "isolated KWin Wayland",
     "screen": "1920x1080",
     "window": "1100x700 and 900x600",
     "qt": "PySide6 6.11.1",
-    "evidence_source": "production UI, isolated HOME, empty library, no playback"
+    "evidence_source": "production UI with real ALSA Direct playback through SMSL USB AUDIO, plus idle states"
   },
   "captures": [
     {
@@ -46,6 +46,27 @@
       "sha256": "8a3131c52640b99bcb73dc8dd3135f8a5f83c7f95bf1255c2faae17c777251f9",
       "viewport": "900x600",
       "state": "stress layout, empty library"
+    },
+    {
+      "name": "f11_vr_nowplaying_active",
+      "file": "evidence/f11/2026-11-02-f11-vr/f11_vr_nowplaying_active.png",
+      "sha256": "55bdac6e2daa8cb31eedc431b30f4eb2a39ba494a00912b00f4d001d727b34c7",
+      "viewport": "1100x700",
+      "state": "PCM Direct active, real ALSA, playing"
+    },
+    {
+      "name": "f11_vr_signal_active_pcm",
+      "file": "evidence/f11/2026-11-02-f11-vr/f11_vr_signal_active_pcm.png",
+      "sha256": "5fd1630bf02672d5b7d728c3cfad1917fb33175f50e353d4e58f855af7188f99",
+      "viewport": "1100x700",
+      "state": "Signal Truth active PCM Direct; processing bypassed; device usb:152a:85dd:3-3.3.2"
+    },
+    {
+      "name": "f11_vr_signal_historical",
+      "file": "evidence/f11/2026-11-02-f11-vr/f11_vr_signal_historical.png",
+      "sha256": "e36ed19691d33283295872bb992dc52e01c361ba5ae26f1cb4f3750fc1fc6508",
+      "viewport": "1100x700",
+      "state": "Signal Truth last playback, historical after EOS"
     }
   ],
   "runtime_log": {
@@ -61,17 +82,18 @@
     "advanced_no_dead_31_chips": "PASS",
     "sidebar_compact_artifacts": "PASS_CAPTURED",
     "sidebar_w1_w9_isolation_matrix": "NOT_RUN",
-    "active_playback_capture": "NOT_RUN",
+    "active_playback_capture": "PASS_CAPTURED_REAL_ALSA",
     "dsd_dop_signal_capture": "NOT_RUN",
     "high_contrast_capture": "NOT_RUN",
     "reduced_motion_capture": "NOT_RUN",
-    "automated_pixel_golden_diff": "NOT_RUN"
+    "automated_pixel_golden_diff": "NOT_RUN",
+    "historical_after_eos": "PASS_CAPTURED"
   },
   "limitations": [
-    "All captures are idle because the isolated library had no imported track.",
-    "Sidebar W1-W9 blur/texture/shadow isolation was not executed; only the post-fix compact/stress states were captured.",
-    "No active PCM/DSD/DoP Signal Truth capture exists; unit/host tests carry the functional evidence.",
-    "High-contrast capture was attempted but did not visually change in the isolated session, so it is NOT_RUN.",
-    "No automated pixel/perceptual diff is claimed."
+    "DSD/DoP and DSP-processed active Signal Truth captures were not produced.",
+    "Sidebar W1-W9 blur/texture/shadow isolation was not executed; only post-fix compact/stress and active states were captured.",
+    "High-contrast capture is recorded NOT_RUN because the isolated toggle did not change the captured frame.",
+    "No automated pixel/perceptual diff is claimed.",
+    "The active capture is Direct on SMSL via real ALSA, not a physical audibility or bit-perfect certification."
   ]
 }

@@ -33,17 +33,17 @@ active-runtime visual matrix.
 
 ## Why NO-GO
 
-1. No active-playback Signal Truth capture. The isolated library was empty and
-   the native folder dialog did not accept a path in the automated session.
+1. Active PCM Direct is now captured on real ALSA/SMSL, and EOS/historical is
+   captured. DSD/DoP and DSP-effective active captures remain NOT_RUN.
 2. The KWin sidebar W1-W9 isolation matrix was not executed; only post-fix
-   compact/stress captures were reviewed.
-3. High-contrast capture was attempted but did not visually change in the
-   isolated session, so it is recorded NOT_RUN rather than claimed.
+   compact/stress/active states were reviewed.
+3. High-contrast capture is recorded NOT_RUN because the isolated toggle did
+   not change the captured frame.
 4. Advanced Graphic31/FIR/Profiles CRUD remain capability-gated; no live
    edit/readback path is certified.
 5. Quick EQ during DSD-to-PCM has no decoded-PCM provider in the presentation
    composition; it fails closed.
-6. No automated pixel/perceptual golden or physical DAC/bit-perfect claim.
+6. No automated pixel/perceptual golden or physical audibility/bit-perfect claim.
 
 ## Next gates
 

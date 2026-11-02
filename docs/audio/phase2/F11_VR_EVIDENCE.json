@@ -3,14 +3,16 @@
   "phase": "AP2-F11",
   "sprint": "F11 Visual Recovery R1",
   "base_sha": "84c7c3cde92795067015ff80f31226311aca0da0",
-  "code_sha": "64d9f34",
+  "code_sha": "670c317",
   "commits": [
     "acfe6e4",
     "d8643f1",
     "779545d",
     "e15aaab",
     "d59b332",
-    "64d9f34"
+    "64d9f34",
+    "662ceec",
+    "670c317"
   ],
   "tests": {
     "targeted_qml_and_contracts": "236 passed, 3 warnings",
@@ -42,12 +44,12 @@
   },
   "matrices": {
     "ST_01_idle_no_track": "PASS_VISUAL",
-    "ST_02_pcm_direct": "NOT_RUN",
+    "ST_02_pcm_direct": "PASS_VISUAL_REAL_ALSA",
     "ST_03_pcm_peq": "UNIT_CONTRACT_ONLY",
     "ST_07_native_dsd": "NOT_RUN",
     "ST_08_dop": "NOT_RUN",
     "ST_09_dsd_to_pcm": "UNIT_CONTRACT_ONLY",
-    "ST_11_stop_eos": "UNIT_CONTRACT_ONLY",
+    "ST_11_stop_eos": "PASS_VISUAL_HISTORICAL",
     "ST_15_apply_failed": "PASS_UNIT",
     "ST_17_requested_gt_effective": "UNIT_CONTRACT_ONLY"
   },
@@ -64,16 +66,16 @@
   "visual": {
     "manifest": "docs/audio/phase2/F11_VR_VISUAL_AUDIT.json",
     "screenshots": "evidence/f11/2026-11-02-f11-vr/",
-    "active_playback": "NOT_RUN",
+    "active_playback": "PASS_REAL_ALSA",
     "pixel_diff": "NOT_RUN"
   },
   "limitations": [
-    "No active-playback or DSD/DoP Signal Truth screenshot was captured; the isolated library was empty.",
-    "Sidebar W1-W9 isolation matrix was not run; only post-fix compact/stress states were reviewed.",
+    "DSD/DoP and DSP-effective active Signal Truth captures were not produced.",
+    "Sidebar W1-W9 isolation matrix was not run; only post-fix compact/stress/active states were reviewed.",
+    "High-contrast capture is NOT_RUN; the isolated toggle did not change the captured frame.",
     "Advanced Graphic31/FIR/Profiles CRUD remain capability-gated and are not editable.",
     "Quick EQ during DSD-to-PCM remains unavailable without a decoded PCM provider.",
-    "No physical DAC, analog audibility or bit-perfect claim.",
-    "F14 remains NOT_RUN; F12/F13/F15 LOCKED."
+    "No physical audibility or bit-perfect claim; F14 remains NOT_RUN."
   ],
   "verdict": "NO_GO_FOR_F11_CLOSURE"
 }
