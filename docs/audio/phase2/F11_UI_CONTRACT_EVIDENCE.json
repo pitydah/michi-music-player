@@ -3,7 +3,9 @@
   "phase": "AP2-F11",
   "sprint": "F11",
   "generated_at": "2026-11-01",
-  "code_sha": "dd02a8f",
+  "code_sha": "cce711a",
+  "test_sha": "cce711a",
+  "evidence_sha": "d883a03",
   "ci_sha": "PENDING",
   "ci_status": "PENDING",
   "verdict": "READY_FOR_CLOSURE_REVIEW",
@@ -11,7 +13,18 @@
   "commits": [
     "95db637",
     "c891a7e",
-    "dd02a8f"
+    "dd02a8f",
+    "83a5272",
+    "41b454d",
+    "484925b",
+    "a19fdf5",
+    "d883a03",
+    "db25e75",
+    "396de6d",
+    "b829a8a",
+    "6c6c78a",
+    "0b26241",
+    "cce711a"
   ],
   "contracts": {
     "nowplaying": {
@@ -84,6 +97,7 @@
       "graph": "PreampNode + single ParametricEqNode with 10 PEAK bands",
       "draft_then_commit": true,
       "effective_state_source": "AudioProcessingService.processing_truth",
+      "nyquist": "bands at or above the decoded Nyquist are preserved but marked inactive with a reason; no clamping",
       "presets": [
         "flat"
       ],
@@ -115,7 +129,7 @@
       ],
       "allowed_headlines": [
         "Direct path",
-        "Direct \u00b7 container adapted",
+        "Direct · container adapted",
         "Resampled",
         "Channel remix",
         "Processing active",
@@ -159,8 +173,9 @@
   "tests": {
     "bridge_equalizer": {
       "path": "tests/audio_phase2/test_f11_audio_processing_bridge.py",
-      "count": 6,
-      "status": "PASS"
+      "count": 13,
+      "status": "PASS",
+      "evidence": "draft isolation, exact ten PEAK graph, preamp, presets, bypass/reset, bypass-preserving curve, Nyquist inactive preservation, failed-apply draft preservation, in-flight edit guard, DSD conversion refusal, DSD-to-PCM processability, incomplete-capability fail closed, lowercase host strategies normalize to the bridge capability query"
     },
     "bridge_signal_truth": {
       "path": "tests/audio_phase2/test_f11_signal_path_bridge.py",
@@ -175,8 +190,9 @@
     },
     "qml_contract": {
       "path": "tests/test_f11_qml_contract.py",
-      "count": 7,
-      "status": "PASS"
+      "count": 8,
+      "status": "PASS",
+      "evidence": "certified geometry, exact slot map, real Signal Truth button, popup exclusivity, quick-EQ commit boundary, five Advanced tabs, five Truth stages, no forbidden claims"
     },
     "qml_runtime_regressions": {
       "paths": [
@@ -186,16 +202,19 @@
         "tests/test_m9_now_playing_golden.py",
         "tests/test_m9_design_canon.py",
         "tests/test_m11_3_ui_audio_engine.py",
-        "tests/test_v35_090_qml_audio_output.py"
+        "tests/test_v35_090_qml_audio_output.py",
+        "tests/test_m9_r5_1_1_qml_runtime.py",
+        "tests/test_m9_r5_1_surgical_hardening.py",
+        "tests/test_m9_r5_1_1_perceptual_polish.py"
       ],
-      "last_targeted_result": "198 passed, 3 warnings",
+      "last_targeted_result": "205 passed, 3 warnings",
       "status": "PASS"
     },
     "kwin_visual_contract": {
       "path": "tests/test_f11_kwin_visual_contract.py",
-      "count": 2,
+      "count": 3,
       "status": "PASS",
-      "evidence": "manifest files exist, SHA-256 matches, surfaces/viewports and honest statuses verified"
+      "evidence": "manifest files exist, SHA-256 matches, surfaces/viewports and honest statuses verified; KWin runtime log has no QML warning fingerprints"
     }
   },
   "commands": [
@@ -208,14 +227,31 @@
       "result": "PASS"
     },
     {
-      "command": "QT_QPA_PLATFORM=offscreen python -m pytest tests/test_f11_qml_contract.py tests/audio_phase2/test_f11_audio_processing_bridge.py tests/audio_phase2/test_f11_signal_path_bridge.py tests/test_v35_090_qml_audio_output.py tests/test_qml_runtime_gate.py tests/test_m11_3_ui_qml_runtime.py tests/test_m11_3_ui_audio_engine.py tests/test_m9_qml.py tests/test_m9_now_playing_golden.py tests/test_m9_design_canon.py -q",
-      "result": "198 passed, 3 warnings"
+      "command": "QT_QPA_PLATFORM=offscreen python -m pytest tests/test_v35_090_qml_audio_output.py tests/test_qml_runtime_gate.py tests/test_m11_3_ui_qml_runtime.py tests/test_m11_3_ui_audio_engine.py tests/test_m9_qml.py tests/test_m9_r5_1_1_qml_runtime.py tests/test_m9_r5_1_surgical_hardening.py tests/test_m9_r5_1_1_perceptual_polish.py tests/test_f11_qml_contract.py tests/test_m9_now_playing_golden.py tests/test_m9_design_canon.py -q",
+      "result": "205 passed, 3 warnings"
     },
     {
-      "command": "MICHI_GST_LAB_SINK=fakesink QT_QPA_PLATFORM=offscreen python -m pytest tests/audio_phase2/test_f11_processing_bridge_productive.py -q",
-      "result": "1 passed"
+      "command": "MICHI_GST_LAB_SINK=fakesink QT_QPA_PLATFORM=offscreen python -m pytest tests/audio_phase2/test_f11_audio_processing_bridge.py tests/audio_phase2/test_f11_signal_path_bridge.py tests/audio_phase2/test_f11_processing_bridge_productive.py tests/test_f11_qml_contract.py tests/test_f11_kwin_visual_contract.py -q",
+      "result": "28 passed in 31.17s"
+    },
+    {
+      "command": "python -m pytest tests/audio_phase2/test_f11_audio_processing_bridge.py tests/audio_phase2/test_f11_processing_bridge_productive.py tests/test_m9_r2_4_playlist_editorial.py -q",
+      "result": "42 passed in 30.86s"
+    },
+    {
+      "command": "python -m pytest tests/ -q",
+      "result": "6430 passed, 41 skipped, 0 failed, exit 0"
     }
   ],
+  "full_suite": {
+    "command": "python -m pytest tests/ -q",
+    "result": "6430 passed, 41 skipped, 19 warnings in 2000.46s (0:33:20)",
+    "exit_code": 0,
+    "status": "PASS",
+    "test_count": 6430,
+    "skipped": 41,
+    "failed": 0
+  },
   "section_197": {
     "1_context_alignment_ownership": "PASS",
     "2_buttons_real_capability_action": "PASS_WITH_CAPABILITY_GATED_DISABLED_CONTROLS",
@@ -227,7 +263,7 @@
     "8_qml_runtime_warning_gate": "PASS",
     "9_accessibility": "PASS_WITH_AUTOMATED_AND_AT_SPI_EVIDENCE",
     "10_responsive_and_kwin": "PASS_WITH_MACHINE_CHECKED_MANIFEST",
-    "11_phase_regressions": "PENDING_FULL_SUITE",
+    "11_phase_regressions": "PASS",
     "12_exact_sha_ci": "PENDING"
   },
   "section_416": {
@@ -250,8 +286,10 @@
   },
   "limitations": [
     "Advanced Graphic, Convolution/FIR and Profiles CRUD are capability-gated because no proven backend contract exists; the UI does not simulate them.",
+    "Quick EQ during DSD-to-PCM remains unavailable because the presentation composition has no decoded-PCM signal provider for that family; the bridge fails closed.",
     "The KWin captures are reviewed sprint evidence, not an automated pixel-diff golden.",
     "No physical DAC, analog audibility or bit-perfect claim is made by F11.",
     "F14 remains NOT_RUN; F12/F13/F15 remain LOCKED."
-  ]
+  ],
+  "ci_gate": ".github/workflows/ci.yml#F11 audio surfaces and bridges (mandatory, no skips)"
 }

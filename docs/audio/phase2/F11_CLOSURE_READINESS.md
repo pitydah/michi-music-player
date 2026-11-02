@@ -30,16 +30,23 @@ or F14 claim is made.
 - Visual audit: `docs/audio/phase2/F11_VISUAL_AUDIT.json`.
 - UI contract evidence: `docs/audio/phase2/F11_UI_CONTRACT_EVIDENCE.json`.
 - Screenshots: `evidence/f11/2026-11-01-f11-surfaces/` (12 PNGs).
-- Commits: `95db637`, `c891a7e`, `dd02a8f`.
+- Commits: `95db637`, `c891a7e`, `dd02a8f`, `83a5272`, `41b454d`,
+  `484925b`, `a19fdf5`, `d883a03`, `db25e75`, `396de6d`, `b829a8a`,
+  `6c6c78a`, `0b26241`, `cce711a`.
+- Mandatory CI gate: `F11 audio surfaces and bridges (mandatory, no skips)`.
 
 ## Verification already passed
 
-- `test_f11_audio_processing_bridge.py`: 6 passed.
+- `test_f11_audio_processing_bridge.py`: 13 passed.
 - `test_f11_signal_path_bridge.py`: 3 passed.
 - `test_f11_processing_bridge_productive.py`: 1 passed against a real hosted
   GStreamer fakesink graph.
-- `test_f11_qml_contract.py`: 7 passed.
-- Targeted QML/runtime regression batch: 198 passed, 3 warnings.
+- `test_f11_qml_contract.py`: 8 passed.
+- `test_f11_kwin_visual_contract.py`: 3 passed.
+- Mandatory F11 gate: 28 passed in 31.17 s, zero skips.
+- Targeted QML/runtime regression batch: 205 passed, 3 warnings.
+- Full suite at `cce711a`: **6430 passed, 41 skipped, 0 failed**, exit 0,
+  in 2000.46 s (33:20).
 - Ruff check and format: clean.
 - AP2-F11 alignment gate: GO.
 - DAC repository alignment gate: OK.
@@ -60,16 +67,19 @@ or F14 claim is made.
 | 8. QML runtime warnings zero | PASS |
 | 9. Keyboard/focus/screenreader/high contrast/reduced motion | PASS_WITH_AUTOMATED_AND_AT_SPI_EVIDENCE |
 | 10. Full/compact/narrow + KWin review | PASS |
-| 11. F06/F10/DAC/AudioEngine/M9 regressions | PENDING_FULL_SUITE |
+| 11. F06/F10/DAC/AudioEngine/M9 regressions | PASS |
 | 12. Exact-SHA CI | PENDING |
 
 ## Why not CLOSED yet
 
-- The repository-wide test suite and exact-SHA CI must complete on the final
-  commit.
+- The exact-SHA CI on the final commit must complete; the repository-wide
+  suite already passes locally at `cce711a`.
 - Advanced Graphic, Convolution/FIR and Profiles CRUD remain capability-gated.
   The UI is honest about the missing authority, but a future F11 follow-up may
   connect them when the backend contracts exist.
+- Quick EQ during DSD→PCM currently has no decoded-PCM signal provider in the
+  presentation composition; the bridge refuses instead of claiming a
+  transform it cannot prove.
 - KWin captures are sprint evidence; there is no automated pixel-diff golden.
 - F14 remains NOT_RUN and F12/F13/F15 remain LOCKED.
 

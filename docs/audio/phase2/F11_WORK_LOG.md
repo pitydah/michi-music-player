@@ -44,6 +44,11 @@ review and exact-SHA CI.
   Reset and Advanced entry.
 - Draft edits stay local until apply. Apply delegates to
   `AudioProcessingService`; no QML DSP authority.
+- Bands at or above the decoded Nyquist rate stay visible and keep their saved
+  gain, but are marked inactive with the reason “Unavailable at current sample
+  rate”; they are never silently clamped.
+- A failed apply keeps the draft editable and never reports a false effective
+  state.
 - Native DSD/DoP show processing unavailable with explicit conversion reason.
 
 ### F11-04 — advanced equalizer
@@ -106,22 +111,41 @@ review and exact-SHA CI.
 | `95db637` | F11 processing/signal-truth bridges and QML surfaces |
 | `c891a7e` | Engine and output popup refinement |
 | `dd02a8f` | Surface legibility and mutual exclusivity fixes |
+| `83a5272` | Productive hosted EQ proof and 12 KWin captures |
+| `41b454d` | F11 design, visual audit and closure evidence |
+| `484925b` | Output bridge formatting |
+| `a19fdf5` | Machine-checked KWin visual manifest |
+| `d883a03` | Pinned clean KWin runtime log |
+| `db25e75` | Nyquist bands stay visible but inactive |
+| `396de6d` | Failed apply keeps the draft |
+| `b829a8a` | Quick-EQ controls commit through the bridge |
+| `6c6c78a` | Incomplete EQ capabilities fail closed |
+| `0b26241` | Lowercase host strategies normalize for the EQ |
+| `cce711a` | Proof scope follows only observed stages |
 
 ## Verification
 
-- Bridge tests: 6 + 3 passed.
+- Bridge tests: 13 + 3 passed.
 - Productive hosted processing test: 1 passed.
-- QML contract: 7 passed.
-- QML/runtime regression batch: 198 passed, 3 warnings.
+- QML contract: 8 passed.
+- KWin visual manifest contract: 3 passed.
+- Mandatory F11 gate (bridges, productive hosted, QML and KWin contracts):
+  28 passed in 31.17s.
+- QML/runtime regression batch: 205 passed, 3 warnings.
 - Ruff check and format: clean.
 - AP2-F11 alignment: GO.
 - DAC gate: OK.
-- Full suite and exact-SHA CI: recorded in `F11_UI_CONTRACT_EVIDENCE.json`
-  after completion.
+- Full suite at `cce711a`: 6430 passed, 41 skipped, 0 failed, exit 0,
+  2000.46 s (33:20).
+- Exact-SHA CI: recorded in `F11_UI_CONTRACT_EVIDENCE.json` after the push.
+- CI now runs the mandatory F11 gate and rejects any skipped/xfailed/xpassed
+  surface test.
 
 ## Open limitations
 
 - Advanced Graphic, Convolution/FIR and Profiles CRUD remain capability-gated.
+- Quick EQ during DSD→PCM remains unavailable until a decoded-PCM provider is
+  exposed by the presentation composition.
 - KWin captures are reviewed evidence, not an automated pixel-diff golden.
 - F11 does not claim physical DAC, analog audibility or bit-perfect.
 - F14 remains NOT_RUN; F12/F13/F15 remain LOCKED.
