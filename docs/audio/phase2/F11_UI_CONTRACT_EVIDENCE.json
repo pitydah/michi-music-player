@@ -19,9 +19,20 @@
       "scroll": false,
       "transport": "unchanged centered transport; no transport redesign",
       "grid": {
-        "row0": ["dacVolumeControl:span2", "settingsButton:equalizer", "queueButton"],
-        "row1": ["audioEngineButton", "qualityBadge:signalTruth", "outputDeviceButton", "empty"],
-        "row2": ["empty:span4"]
+        "row0": [
+          "dacVolumeControl:span2",
+          "settingsButton:equalizer",
+          "queueButton"
+        ],
+        "row1": [
+          "audioEngineButton",
+          "qualityBadge:signalTruth",
+          "outputDeviceButton",
+          "empty"
+        ],
+        "row2": [
+          "empty:span4"
+        ]
       },
       "status": "PASS"
     },
@@ -39,21 +50,54 @@
       "status": "PASS"
     },
     "basic_equalizer": {
-      "centers_hz": [31.25, 62.5, 125, 250, 500, 1000, 2000, 4000, 8000, 16000],
-      "labels": ["31", "62", "125", "250", "500", "1K", "2K", "4K", "8K", "16K"],
+      "centers_hz": [
+        31.25,
+        62.5,
+        125,
+        250,
+        500,
+        1000,
+        2000,
+        4000,
+        8000,
+        16000
+      ],
+      "labels": [
+        "31",
+        "62",
+        "125",
+        "250",
+        "500",
+        "1K",
+        "2K",
+        "4K",
+        "8K",
+        "16K"
+      ],
       "filter_type": "PEAK",
       "q": "sqrt(2)",
-      "gain_range_db": [-12, 12],
+      "gain_range_db": [
+        -12,
+        12
+      ],
       "gain_step_db": 0.5,
       "graph": "PreampNode + single ParametricEqNode with 10 PEAK bands",
       "draft_then_commit": true,
       "effective_state_source": "AudioProcessingService.processing_truth",
-      "presets": ["flat"],
+      "presets": [
+        "flat"
+      ],
       "native_dsd": "unavailable with explicit conversion requirement; no automatic conversion",
       "status": "PASS"
     },
     "advanced_equalizer": {
-      "tabs": ["Graphic", "Parametric", "Convolution / FIR", "Signal / Resampling", "Profiles"],
+      "tabs": [
+        "Graphic",
+        "Parametric",
+        "Convolution / FIR",
+        "Signal / Resampling",
+        "Profiles"
+      ],
       "graphic": "31 ISO bands unavailable with explicit reason",
       "parametric": "current ten PEAK bands read-only with mapping limitation",
       "convolution": "no asset authority claimed",
@@ -62,10 +106,16 @@
       "status": "PASS_WITH_CAPABILITY_GATES"
     },
     "signal_truth": {
-      "stages": ["source", "decode", "processing", "output", "device"],
+      "stages": [
+        "source",
+        "decode",
+        "processing",
+        "output",
+        "device"
+      ],
       "allowed_headlines": [
         "Direct path",
-        "Direct · container adapted",
+        "Direct \u00b7 container adapted",
         "Resampled",
         "Channel remix",
         "Processing active",
@@ -140,6 +190,12 @@
       ],
       "last_targeted_result": "198 passed, 3 warnings",
       "status": "PASS"
+    },
+    "kwin_visual_contract": {
+      "path": "tests/test_f11_kwin_visual_contract.py",
+      "count": 2,
+      "status": "PASS",
+      "evidence": "manifest files exist, SHA-256 matches, surfaces/viewports and honest statuses verified"
     }
   },
   "commands": [
@@ -170,7 +226,7 @@
     "7_signal_truth_no_false_proof": "PASS",
     "8_qml_runtime_warning_gate": "PASS",
     "9_accessibility": "PASS_WITH_AUTOMATED_AND_AT_SPI_EVIDENCE",
-    "10_responsive_and_kwin": "PASS",
+    "10_responsive_and_kwin": "PASS_WITH_MACHINE_CHECKED_MANIFEST",
     "11_phase_regressions": "PENDING_FULL_SUITE",
     "12_exact_sha_ci": "PENDING"
   },
