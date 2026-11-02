@@ -196,7 +196,16 @@ class AudioProcessingBridge(QObject):
             value = str(self._source_family_provider() or "pcm").casefold()
         except Exception:  # noqa: BLE001
             return "pcm"
-        return value if value in {"pcm", "dsd", "dop", "native_dsd"} else "pcm"
+        allowed = {
+            "pcm",
+            "pcm_direct",
+            "pcm_managed",
+            "dsd",
+            "dsd_to_pcm",
+            "dop",
+            "native_dsd",
+        }
+        return value if value in allowed else "pcm"
 
     @Property(bool, notify=state_changed)
     def busy(self) -> bool:
@@ -289,7 +298,7 @@ class AudioProcessingBridge(QObject):
     # ------------------------------------------------------------------
     @Slot(int, float)
     def set_draft_band(self, index: int, gain_db: float) -> None:
-        if index < 0 or index >= len(self._bands):
+        if self._busy or index < 0 or index >= len(self._bands):
             return
         self._bands[index]["gainDb"] = _round_half_db(gain_db)
         self._preset_id = "custom"
@@ -298,6 +307,8 @@ class AudioProcessingBridge(QObject):
 
     @Slot(float)
     def set_draft_preamp(self, value: float) -> None:
+        if self._busy:
+            return
         try:
             numeric = float(value)
         except (TypeError, ValueError):
@@ -309,6 +320,8 @@ class AudioProcessingBridge(QObject):
 
     @Slot(str)
     def select_preset(self, preset_id: str) -> None:
+        if self._busy:
+            return
         preset = next(
             (
                 item
@@ -330,6 +343,8 @@ class AudioProcessingBridge(QObject):
 
     @Slot()
     def reset_draft(self) -> None:
+        if self._busy:
+            return
         self._bands = self._flat_bands()
         self._preamp_db = 0.0
         self._preset_id = "flat"
@@ -338,6 +353,8 @@ class AudioProcessingBridge(QObject):
 
     @Slot()
     def discard_draft(self) -> None:
+        if self._busy:
+            return
         self._bands = [dict(item) for item in self._committed_bands]
         self._preamp_db = self._committed_preamp
         self._bypass_requested = self._committed_bypass
@@ -347,6 +364,8 @@ class AudioProcessingBridge(QObject):
 
     @Slot(bool)
     def set_bypass_requested(self, bypassed: bool) -> None:
+        if self._busy:
+            return
         self._bypass_requested = bool(bypassed)
         self._clear_error()
         self.state_changed.emit()
@@ -354,6 +373,11 @@ class AudioProcessingBridge(QObject):
     @Slot()
     def open_advanced(self) -> None:
         self.open_advanced_requested.emit()
+
+    @Slot()
+    def refresh(self) -> None:
+        """Re-read the canonical truth after an external state change."""
+        self.state_changed.emit()
 
     # ------------------------------------------------------------------
     # runtime transactions

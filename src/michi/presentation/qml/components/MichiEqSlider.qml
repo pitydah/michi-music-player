@@ -61,10 +61,23 @@ Item {
                 ? root.inactiveReason
                 : qsTr("%1 decibels").arg(root.gainDb.toFixed(1))
 
-            onMoved: root.gainDb = value
-            onPressedChanged: {
+            onMoved: {
+                root.gainDb = value
+                // Keyboard changes never emit a release; coalesce the commit.
                 if (!pressed)
+                    keyboardCommit.restart()
+            }
+            onPressedChanged: {
+                if (!pressed) {
+                    keyboardCommit.stop()
                     root.gainCommitted(value)
+                }
+            }
+            Timer {
+                id: keyboardCommit
+                interval: 300
+                repeat: false
+                onTriggered: root.gainCommitted(root.gainDb)
             }
 
             background: Rectangle {

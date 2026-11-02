@@ -17,6 +17,8 @@ Popup {
 
     readonly property bool available: processingBridge
         ? processingBridge.available : false
+    readonly property bool controlsEnabled: available
+        && !(processingBridge && processingBridge.busy)
     readonly property var bands: processingBridge
         ? processingBridge.bands : []
     readonly property var presets: processingBridge
@@ -29,6 +31,13 @@ Popup {
             return fallback
         var value = processingBridge[name]
         return value === undefined ? fallback : value
+    }
+
+    function commitDraft() {
+        // Draft edits stay local; this is the single commit boundary used by
+        // every quick-EQ control that has a complete value to apply.
+        if (processingBridge && processingBridge.canApply)
+            processingBridge.apply_draft_async()
     }
 
     function closeAllSurfaces() {
@@ -87,6 +96,8 @@ Popup {
                 break
             }
         }
+        if (processingBridge)
+            processingBridge.refresh()
     }
     onClosed: {
         if (advancedPopup.opened)
@@ -111,12 +122,13 @@ Popup {
 
             trailingData: MichiSwitch {
                 checked: root.bridgeValue("enabledDraft", true)
-                enabled: root.available
+                enabled: root.controlsEnabled
                 focusPolicy: Qt.StrongFocus
                 Accessible.name: qsTr("Enable equalizer")
                 onToggled: {
                     if (root.processingBridge)
                         root.processingBridge.set_bypass_requested(!checked)
+                    root.commitDraft()
                 }
             }
         }
@@ -152,16 +164,18 @@ Popup {
                     delegate: MichiEqSlider {
                         required property var modelData
                         required property int index
+                        objectName: "eqBand_" + index
                         Layout.fillWidth: true
                         Layout.minimumWidth: 32
                         bandLabel: modelData.label
                         gainDb: modelData.gainDb
                         inactive: modelData.inactiveReason !== ""
                         inactiveReason: modelData.inactiveReason
-                        enabled: root.available
+                        enabled: root.controlsEnabled
                         onGainCommitted: gain => {
                             if (root.processingBridge)
                                 root.processingBridge.set_draft_band(index, gain)
+                            root.commitDraft()
                         }
                     }
                 }
@@ -184,10 +198,11 @@ Popup {
                     variant: "ghost"
                     implicitHeight: MichiMetrics.controlSmall
                     selected: root.bridgeValue("presetId", "") === modelData.id
-                    enabled: root.available
+                    enabled: root.controlsEnabled
                     onClicked: {
                         if (root.processingBridge)
                             root.processingBridge.select_preset(modelData.id)
+                        root.commitDraft()
                     }
                 }
             }
@@ -204,16 +219,35 @@ Popup {
                 color: MichiPalette.textSecondary
             }
             MichiSlider {
+                id: preampSlider
+                objectName: "preampSlider"
                 Layout.fillWidth: true
                 from: -24
                 to: 24
                 stepSize: 0.5
                 value: root.bridgeValue("preampDb", 0)
-                enabled: root.available
+                enabled: root.controlsEnabled
                 accessibleName: qsTr("Preamp gain")
                 onMoved: {
                     if (root.processingBridge)
                         root.processingBridge.set_draft_preamp(value)
+                    // Keyboard changes have no release event; coalesce them.
+                    if (!pressed)
+                        preampCommitTimer.restart()
+                }
+                onPressedChanged: {
+                    if (pressed)
+                        return
+                    preampCommitTimer.stop()
+                    if (root.processingBridge)
+                        root.processingBridge.set_draft_preamp(value)
+                    root.commitDraft()
+                }
+                Timer {
+                    id: preampCommitTimer
+                    interval: 300
+                    repeat: false
+                    onTriggered: root.commitDraft()
                 }
             }
             MichiText {
@@ -255,10 +289,11 @@ Popup {
             MichiButton {
                 text: qsTr("Reset")
                 variant: "ghost"
-                enabled: root.available
+                enabled: root.controlsEnabled
                 onClicked: {
                     if (root.processingBridge)
                         root.processingBridge.reset_draft()
+                    root.commitDraft()
                 }
             }
             MichiButton {

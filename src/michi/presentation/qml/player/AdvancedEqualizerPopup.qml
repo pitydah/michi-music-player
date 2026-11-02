@@ -70,7 +70,11 @@ Popup {
         materialOpacityOverride: 1.0
     }
 
-    onOpened: tabBar.forceActiveFocus()
+    onOpened: {
+        if (processingBridge)
+            processingBridge.refresh()
+        tabBar.forceActiveFocus()
+    }
     onClosed: if (focusReturnTarget) focusReturnTarget.forceActiveFocus()
 
     contentItem: ColumnLayout {

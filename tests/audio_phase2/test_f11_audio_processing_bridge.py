@@ -110,6 +110,76 @@ def test_reset_and_bypass_keep_parameters() -> None:
     assert bridge.bands[3]["gainDb"] == 0.0
 
 
+def test_draft_edits_are_ignored_while_a_commit_is_in_flight() -> None:
+    class _Held(_Processing):
+        def __init__(self) -> None:
+            super().__init__()
+            self.pending: dict[str, Any] | None = None
+
+        def apply_processing_async(self, graph, signal, **kwargs) -> None:
+            self.applied.append({"graph": graph, "signal": signal})
+            self.state = "effective"
+            self.pending = kwargs
+
+    service = _Held()
+    bridge = AudioProcessingBridge(
+        service,
+        signal_provider=_signal,
+        async_submit=lambda work, completed: completed(work(), None),
+    )
+    bridge.set_draft_band(0, 6.0)
+    bridge.apply_draft_async()
+    assert bridge.busy is True
+    assert service.pending is not None
+
+    bridge.set_draft_band(1, 4.0)
+    bridge.set_draft_preamp(3.0)
+    bridge.select_preset("flat")
+    bridge.reset_draft()
+    bridge.set_bypass_requested(True)
+    bridge.discard_draft()
+
+    assert bridge.bands[0]["gainDb"] == 6.0
+    assert bridge.bands[1]["gainDb"] == 0.0
+    assert bridge.preampDb == 0.0
+    assert bridge.enabledDraft is True
+
+    service.pending["on_done"](
+        {"plan_id": "plan:f11", "revision": 2, "graph_revision": 2}
+    )
+
+    assert bridge.busy is False
+    assert bridge.bands[0]["gainDb"] == 6.0
+    assert bridge.bands[1]["gainDb"] == 0.0
+    assert bridge.errorCode == ""
+    assert bridge.effectiveState == "effective"
+
+
+def test_bypass_preserves_the_curve_and_reset_never_reenables_it() -> None:
+    bridge, _service = _bridge()
+    bridge.set_draft_band(2, 5.0)
+    bridge.set_draft_preamp(-3.0)
+    bridge.set_bypass_requested(True)
+
+    assert bridge.bands[2]["gainDb"] == 5.0
+    assert bridge.preampDb == -3.0
+    assert bridge.enabledDraft is False
+
+    bridge.reset_draft()
+
+    assert all(band["gainDb"] == 0.0 for band in bridge.bands)
+    assert bridge.preampDb == 0.0
+    assert bridge.enabledDraft is False
+
+
+def test_dsd_pcm_conversion_family_remains_processable_and_truthful() -> None:
+    bridge, _service = _bridge(family="dsd_to_pcm")
+
+    assert bridge.sourceFamily == "dsd_to_pcm"
+    assert bridge.available is True
+    assert bridge.canApply is True
+
+
 def test_native_dsd_refuses_processing_without_converting() -> None:
     bridge, service = _bridge(family="native_dsd")
     assert bridge.available is False

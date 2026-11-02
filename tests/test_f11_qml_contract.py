@@ -1,5 +1,7 @@
 """F11 presentation contract: real QML surfaces and the surgical slot map."""
 
+# ruff: noqa: N802 - fake QML bridge properties intentionally use camelCase.
+
 from __future__ import annotations
 
 import os
@@ -144,6 +146,17 @@ def test_equalizer_popup_compiles_and_is_honest_about_its_contract(qapp):
         assert "AdvancedEqualizerPopup" in source
     finally:
         popup.deleteLater()
+
+
+def test_equalizer_controls_commit_through_the_bridge(qapp):
+    source = (QML_DIR / "player" / "EqualizerPopup.qml").read_text(encoding="utf-8")
+    assert "function commitDraft()" in source
+    assert "processingBridge.apply_draft_async()" in source
+    assert source.count("root.commitDraft()") >= 5
+    assert "enabled: root.controlsEnabled" in source
+    slider = (QML_DIR / "components" / "MichiEqSlider.qml").read_text(encoding="utf-8")
+    assert "root.gainCommitted(root.gainDb)" in slider
+    assert "keyboardCommit.restart()" in slider
 
 
 def test_advanced_equalizer_has_the_five_named_tabs(qapp):
