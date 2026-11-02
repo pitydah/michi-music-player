@@ -105,6 +105,24 @@ jobs:
           QT_QPA_PLATFORM: offscreen
         run: python -m pytest tests/ -q
 
+      - name: F11 audio surfaces and bridges (mandatory, no skips)
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          set -euo pipefail
+          python -m pytest \
+            tests/audio_phase2/test_f11_audio_processing_bridge.py \
+            tests/audio_phase2/test_f11_signal_path_bridge.py \
+            tests/audio_phase2/test_f11_processing_bridge_productive.py \
+            tests/test_f11_qml_contract.py \
+            tests/test_f11_kwin_visual_contract.py \
+            -q | tee /tmp/f11-surfaces-run.txt
+          grep -Eq '^[0-9]+ passed' /tmp/f11-surfaces-run.txt
+          if grep -Eq '[0-9]+ (skipped|xfailed|xpassed|error)' /tmp/f11-surfaces-run.txt; then
+            echo "F11 surface gates must not be skipped" >&2
+            exit 1
+          fi
+
       - name: Numeric conformance corpus (mandatory, no skips)
         run: |
           set -euo pipefail
