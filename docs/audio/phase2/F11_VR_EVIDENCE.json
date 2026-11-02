@@ -3,13 +3,14 @@
   "phase": "AP2-F11",
   "sprint": "F11 Visual Recovery R1",
   "base_sha": "84c7c3cde92795067015ff80f31226311aca0da0",
-  "code_sha": "d59b332",
+  "code_sha": "64d9f34",
   "commits": [
     "acfe6e4",
     "d8643f1",
     "779545d",
     "e15aaab",
-    "d59b332"
+    "d59b332",
+    "64d9f34"
   ],
   "tests": {
     "targeted_qml_and_contracts": "236 passed, 3 warnings",
@@ -18,7 +19,9 @@
     "eq_response": "4 passed",
     "biquad": "18 passed",
     "qml_contract": "10 passed",
-    "productive_dsp_bridge": "5 passed including real hosted GStreamer graph"
+    "productive_dsp_bridge": "5 passed including real hosted GStreamer graph",
+    "full_suite": "6444 passed, 41 skipped, 0 failed, exit 0 in 1863.48s",
+    "full_suite_command": "python -m pytest tests/ -q"
   },
   "killcritic": {
     "KX11-01": "FIXED_TESTED: NowPlaying indicator is bound to SignalPathBridge.indicatorState, not hasTrack",

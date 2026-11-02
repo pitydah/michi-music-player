@@ -2,7 +2,7 @@
   "schema_version": "michi.f11.vr.visual_audit.v1",
   "phase": "AP2-F11",
   "base_sha": "84c7c3cde92795067015ff80f31226311aca0da0",
-  "code_sha": "d59b332",
+  "code_sha": "64d9f34",
   "date": "2026-11-02",
   "environment": {
     "session": "isolated KWin Wayland",
