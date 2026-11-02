@@ -86,7 +86,7 @@ Item {
                 x: 11
                 y: 12
                 width: 2
-                height: Math.max(0, parent.height - 12)
+                height: 40
                 color: root.segmentColor
                 opacity: root.stageState === "unknown" ? 0.72 : 0.95
             }
