@@ -68,12 +68,13 @@ or F14 claim is made.
 | 9. Keyboard/focus/screenreader/high contrast/reduced motion | PASS_WITH_AUTOMATED_AND_AT_SPI_EVIDENCE |
 | 10. Full/compact/narrow + KWin review | PASS |
 | 11. F06/F10/DAC/AudioEngine/M9 regressions | PASS |
-| 12. Exact-SHA CI | PENDING |
+| 12. Exact-SHA CI | PASS (`41375199479`, `7bd75a0`) |
 
 ## Why not CLOSED yet
 
 - The exact-SHA CI on the final commit must complete; the repository-wide
   suite already passes locally at `cce711a`.
+- Exact-SHA CI at `7bd75a0` is 4/4 green (`check`, `dac-v35-software-closure`, `dop-native-gate-a`, `min-qt`).
 - Advanced Graphic, Convolution/FIR and Profiles CRUD remain capability-gated.
   The UI is honest about the missing authority, but a future F11 follow-up may
   connect them when the backend contracts exist.

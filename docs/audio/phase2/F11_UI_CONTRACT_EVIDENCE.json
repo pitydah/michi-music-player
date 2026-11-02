@@ -6,8 +6,8 @@
   "code_sha": "cce711a",
   "test_sha": "cce711a",
   "evidence_sha": "d883a03",
-  "ci_sha": "PENDING",
-  "ci_status": "PENDING",
+  "ci_sha": "7bd75a062c343b856ab3301260d5ac58663b8e5e",
+  "ci_status": "success",
   "verdict": "READY_FOR_CLOSURE_REVIEW",
   "f11_status": "ACTIVE",
   "commits": [
@@ -264,7 +264,7 @@
     "9_accessibility": "PASS_WITH_AUTOMATED_AND_AT_SPI_EVIDENCE",
     "10_responsive_and_kwin": "PASS_WITH_MACHINE_CHECKED_MANIFEST",
     "11_phase_regressions": "PASS",
-    "12_exact_sha_ci": "PENDING"
+    "12_exact_sha_ci": "PASS"
   },
   "section_416": {
     "forbidden_files_absent": [
@@ -291,5 +291,12 @@
     "No physical DAC, analog audibility or bit-perfect claim is made by F11.",
     "F14 remains NOT_RUN; F12/F13/F15 remain LOCKED."
   ],
-  "ci_gate": ".github/workflows/ci.yml#F11 audio surfaces and bridges (mandatory, no skips)"
+  "ci_gate": ".github/workflows/ci.yml#F11 audio surfaces and bridges (mandatory, no skips)",
+  "ci_run": 41375199479,
+  "ci_jobs": {
+    "check": "success",
+    "dac-v35-software-closure": "success",
+    "dop-native-gate-a": "success",
+    "min-qt": "success"
+  }
 }

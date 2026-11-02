@@ -137,7 +137,8 @@ review and exact-SHA CI.
 - DAC gate: OK.
 - Full suite at `cce711a`: 6430 passed, 41 skipped, 0 failed, exit 0,
   2000.46 s (33:20).
-- Exact-SHA CI: recorded in `F11_UI_CONTRACT_EVIDENCE.json` after the push.
+- Full suite: 6430 passed, 41 skipped, 0 failed at `cce711a`.
+- Exact-SHA CI: `41375199479` at `7bd75a0`, 4/4 jobs success.
 - CI now runs the mandatory F11 gate and rejects any skipped/xfailed/xpassed
   surface test.
 
