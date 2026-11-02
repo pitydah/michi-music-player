@@ -2237,20 +2237,24 @@ class ApplicationContainer:
         psb = PlaybackSessionBridge(graph.playback_session)
 
         def _f11_signal():
-            """Decoded-PCM contract for the EQ planner (never inferred in QML)."""
-            path = playback.state.file_path
-            if path is None or path.suffix.casefold() in {".dsf", ".dff"}:
+            """Decoded-PCM contract for the EQ planner (never inferred in QML).
+
+            Only the ACTIVE Signal Truth snapshot may provide this contract.
+            Library metadata and a historical snapshot are not decoder
+            evidence; when they are the only source the EQ fails closed.
+            """
+            snapshot = graph.signal_truth.active_snapshot
+            decoded = snapshot.decoded_runtime if snapshot is not None else None
+            if decoded is None:
                 return None
-            track = library.resolve_trackref(path)
-            if track is None or track.sample_rate_hz <= 0 or track.channels <= 0:
-                return None
-            positions = tuple(f"CH{index}" for index in range(track.channels))
-            if track.channels == 2:
+            pcm = decoded.pcm
+            positions = tuple(f"CH{index + 1}" for index in range(pcm.channels))
+            if pcm.channels == 2:
                 positions = ("FL", "FR")
             return PcmSignalFormat(
-                rate_hz=track.sample_rate_hz,
-                transport_format="F32LE",
-                significant_bits=32,
+                rate_hz=pcm.rate_hz,
+                transport_format=pcm.transport_format,
+                significant_bits=pcm.significant_bits,
                 layout=ChannelLayout(positions=positions),
             )
 

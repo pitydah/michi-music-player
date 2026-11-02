@@ -16,6 +16,7 @@ from michi.domain.audio_processing import BiquadType
 from michi.infrastructure.audio_processing.biquad import (
     BiquadCoefficients,
     biquad_coefficients,
+    biquad_magnitude_db,
 )
 
 _RATE = 48000.0
@@ -261,3 +262,30 @@ def test_gainless_filters_reject_any_non_zero_gain() -> None:
                     q=_Q,
                     gain_db=gain,
                 )
+
+
+def test_peak_magnitude_at_the_center_is_the_designed_gain() -> None:
+    coefficients = biquad_coefficients(
+        BiquadType.PEAK,
+        rate_hz=_RATE,
+        frequency_hz=_F0,
+        q=_Q,
+        gain_db=_GAIN_DB,
+    )
+    assert biquad_magnitude_db(
+        coefficients, rate_hz=_RATE, frequency_hz=_F0
+    ) == pytest.approx(_GAIN_DB, abs=1e-9)
+
+
+def test_low_pass_magnitude_is_zero_db_at_dc_and_rejects_nyquist() -> None:
+    coefficients = biquad_coefficients(
+        BiquadType.LOW_PASS,
+        rate_hz=_RATE,
+        frequency_hz=_F0,
+        q=_Q,
+    )
+    assert biquad_magnitude_db(
+        coefficients, rate_hz=_RATE, frequency_hz=0.0
+    ) == pytest.approx(0.0, abs=1e-12)
+    with pytest.raises(ValueError):
+        biquad_magnitude_db(coefficients, rate_hz=_RATE, frequency_hz=_RATE / 2)

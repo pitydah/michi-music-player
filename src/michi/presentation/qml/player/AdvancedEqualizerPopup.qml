@@ -39,10 +39,10 @@ Popup {
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     // Advanced EQ is centred in the scene, so the window overlay owns both
     // dimensions. Binding to the opener clipped the whole surface to 2 px.
-    width: Math.max(680, Math.min(760, (Overlay.overlay
-        ? Overlay.overlay.width : 800) - 32))
-    height: Math.max(480, Math.min(640, (Overlay.overlay
-        ? Overlay.overlay.height : 700) - 32))
+    width: Math.max(320, Math.min(880, (Overlay.overlay
+        ? Overlay.overlay.width : 880) - 24))
+    height: Math.max(360, Math.min(680, (Overlay.overlay
+        ? Overlay.overlay.height : 700) - 24))
     enter: Transition {
         enabled: !MichiAccessibility.reducedMotion
         NumberAnimation {
@@ -92,7 +92,7 @@ Popup {
                 : root.effectiveState === "bypassed" ? "neutral" : "warning"
         }
 
-        RowLayout {
+        Flow {
             id: tabBar
             Layout.fillWidth: true
             spacing: 0
@@ -107,7 +107,6 @@ Popup {
                     onClicked: root.activeTab = modelData.id
                 }
             }
-            Item { Layout.fillWidth: true }
         }
 
         StackLayout {
@@ -117,7 +116,8 @@ Popup {
                 return tab.id === root.activeTab
             }))
 
-            // Graphic: 31 ISO bands are not wired to a proven runtime mapping.
+            // Graphic: the backend contract is not proven. A compact blocker
+            // replaces the previous 31 dead chips.
             ScrollView {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -125,40 +125,50 @@ Popup {
                     width: parent.width
                     spacing: MichiSpacing.md
                     MichiText {
-                        text: qsTr("31-band graphic editor")
+                        text: qsTr("Graphic 31-band workspace")
                         role: "section"
                     }
-                    MichiText {
-                        text: qsTr("This view stays unavailable until the 31 ISO bands are mapped to a proven backend graph. The ten-band quick EQ remains fully functional.")
-                        role: "secondary"
-                        color: MichiPalette.warning
-                        wrapMode: Text.WordWrap
+                    Rectangle {
                         Layout.fillWidth: true
-                        Layout.preferredWidth: root.width - 2 * MichiSpacing.xl
-                    }
-                    GridLayout {
-                        columns: 8
-                        columnSpacing: MichiSpacing.sm
-                        rowSpacing: MichiSpacing.sm
-                        Layout.fillWidth: true
-                        Repeater {
-                            model: 31
-                            delegate: Rectangle {
-                                required property int index
+                        Layout.preferredHeight: 118
+                        radius: MichiRadius.lg
+                        color: MichiPalette.smoke
+                        border.width: 1
+                        border.color: MichiSemanticColors.borderSubtle
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: MichiSpacing.lg
+                            spacing: MichiSpacing.md
+                            MichiIcon {
+                                name: "equalizer"
+                                width: 24
+                                height: 24
+                                iconColor: MichiPalette.warning
+                            }
+                            ColumnLayout {
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: 28
-                                radius: MichiRadius.sm
-                                color: MichiPalette.smoke
-                                border.width: 1
-                                border.color: MichiSemanticColors.borderSubtle
+                                spacing: MichiSpacing.xxs
                                 MichiText {
-                                    anchors.centerIn: parent
-                                    text: qsTr("ISO %1").arg(index + 1)
-                                    role: "micro"
-                                    color: MichiPalette.textDisabled
+                                    text: qsTr("Requires host confirmation")
+                                    role: "body"
+                                    font.weight: Font.DemiBold
+                                }
+                                MichiText {
+                                    text: qsTr("The 31 ISO bands need a proven GRAPHIC_EQ_NBANDS graph, negotiated sample contract and readback receipt. The ten-band Quick EQ is ready now.")
+                                    role: "secondary"
+                                    color: MichiPalette.textSecondary
+                                    wrapMode: Text.WordWrap
+                                    Layout.fillWidth: true
                                 }
                             }
                         }
+                    }
+                    MichiText {
+                        text: qsTr("No editable 31-band controls are shown until that contract exists.")
+                        role: "caption"
+                        color: MichiPalette.textMuted
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
                     }
                 }
             }
@@ -180,6 +190,17 @@ Popup {
                         color: MichiPalette.textSecondary
                         wrapMode: Text.WordWrap
                         Layout.fillWidth: true
+                    }
+                    MichiEqResponsePlot {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 150
+                        points: root.bridgeValue("responseCurve", [])
+                        sampleRate: 0
+                    }
+                    MichiText {
+                        text: qsTr("Calculated response · not measured")
+                        role: "micro"
+                        color: MichiPalette.textMuted
                     }
                     Repeater {
                         model: root.bands
@@ -288,7 +309,7 @@ Popup {
                             }
                             MichiStatusChip {
                                 text: root.bridgeValue("presetId", "") === modelData.id
-                                    ? qsTr("Active") : qsTr("Available")
+                                    ? qsTr("Draft preset") : qsTr("Available")
                                 tone: root.bridgeValue("presetId", "") === modelData.id
                                     ? "active" : "neutral"
                                 dotVisible: false

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
+
 from michi.domain.audio_processing import (
     BiquadType,
     ParametricEqNode,
@@ -72,10 +74,14 @@ def test_draft_is_local_and_apply_builds_the_exact_ten_peak_graph() -> None:
     assert bridge.committedRevision == 1
     assert service.applied == []
     assert bridge.bands[0]["gainDb"] == 6.5
+    assert bridge.draftDirty is True
+    assert bridge.stateLabel == "Draft"
 
     bridge.apply_draft_async()
 
     assert len(service.applied) == 1
+    assert bridge.draftDirty is False
+    assert bridge.stateLabel.startswith("Effective")
     graph = service.applied[0]["graph"]
     preamp = next(node for node in graph.nodes if isinstance(node, PreampNode))
     eq = next(node for node in graph.nodes if isinstance(node, ParametricEqNode))
@@ -88,6 +94,32 @@ def test_draft_is_local_and_apply_builds_the_exact_ten_peak_graph() -> None:
     assert bridge.effectiveState == "effective"
     assert bridge.enabledDraft is True
     assert bridge.errorCode == ""
+
+
+def test_response_curve_uses_the_decoded_rate_and_draft_gains() -> None:
+    bridge, _service = _bridge()
+    assert bridge.responseAvailable is True
+    assert len(bridge.responseCurve) == 256
+    assert bridge.responseCurve[0]["hz"] == pytest.approx(20.0)
+    assert abs(bridge.responseCurve[0]["db"]) < 1e-9
+
+    bridge.set_draft_band(0, 6.0)
+
+    point = min(
+        bridge.responseCurve,
+        key=lambda item: abs(item["hz"] - MICHI_10_CENTERS_HZ[0]),
+    )
+    assert point["db"] == pytest.approx(6.0, abs=0.05)
+
+
+def test_response_curve_fails_closed_without_a_decoded_signal() -> None:
+    bridge = AudioProcessingBridge(
+        _Processing(),
+        signal_provider=lambda: None,
+        async_submit=lambda work, completed: completed(work(), None),
+    )
+    assert bridge.responseAvailable is False
+    assert "track" in bridge.responseReason
 
 
 def test_factory_presets_have_unique_ids() -> None:
@@ -130,6 +162,7 @@ def test_draft_edits_are_ignored_while_a_commit_is_in_flight() -> None:
     bridge.set_draft_band(0, 6.0)
     bridge.apply_draft_async()
     assert bridge.busy is True
+    assert bridge.stateLabel == "Applying"
     assert service.pending is not None
 
     bridge.set_draft_band(1, 4.0)

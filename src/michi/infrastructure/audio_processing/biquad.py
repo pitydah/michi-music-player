@@ -37,6 +37,42 @@ def _require_finite(name: str, value: float) -> None:
         raise ValueError(f"{name} must be finite")
 
 
+def biquad_magnitude_db(
+    coefficients: BiquadCoefficients,
+    *,
+    rate_hz: float,
+    frequency_hz: float,
+) -> float:
+    """Magnitude of one normalized biquad at ``frequency_hz``, in dB.
+
+    Pure evaluation of the same coefficients used by the graph compiler. This
+    is a CALCULATED response, never a measurement of the audio signal.
+    """
+    _require_finite("rate_hz", rate_hz)
+    _require_finite("frequency_hz", frequency_hz)
+    if rate_hz <= 0:
+        raise ValueError("rate_hz must be > 0")
+    if frequency_hz < 0 or frequency_hz >= rate_hz / 2.0:
+        raise ValueError("frequency_hz must be in [0, Nyquist)")
+    omega = 2.0 * math.pi * frequency_hz / rate_hz
+    cos1 = math.cos(omega)
+    sin1 = math.sin(omega)
+    cos2 = math.cos(2.0 * omega)
+    sin2 = math.sin(2.0 * omega)
+    num_real = coefficients.b0 + coefficients.b1 * cos1 + coefficients.b2 * cos2
+    num_imag = -(coefficients.b1 * sin1 + coefficients.b2 * sin2)
+    den_real = 1.0 + coefficients.a1 * cos1 + coefficients.a2 * cos2
+    den_imag = -(coefficients.a1 * sin1 + coefficients.a2 * sin2)
+    numerator = math.hypot(num_real, num_imag)
+    denominator = math.hypot(den_real, den_imag)
+    if denominator == 0.0 or not math.isfinite(numerator):
+        raise ValueError("degenerate biquad response")
+    magnitude = numerator / denominator
+    if magnitude <= 0.0 or not math.isfinite(magnitude):
+        raise ValueError("degenerate biquad magnitude")
+    return 20.0 * math.log10(magnitude)
+
+
 def biquad_coefficients(
     filter_type: BiquadType,
     *,

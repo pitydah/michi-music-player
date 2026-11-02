@@ -23,6 +23,7 @@ from typing import Any
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from michi.application.audio_processing_service import AudioProcessingService
+from michi.application.eq_response import build_eq_response
 from michi.domain.audio_processing import (
     BiquadType,
     ParametricEqNode,
@@ -120,6 +121,9 @@ class AudioProcessingBridge(QObject):
         self._committed_preamp = 0.0
         self._committed_bypass = True
         self._factory_presets = self._load_factory_presets()
+        self._curve_key: tuple | None = None
+        self._curve_points: list[dict[str, float]] = []
+        self._curve_reason = "No decoded PCM signal"
 
     # ------------------------------------------------------------------
     # lifecycle
@@ -218,6 +222,43 @@ class AudioProcessingBridge(QObject):
         return self._busy
 
     @Property(bool, notify=state_changed)
+    def canEdit(self) -> bool:
+        return self.available
+
+    @Property(bool, notify=state_changed)
+    def draftDirty(self) -> bool:
+        return self._draft_dirty()
+
+    @Property(str, notify=state_changed)
+    def stateLabel(self) -> str:
+        if not self.available:
+            return "Unavailable"
+        if self._busy:
+            return "Applying"
+        if self._error_code:
+            return "Error"
+        if self._draft_dirty():
+            return "Draft"
+        effective = str(self._truth().get("effective_state", "unavailable"))
+        if effective == "effective":
+            return f"Effective · rev {self.committedRevision}"
+        if effective == "bypassed":
+            return "Bypassed"
+        return "Ready"
+
+    def _draft_dirty(self) -> bool:
+        if self._bypass_requested != self._committed_bypass:
+            return True
+        if self._preamp_db != self._committed_preamp:
+            return True
+        return any(
+            float(current.get("gainDb", 0.0)) != float(committed.get("gainDb", 0.0))
+            for current, committed in zip(
+                self._bands, self._committed_bands, strict=True
+            )
+        )
+
+    @Property(bool, notify=state_changed)
     def enabledDraft(self) -> bool:
         return not self._bypass_requested
 
@@ -273,6 +314,54 @@ class AudioProcessingBridge(QObject):
     @Property(str, notify=state_changed)
     def headroomLabel(self) -> str:
         return "Headroom · not measured"
+
+    @Property("QVariantList", notify=state_changed)
+    def responseCurve(self) -> list[dict[str, float]]:
+        self._refresh_curve()
+        return [dict(point) for point in self._curve_points]
+
+    @Property(bool, notify=state_changed)
+    def responseAvailable(self) -> bool:
+        self._refresh_curve()
+        return bool(self._curve_points)
+
+    @Property(str, notify=state_changed)
+    def responseReason(self) -> str:
+        self._refresh_curve()
+        return self._curve_reason
+
+    def _refresh_curve(self) -> None:
+        signal = self._signal()
+        if signal is None:
+            self._curve_key = None
+            self._curve_points = []
+            self._curve_reason = "Select a track to calculate the response"
+            return
+        key = (
+            int(signal.rate_hz),
+            tuple(float(item["gainDb"]) for item in self._bands),
+            float(self._preamp_db),
+        )
+        if key == self._curve_key:
+            return
+        bands = tuple(
+            (center, MICHI_10_Q, float(self._bands[index]["gainDb"]))
+            for index, center in enumerate(MICHI_10_CENTERS_HZ)
+        )
+        try:
+            curve = build_eq_response(
+                rate_hz=float(signal.rate_hz),
+                bands=bands,
+                preamp_db=self._preamp_db,
+            )
+        except ValueError as exc:
+            self._curve_key = key
+            self._curve_points = []
+            self._curve_reason = str(exc)
+            return
+        self._curve_key = key
+        self._curve_points = [{"hz": hz, "db": db} for hz, db in curve.points]
+        self._curve_reason = curve.reason
 
     @Property(bool, notify=state_changed)
     def canPreview(self) -> bool:

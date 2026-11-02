@@ -13,6 +13,7 @@ Popup {
     objectName: "EqualizerPopup"
     property var processingBridge: null
     property var focusReturnTarget: null
+    property bool showResponse: false
     signal advancedRequested()
 
     readonly property bool available: processingBridge
@@ -36,7 +37,7 @@ Popup {
     function commitDraft() {
         // Draft edits stay local; this is the single commit boundary used by
         // every quick-EQ control that has a complete value to apply.
-        if (processingBridge && processingBridge.canApply)
+        if (processingBridge)
             processingBridge.apply_draft_async()
     }
 
@@ -116,11 +117,13 @@ Popup {
             title: qsTr("Equalizer")
             subtitle: qsTr("Shape the playback sound")
             badgeText: root.available
-                ? (root.bridgeValue("enabledDraft", true) ? qsTr("ON") : qsTr("OFF"))
+                ? root.bridgeValue("stateLabel", qsTr("Ready"))
                 : qsTr("Unavailable")
-            badgeTone: root.available
-                ? (root.bridgeValue("enabledDraft", true) ? "active" : "neutral")
-                : "warning"
+            badgeTone: !root.available ? "warning"
+                : root.bridgeValue("stateLabel", "") === "Error" ? "error"
+                : root.bridgeValue("stateLabel", "") === "Applying" ? "active"
+                : root.bridgeValue("stateLabel", "").indexOf("Effective") === 0
+                    ? "success" : "neutral"
 
             trailingData: MichiSwitch {
                 checked: root.bridgeValue("enabledDraft", true)
@@ -144,6 +147,34 @@ Popup {
             color: MichiPalette.warning
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            MichiButton {
+                text: qsTr("Calculated response")
+                variant: "ghost"
+                checkable: true
+                checked: root.showResponse
+                enabled: root.bridgeValue("responseAvailable", false)
+                implicitHeight: MichiMetrics.controlSmall
+                onClicked: root.showResponse = checked
+            }
+            Item { Layout.fillWidth: true }
+            MichiText {
+                visible: !root.bridgeValue("responseAvailable", false)
+                text: qsTr("Select a track to calculate")
+                role: "micro"
+                color: MichiPalette.textMuted
+            }
+        }
+
+        MichiEqResponsePlot {
+            visible: root.showResponse
+            Layout.fillWidth: true
+            Layout.preferredHeight: 112
+            points: root.bridgeValue("responseCurve", [])
+            sampleRate: 0
         }
 
         Flickable {
@@ -279,6 +310,15 @@ Popup {
         }
 
         MichiText {
+            visible: root.available && !root.bridgeValue("canApply", false)
+            text: qsTr("Cannot apply now · no decoded PCM signal for this output")
+            role: "caption"
+            color: MichiPalette.warning
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+        }
+
+        MichiText {
             visible: root.errorText !== ""
             text: root.errorText
             role: "caption"
@@ -289,7 +329,7 @@ Popup {
 
         MichiPopupFooter {
             MichiButton {
-                text: qsTr("Reset")
+                text: qsTr("Reset Draft")
                 variant: "ghost"
                 enabled: root.controlsEnabled
                 onClicked: {
