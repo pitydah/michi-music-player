@@ -172,6 +172,30 @@ def test_bypass_preserves_the_curve_and_reset_never_reenables_it() -> None:
     assert bridge.enabledDraft is False
 
 
+def test_incomplete_capability_strategies_disable_the_controls() -> None:
+    class _NoBiquad(_Processing):
+        def processing_truth(self) -> dict[str, Any]:
+            return {
+                "capability_state": "queried",
+                "requested_revision": 0,
+                "effective_revision": 0,
+                "effective_state": "bypassed",
+                "strategies": ["RESAMPLE"],
+            }
+
+    bridge = AudioProcessingBridge(
+        _NoBiquad(),
+        signal_provider=_signal,
+        async_submit=lambda work, completed: completed(work(), None),
+    )
+
+    assert bridge.available is False
+    assert bridge.canApply is False
+    assert "ten-band" in bridge.capabilityReason
+    bridge.apply_draft_async()
+    assert bridge.errorCode == "DSP_CAPABILITY_UNAVAILABLE"
+
+
 def test_dsd_pcm_conversion_family_remains_processable_and_truthful() -> None:
     bridge, _service = _bridge(family="dsd_to_pcm")
 

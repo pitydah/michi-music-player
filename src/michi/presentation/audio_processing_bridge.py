@@ -172,7 +172,10 @@ class AudioProcessingBridge(QObject):
     def available(self) -> bool:
         if self._source_family() in {"dsd", "dop", "native_dsd"}:
             return False
-        return self._truth().get("capability_state") != "unavailable"
+        if self._truth().get("capability_state") == "unavailable":
+            return False
+        strategies = self._strategies()
+        return not strategies or {"BIQUAD_CASCADE", "GAIN"}.issubset(strategies)
 
     @Property(str, notify=state_changed)
     def capabilityReason(self) -> str:
@@ -185,6 +188,9 @@ class AudioProcessingBridge(QObject):
                 return "Audio processing capabilities have not been queried yet"
         if state == "unavailable":
             return "Audio processing is unavailable for the current output"
+        strategies = self._strategies()
+        if strategies and not {"BIQUAD_CASCADE", "GAIN"}.issubset(strategies):
+            return "This output does not support the ten-band equalizer"
         return ""
 
     @Property(str, notify=state_changed)
@@ -377,6 +383,8 @@ class AudioProcessingBridge(QObject):
     @Slot()
     def refresh(self) -> None:
         """Re-read the canonical truth after an external state change."""
+        if self._disposed:
+            return
         self.state_changed.emit()
 
     # ------------------------------------------------------------------
@@ -436,6 +444,12 @@ class AudioProcessingBridge(QObject):
             self._set_error(
                 "DSP_REQUIRES_DSD_PCM_CONVERSION",
                 "DSP requires explicit DSD-to-PCM conversion",
+            )
+            return
+        if not self.available:
+            self._set_error(
+                "DSP_CAPABILITY_UNAVAILABLE",
+                self.capabilityReason or "Audio processing is unavailable",
             )
             return
         self._busy = True

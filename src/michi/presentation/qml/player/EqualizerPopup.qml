@@ -89,15 +89,17 @@ Popup {
     onOpened: {
         if (advancedPopup.opened)
             advancedPopup.close()
-        for (var i = 0; i < railRepeater.count; ++i) {
-            var rail = railRepeater.itemAt(i)
-            if (rail && rail.enabled) {
-                rail.forceActiveFocus()
-                break
-            }
-        }
         if (processingBridge)
             processingBridge.refresh()
+        Qt.callLater(function () {
+            for (var i = 0; i < railRepeater.count; ++i) {
+                var rail = railRepeater.itemAt(i)
+                if (rail && rail.enabled) {
+                    rail.forceActiveFocus()
+                    break
+                }
+            }
+        })
     }
     onClosed: {
         if (advancedPopup.opened)
