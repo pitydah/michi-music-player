@@ -11,10 +11,7 @@ import math
 from dataclasses import dataclass
 
 from michi.domain.audio_processing import BiquadType
-from michi.infrastructure.audio_processing.biquad import (
-    biquad_coefficients,
-    biquad_magnitude_db,
-)
+from michi.domain.biquad import biquad_coefficients, biquad_magnitude_db
 
 _RESPONSE_POINTS = 256
 _MIN_HZ = 20.0

@@ -42,8 +42,11 @@ def test_m9_r3_frozen_visual_canon_hashes() -> None:
         "primitives/MichiMaterialTexture.qml": (
             "24e26fd8b3081b52624debf45eb0e3a12bc85e7dd19644a675db2f37ceb22702"
         ),
+        # KX11-08 authorized reopening: allowBackdropBlur capability added so
+        # a surface that self-samples the window backdrop can keep smoked
+        # material/grain/shadow without the recursive blur artifact.
         "primitives/MichiGlassSurface.qml": (
-            "1102d687399f07160bddb1730182495dea06058f9a223f8e44a5f5a5a759dc4e"
+            "e34fded3f32508523cc3b7a3ee828fb8cd395a7a87ce85df87baa862ba5e5ee5"
         ),
     }
     for relative, digest in expected.items():

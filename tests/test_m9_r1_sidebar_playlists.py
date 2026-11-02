@@ -120,8 +120,10 @@ class TestSidebarMaterial:
         assert "auroraPurpleSurface" not in text
         assert "auroraPurpleBorder" not in text
         assert "contentAmbientPurple" not in text
-        # true smoke glass
-        assert "forceBlur: true" in text
+        # KX11-08: live blur self-sampled the sidebar; keep smoked glass
+        # without the recursive backdrop blur.
+        assert "forceBlur: false" in text
+        assert "allowBackdropBlur: false" in text
         # toolbar-style texture: standard material, no ambient tint layer
         assert "materialOpacityOverride" not in text
         assert "contentAmbientBlue" not in text
