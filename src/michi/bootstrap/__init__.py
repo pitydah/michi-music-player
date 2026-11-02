@@ -2290,6 +2290,7 @@ class ApplicationContainer:
             playback_path_provider=lambda: (
                 str(playback.state.file_path) if playback.state.file_path else ""
             ),
+            playback_status_provider=lambda: playback.state.status.name.lower(),
         )
         lb = (
             graph.bridge

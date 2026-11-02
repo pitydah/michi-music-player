@@ -71,6 +71,7 @@ class SignalPathBridge(QObject):
         processing_bridge: object,
         *,
         playback_path_provider: Callable[[], str] | None = None,
+        playback_status_provider: Callable[[], str] | None = None,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
@@ -78,6 +79,7 @@ class SignalPathBridge(QObject):
         self._output = output_bridge
         self._processing = processing_bridge
         self._playback_path_provider = playback_path_provider
+        self._playback_status_provider = playback_status_provider
         self._disposed = False
         self._generation = 0
         self._projection: dict[str, Any] = {}
@@ -141,6 +143,9 @@ class SignalPathBridge(QObject):
         """
         active = self._recorder.active_snapshot
         if active is not None:
+            transport = self._transport_status()
+            if transport in {"stopped", "idle", "no_media"}:
+                return active, "HISTORICAL"
             return active, "ACTIVE"
         try:
             candidate = self._recorder.candidate_snapshot
@@ -152,6 +157,14 @@ class SignalPathBridge(QObject):
         if last is not None:
             return last, "HISTORICAL"
         return None, "NONE"
+
+    def _transport_status(self) -> str:
+        if self._playback_status_provider is None:
+            return ""
+        try:
+            return str(self._playback_status_provider() or "").casefold()
+        except Exception:  # noqa: BLE001 - presentation stays truthful
+            return ""
 
     def _processing_truth(self) -> dict[str, Any]:
         try:

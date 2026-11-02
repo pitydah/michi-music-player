@@ -130,6 +130,21 @@ def test_historical_snapshot_is_never_presented_as_active() -> None:
     assert bridge.statusLabel == "Last playback · historical"
 
 
+def test_stopped_transport_demotes_the_active_snapshot_to_historical() -> None:
+    bridge = SignalPathBridge(
+        _recorder_with_active(_snapshot()),
+        _Output(),
+        _Processing(),
+        playback_status_provider=lambda: "stopped",
+    )
+
+    assert bridge.status == "HISTORICAL"
+    assert bridge.active is False
+    assert bridge.historical is True
+    assert bridge.indicatorState == "historical"
+    assert bridge.headline == "Last playback · historical"
+
+
 def test_candidate_snapshot_is_pending_not_effective() -> None:
     recorder = SignalTruthRecorder()
     recorder._candidate = _snapshot()
