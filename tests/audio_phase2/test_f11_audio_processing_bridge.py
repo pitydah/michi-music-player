@@ -156,3 +156,24 @@ def test_bands_above_nyquist_are_marked_inactive_without_losing_the_draft() -> N
     assert bands[9]["inactiveReason"] == "Unavailable at current sample rate"
     assert bands[0]["enabled"] is True
     assert bands[0]["inactiveReason"] == ""
+
+
+def test_failed_apply_keeps_the_draft_and_never_fakes_the_effective_state() -> None:
+    class _Failing(_Processing):
+        def apply_processing_async(self, graph, signal, **kwargs) -> None:
+            kwargs["on_failed"](RuntimeError("host rejected the graph"))
+
+    bridge = AudioProcessingBridge(
+        _Failing(),
+        signal_provider=_signal,
+        async_submit=lambda work, completed: completed(work(), None),
+    )
+    bridge.set_draft_band(0, 4.0)
+
+    bridge.apply_draft_async()
+
+    assert bridge.busy is False
+    assert bridge.bands[0]["gainDb"] == 4.0
+    assert bridge.effectiveState == "bypassed"
+    assert bridge.errorCode == "DSP_APPLY_FAILED"
+    assert "host rejected" in bridge.errorMessage
