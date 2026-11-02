@@ -389,7 +389,7 @@ def test_now_playing_bar_accessibles_are_translated():
         "Playback position",
         "Previous track",
         "Next track",
-        "Audio settings",
+        "Equalizer",
         "Audio output",
     ]:
         assert f'qsTr("{string}")' in bar, string

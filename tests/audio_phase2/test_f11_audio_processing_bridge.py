@@ -204,6 +204,36 @@ def test_dsd_pcm_conversion_family_remains_processable_and_truthful() -> None:
     assert bridge.canApply is True
 
 
+def test_lowercase_host_strategies_do_not_disable_the_equalizer() -> None:
+    service = _Processing()
+
+    def truth() -> dict[str, Any]:
+        return {
+            "capability_state": "queried",
+            "requested_revision": 0,
+            "effective_revision": 0,
+            "effective_state": service.state,
+            "strategies": ["biquad_cascade", "gain"],
+        }
+
+    service.processing_truth = truth  # type: ignore[method-assign]
+    bridge = AudioProcessingBridge(
+        service,
+        signal_provider=_signal,
+        async_submit=lambda work, completed: completed(work(), None),
+    )
+    assert bridge.available is True
+    assert bridge.canApply is True
+    assert bridge.capabilityReason == ""
+
+    bridge.set_draft_band(0, 3.0)
+    bridge.apply_draft_async()
+
+    assert len(service.applied) == 1
+    assert bridge.errorCode == ""
+    assert bridge.effectiveState == "effective"
+
+
 def test_native_dsd_refuses_processing_without_converting() -> None:
     bridge, service = _bridge(family="native_dsd")
     assert bridge.available is False

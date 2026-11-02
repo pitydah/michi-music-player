@@ -166,7 +166,7 @@ class AudioProcessingBridge(QObject):
             }
 
     def _strategies(self) -> set[str]:
-        return {str(item) for item in self._truth().get("strategies", [])}
+        return {str(item).upper() for item in self._truth().get("strategies", [])}
 
     @Property(bool, notify=state_changed)
     def available(self) -> bool:
