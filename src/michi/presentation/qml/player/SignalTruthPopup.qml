@@ -32,7 +32,10 @@ Popup {
     modal: false
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-    width: parent ? Math.min(440, parent.width - 24) : 440
+    // The opener is a small capsule; the popup must measure the window
+    // overlay, never its parent item, or the Signal Truth surface collapses.
+    width: Math.max(400, Math.min(440, (Overlay.overlay
+        ? Overlay.overlay.width : 480) - 24))
     enter: Transition {
         enabled: !MichiAccessibility.reducedMotion
         NumberAnimation {
@@ -57,6 +60,7 @@ Popup {
         elevation: "elevated"
         contentPadding: 0
         tileSeed: 17
+        materialOpacityOverride: 1.0
     }
 
     onOpened: closeButton.forceActiveFocus()

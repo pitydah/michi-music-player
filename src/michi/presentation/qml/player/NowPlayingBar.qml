@@ -518,6 +518,7 @@ Item {
                 checkable: true
                 checked: equalizerPopup.opened
                 onClicked: {
+                    root.closeOtherAudioPopups("equalizer")
                     equalizerPopup.open()
                 }
             }
@@ -525,7 +526,7 @@ Item {
             EqualizerPopup {
                 id: equalizerPopup
                 parent: settingsButton
-                x: Math.max(-330, settingsButton.width - width)
+                x: settingsButton.width - width
                 y: -height - MichiSpacing.md
                 processingBridge: root.processingBridge
                 focusReturnTarget: settingsButton
@@ -555,6 +556,7 @@ Item {
                 checkable: true
                 checked: outputPopup.opened
                 onClicked: {
+                    root.closeOtherAudioPopups("output")
                     outputPopup.open()
                     root.audioOutputRefreshRequested()
                 }
@@ -605,6 +607,7 @@ Item {
                 onClicked: {
                     // Paint cached facts immediately. The isolated refresh
                     // updates the live-bound rows after the popup is visible.
+                    root.closeOtherAudioPopups("engine")
                     enginePopup.open()
                     root.audioEngineRefreshRequested()
                 }
@@ -643,7 +646,10 @@ Item {
                 hoverEnabled: true
                 Accessible.role: Accessible.Button
                 Accessible.name: qsTr("Signal Truth: %1").arg(root.qualityText())
-                onClicked: signalTruthPopup.open()
+                onClicked: {
+                    root.closeOtherAudioPopups("truth")
+                    signalTruthPopup.open()
+                }
 
                 contentItem: Row {
                     anchors.centerIn: parent
@@ -686,7 +692,7 @@ Item {
             SignalTruthPopup {
                 id: signalTruthPopup
                 parent: qualityBadge
-                x: Math.min(0, qualityBadge.width - width)
+                x: qualityBadge.width - width
                 y: -height - MichiSpacing.md
                 signalPathBridge: root.signalPathBridge
                 focusReturnTarget: qualityBadge
@@ -736,13 +742,27 @@ Item {
         return root.hasTrack ? "QUALITY —" : "NO TRACK"
     }
 
+    function closeOtherAudioPopups(exceptId) {
+        if (exceptId !== "equalizer")
+            equalizerPopup.closeAllSurfaces()
+        if (exceptId !== "engine" && enginePopup.opened)
+            enginePopup.close()
+        if (exceptId !== "output" && outputPopup.opened)
+            outputPopup.close()
+        if (exceptId !== "truth" && signalTruthPopup.opened)
+            signalTruthPopup.close()
+    }
+
     function handleSignalTruthConfiguration(action) {
         if (action === "OPEN_ENGINE") {
+            closeOtherAudioPopups("engine")
             enginePopup.open()
             root.audioEngineRefreshRequested()
         } else if (action === "OPEN_PROCESSING") {
+            closeOtherAudioPopups("equalizer")
             equalizerPopup.open()
         } else if (action === "OPEN_OUTPUT") {
+            closeOtherAudioPopups("output")
             outputPopup.open()
             root.audioOutputRefreshRequested()
         } else if (action === "OPEN_DEVICE_SETUP") {

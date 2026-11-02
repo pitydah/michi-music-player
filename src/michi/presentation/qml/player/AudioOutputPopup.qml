@@ -46,6 +46,7 @@ Popup {
         elevation: "elevated"
         contentPadding: 0
         tileSeed: 11
+        materialOpacityOverride: 1.0
     }
 
     function groups() {

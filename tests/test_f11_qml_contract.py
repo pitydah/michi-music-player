@@ -126,6 +126,14 @@ def test_quality_badge_is_a_real_signal_truth_button():
     assert "GradientStop" not in block
 
 
+def test_audio_popups_are_mutually_exclusive():
+    source = NOW_PLAYING.read_text(encoding="utf-8")
+    assert "function closeOtherAudioPopups(exceptId)" in source
+    for popup_id in ("equalizer", "engine", "output", "truth"):
+        assert f'closeOtherAudioPopups("{popup_id}")' in source
+    assert "equalizerPopup.closeAllSurfaces()" in source
+
+
 def test_equalizer_popup_compiles_and_is_honest_about_its_contract(qapp):
     popup = _instantiate(QML_DIR / "player" / "EqualizerPopup.qml", 440, 470)
     try:

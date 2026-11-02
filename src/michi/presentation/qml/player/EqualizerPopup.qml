@@ -31,11 +31,22 @@ Popup {
         return value === undefined ? fallback : value
     }
 
+    function closeAllSurfaces() {
+        if (advancedPopup.opened)
+            advancedPopup.close()
+        if (opened)
+            close()
+    }
+
     padding: MichiSpacing.lg
     modal: false
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-    width: Math.min(440, parent ? parent.width - 24 : 440)
+    // Popup.parent is the opener button, not the window. Sizing against the
+    // opener produced a 10 px surface on the real Wayland shell, so the window
+    // overlay is the only valid width authority for a focused popup.
+    width: Math.max(420, Math.min(440, (Overlay.overlay
+        ? Overlay.overlay.width : 480) - 24))
     enter: Transition {
         enabled: !MichiAccessibility.reducedMotion
         NumberAnimation {
@@ -61,6 +72,9 @@ Popup {
         contentPadding: 0
         tileSeed: 13
         radius: MichiRadius.floating
+        // Focused surfaces stay legible over a busy library: smoked glass,
+        // never a milky or fully transparent sheet.
+        materialOpacityOverride: 1.0
     }
 
     onOpened: {
@@ -75,6 +89,8 @@ Popup {
         }
     }
     onClosed: {
+        if (advancedPopup.opened)
+            advancedPopup.close()
         if (focusReturnTarget)
             focusReturnTarget.forceActiveFocus()
     }
@@ -93,7 +109,7 @@ Popup {
                 ? (root.bridgeValue("enabledDraft", true) ? "active" : "neutral")
                 : "warning"
 
-            trailingData: Switch {
+            trailingData: MichiSwitch {
                 checked: root.bridgeValue("enabledDraft", true)
                 enabled: root.available
                 focusPolicy: Qt.StrongFocus
@@ -251,6 +267,9 @@ Popup {
                 enabled: root.available
                 onClicked: {
                     root.advancedRequested()
+                    // One focused surface at a time: the advanced editor
+                    // replaces the quick EQ instead of stacking over it.
+                    root.close()
                     advancedPopup.open()
                 }
             }
@@ -259,8 +278,9 @@ Popup {
 
     AdvancedEqualizerPopup {
         id: advancedPopup
-        parent: root.parent
+        parent: Overlay.overlay
         processingBridge: root.processingBridge
+        focusReturnTarget: root.focusReturnTarget
         x: parent ? Math.max(8, (parent.width - width) / 2) : 0
         y: parent ? Math.max(8, (parent.height - height) / 2) : 0
     }

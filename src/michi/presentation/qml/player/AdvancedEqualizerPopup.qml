@@ -13,6 +13,7 @@ Popup {
     id: root
     objectName: "AdvancedEqualizerPopup"
     property var processingBridge: null
+    property var focusReturnTarget: null
     property string activeTab: "graphic"
     readonly property var tabs: [
         {"id": "graphic", "label": qsTr("Graphic")},
@@ -36,8 +37,12 @@ Popup {
     modal: false
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-    width: parent ? Math.min(760, parent.width - 32) : 760
-    height: parent ? Math.min(640, parent.height - 32) : 640
+    // Advanced EQ is centred in the scene, so the window overlay owns both
+    // dimensions. Binding to the opener clipped the whole surface to 2 px.
+    width: Math.max(680, Math.min(760, (Overlay.overlay
+        ? Overlay.overlay.width : 800) - 32))
+    height: Math.max(480, Math.min(640, (Overlay.overlay
+        ? Overlay.overlay.height : 700) - 32))
     enter: Transition {
         enabled: !MichiAccessibility.reducedMotion
         NumberAnimation {
@@ -62,10 +67,11 @@ Popup {
         elevation: "elevated"
         contentPadding: 0
         tileSeed: 15
+        materialOpacityOverride: 1.0
     }
 
     onOpened: tabBar.forceActiveFocus()
-    onClosed: if (parent) parent.forceActiveFocus()
+    onClosed: if (focusReturnTarget) focusReturnTarget.forceActiveFocus()
 
     contentItem: ColumnLayout {
         spacing: MichiSpacing.md
@@ -124,6 +130,7 @@ Popup {
                         color: MichiPalette.warning
                         wrapMode: Text.WordWrap
                         Layout.fillWidth: true
+                        Layout.preferredWidth: root.width - 2 * MichiSpacing.xl
                     }
                     GridLayout {
                         columns: 8

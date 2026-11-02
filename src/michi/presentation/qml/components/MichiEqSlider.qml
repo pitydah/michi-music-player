@@ -22,6 +22,7 @@ Item {
         spacing: MichiSpacing.xs
 
         MichiText {
+            id: valueLabel
             text: root.gainDb > 0 ? "+" + root.gainDb.toFixed(1)
                 : root.gainDb.toFixed(1)
             role: "micro"
@@ -31,6 +32,14 @@ Item {
             horizontalAlignment: Text.AlignHCenter
             Layout.fillWidth: true
             font.weight: Font.DemiBold
+            // The focused rail owns the value readout; ten permanent zeros
+            // read as noise and collide at the popup width.
+            opacity: slider.pressed || slider.hovered || slider.visualFocus
+                || root.gainDb !== 0 ? 1 : 0
+            Behavior on opacity {
+                enabled: !MichiAccessibility.reducedMotion
+                NumberAnimation { duration: MichiMotion.micro }
+            }
         }
 
         Slider {

@@ -44,6 +44,7 @@ Popup {
         elevation: "elevated"
         contentPadding: 0
         tileSeed: 8
+        materialOpacityOverride: 1.0
     }
 
     onOpened: {

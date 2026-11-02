@@ -494,6 +494,7 @@ class AudioProcessingBridge(QObject):
             payload = json.loads(_PRESET_ASSET.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             return presets
+        known_ids = {str(item["id"]) for item in presets}
         for item in payload.get("presets", []):
             if not isinstance(item, dict):
                 continue
@@ -506,8 +507,9 @@ class AudioProcessingBridge(QObject):
                 continue
             preset_id = str(item.get("id", "")).strip()
             display = str(item.get("displayName", "")).strip()
-            if not preset_id or not display:
+            if not preset_id or not display or preset_id in known_ids:
                 continue
+            known_ids.add(preset_id)
             presets.append(
                 {
                     "id": preset_id,

@@ -90,6 +90,13 @@ def test_draft_is_local_and_apply_builds_the_exact_ten_peak_graph() -> None:
     assert bridge.errorCode == ""
 
 
+def test_factory_presets_have_unique_ids() -> None:
+    bridge, _ = _bridge()
+    ids = [preset["id"] for preset in bridge.factoryPresets]
+    assert ids.count("flat") == 1
+    assert len(ids) == len(set(ids))
+
+
 def test_reset_and_bypass_keep_parameters() -> None:
     bridge, _service = _bridge()
     bridge.set_draft_band(3, -7.0)
