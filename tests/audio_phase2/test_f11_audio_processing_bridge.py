@@ -143,3 +143,16 @@ def test_manual_edit_marks_custom_and_flat_preset_restores_zeroes() -> None:
 
     assert bridge.presetId == "flat"
     assert all(band["gainDb"] == 0.0 for band in bridge.bands)
+
+
+def test_bands_above_nyquist_are_marked_inactive_without_losing_the_draft() -> None:
+    bridge, _service = _bridge(signal=_signal(rate_hz=16_000))
+    bridge.set_draft_band(9, 6.0)
+
+    bands = bridge.bands
+
+    assert bands[9]["gainDb"] == 6.0
+    assert bands[9]["enabled"] is False
+    assert bands[9]["inactiveReason"] == "Unavailable at current sample rate"
+    assert bands[0]["enabled"] is True
+    assert bands[0]["inactiveReason"] == ""

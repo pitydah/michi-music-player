@@ -232,7 +232,16 @@ class AudioProcessingBridge(QObject):
 
     @Property("QVariantList", notify=state_changed)
     def bands(self) -> list[dict[str, Any]]:
-        return [dict(item) for item in self._bands]
+        signal = self._signal()
+        nyquist = signal.rate_hz / 2.0 if signal is not None else None
+        projected: list[dict[str, Any]] = []
+        for item in self._bands:
+            row = dict(item)
+            if nyquist is not None and float(row["centerHz"]) >= nyquist:
+                row["enabled"] = False
+                row["inactiveReason"] = "Unavailable at current sample rate"
+            projected.append(row)
+        return projected
 
     @Property(float, notify=state_changed)
     def preampDb(self) -> float:
