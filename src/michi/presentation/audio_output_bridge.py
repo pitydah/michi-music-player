@@ -731,7 +731,9 @@ class AudioOutputBridge(QObject):
             OutputSessionState.RELEASING.value,
         }
         pending = bool(selected and not active and output_state in pending_states)
-        playback_status = getattr(getattr(self._playback, "state", None), "status", None)
+        playback_status = getattr(
+            getattr(self._playback, "state", None), "status", None
+        )
         quick_status = (
             "Playing"
             if active and playback_status is PlaybackStatus.PLAYING
@@ -929,7 +931,9 @@ class AudioOutputBridge(QObject):
             if selected
             else "Available"
         )
-        playback_status = getattr(getattr(self._playback, "state", None), "status", None)
+        playback_status = getattr(
+            getattr(self._playback, "state", None), "status", None
+        )
         active_label = (
             "Playing"
             if active and playback_status is PlaybackStatus.PLAYING
@@ -953,7 +957,9 @@ class AudioOutputBridge(QObject):
             "reconnecting": False,
             "connectionLabel": "Available",
             "statusLabel": status,
-            "quickStatus": active_label if active else ("Selected" if selected else "Available"),
+            "quickStatus": active_label
+            if active
+            else ("Selected" if selected else "Available"),
             "quickSubtitle": "Desktop-managed shared output",
             "pending": False,
             "pendingReason": "",
