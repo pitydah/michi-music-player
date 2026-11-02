@@ -28,7 +28,7 @@ active-runtime visual matrix.
   `F11_VR_PERFORMANCE.md`, `F11_VR_RISK_REGISTER.json`.
 - `F11_VR_VISUAL_AUDIT.json` + `evidence/f11/2026-11-02-f11-vr/`.
 - Targeted suite: 236 passed; bridge/response/biquad/QML contracts all green.
-- Full suite at `64d9f34`: 6444 passed, 41 skipped, 0 failed (31:03).
+- Full suite at `670c317`: 6446 passed, 41 skipped, 0 failed (31:27).
 - Productive DSP bridge test: 5 passed including a real hosted GStreamer graph.
 
 ## Why NO-GO
