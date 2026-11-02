@@ -94,7 +94,8 @@ Item {
                     y: (parent.height - height) / 2
                     width: parent.width
                     height: 1
-                    color: MichiSemanticColors.borderStrong
+                    color: MichiPalette.textMuted
+                    opacity: 0.55
                 }
 
                 Rectangle {
