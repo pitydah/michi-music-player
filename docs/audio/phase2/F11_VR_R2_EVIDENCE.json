@@ -1,0 +1,92 @@
+{
+  "schema_version": "michi.f11.vr.r2.evidence.v1",
+  "phase": "AP2-F11",
+  "sprint": "F11 Visual Recovery R2",
+  "base_sha": "162decc9274f18fab7e29a9d59e12c19fe6712a6",
+  "code_sha": "c5635e6",
+  "input_patch_sha256": "17d59f096ef46576eb314035c786dcf2838137f04cbc5784b9c81f80982ce41e",
+  "scope": [
+    "modal-without-dim popups that consume outside clicks without activating the library underneath",
+    "exclusive pointer and keyboard interaction on Signal Truth nodes",
+    "semantic stage pictograms with independent evidence microbadges",
+    "dynamic Signal Truth rail height",
+    "Advanced Graphic10 and PEAK10 editors sharing the canonical quick draft",
+    "preset load-to-draft without pretending the preset is already effective",
+    "read-only FIR and Signal / Resampling tabs",
+    "capability fail-closed footer actions",
+    "route icon and route selection skin system",
+    "integrated NowPlaying Signal Truth capsule",
+    "header warning when DSP is detected but its identity is unverified"
+  ],
+  "tests": {
+    "signal_truth_pointer_guard": "10 passed",
+    "targeted_r2_batch": "226 passed, 3 warnings",
+    "qml_runtime_regression": "182 passed",
+    "audio_processing_bridge": "16 passed including capability refresh and failed-apply preservation",
+    "audio_processing_bridge_productive": "1 passed against the real hosted GStreamer chain",
+    "qml_contract": "8 passed",
+    "kwin_visual_contract_r1": "3 passed",
+    "full_suite": "6457 passed, 41 skipped, 0 failed, exit 0 in 1916.19s at the R2 worktree",
+    "ruff_check": "PASS",
+    "ruff_format_check": "PASS",
+    "git_diff_check": "PASS",
+    "python_qmllint": "PASS (Qt 6.11.1, exit 0; only unqualified-access warnings and pragma suggestion)",
+    "preset_asset_validation": "PASS (8 presets, 10 bands each, reviewed)"
+  },
+  "pointer_matrix": {
+    "source_node_click": "PASS - library track pcm16_44100_30s unchanged after click",
+    "source_chevron_10_consecutive_clicks": "PASS - track unchanged after ten disclosure toggles",
+    "outside_click_over_library_row": "PASS - popup closed, underlying row not activated",
+    "scroll_inside_popup": "NOT_RUN",
+    "keyboard_focus_and_escape": "NOT_RUN",
+    "track_before_and_after": "pcm16_44100_30s",
+    "accessibility_fingerprint": "Open Now Playing: pcm16_44100_30s by "
+  },
+  "captures": [
+    {
+      "name": "f11_vr_r2_pointer_source_click",
+      "file": "evidence/f11/2026-11-02-f11-vr/f11_vr_r2_pointer_source_click.png",
+      "sha256": "f95e5bc54193618c37f3e9036e002cb2c61eb33ed5b36d29b7b5b8d202633c88",
+      "viewport": "1600x900 downscale of 1920x1080 session",
+      "window": "1100x700",
+      "state": "Signal Truth historical after Source node click; track unchanged"
+    },
+    {
+      "name": "f11_vr_r2_chevron_10x",
+      "file": "evidence/f11/2026-11-02-f11-vr/f11_vr_r2_chevron_10x.png",
+      "sha256": "5562e263ff70a9ec5397cbf0aac85ca100e471ac93664fc0305aa8b6173eda8b",
+      "viewport": "1600x900 downscale of 1920x1080 session",
+      "window": "1100x700",
+      "state": "after ten Source chevron toggles; track unchanged"
+    },
+    {
+      "name": "f11_vr_r2_outside_click_consumed",
+      "file": "evidence/f11/2026-11-02-f11-vr/f11_vr_r2_outside_click_consumed.png",
+      "sha256": "3dbf1ef167159796394732f4707ab6afdba751ae8032258783243ccabd1e96c4",
+      "viewport": "1600x900 downscale of 1920x1080 session",
+      "window": "1100x700",
+      "state": "popup closed after outside click; library row not activated"
+    }
+  ],
+  "visual_notes": {
+    "signal_truth_stage_icons": "PASS - source, decode, processing, output and device pictograms are visually distinct",
+    "evidence_badges": "PASS - observed, configured-only, unknown and inactive states are separate from stage identity",
+    "rail": "PASS - continuous rail with first/last node semantics and dynamic height",
+    "historical_header": "PASS - Last playback, historical",
+    "proof_scope": "PASS - derived from observed evidence only",
+    "nowplaying_capsule": "PASS - integrated quality/Signal Truth capsule without a second audio authority"
+  },
+  "limitations": [
+    "Scroll and full keyboard focus traversal inside the R2 pointer session were not executed and are recorded NOT_RUN.",
+    "The pointer matrix was captured on the historical 30-second PCM fixture after EOS, not during active DSD, DoP, or DSP-effective playback.",
+    "No automated pixel-diff golden is claimed.",
+    "Advanced Graphic31, Convolution/FIR authoring and Profiles CRUD remain capability-gated and are not simulated.",
+    "Quick EQ during DSD-to-PCM still depends on a decoded-PCM provider that the presentation composition does not expose.",
+    "No physical DAC audibility, analog fidelity, bit-perfect or F14 claim is made."
+  ],
+  "regressions": {
+    "nowplaying_album_opacity": "fixed in R2 worktree: album line keeps textSecondary + opacity 0.7 as required by test_m9_r2_4_playlist_editorial",
+    "playlist_editorial_tests": "28 passed",
+    "dsd_pcm_dsp_reconfiguration": "1 passed (prior interrupted-suite 4% marker was flaky)"
+  }
+}

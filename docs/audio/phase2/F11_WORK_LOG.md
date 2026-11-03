@@ -150,3 +150,37 @@ review and exact-SHA CI.
 - KWin captures are reviewed evidence, not an automated pixel-diff golden.
 - F11 does not claim physical DAC, analog audibility or bit-perfect.
 - F14 remains NOT_RUN; F12/F13/F15 remain LOCKED.
+
+## Visual Recovery R2 (2026-11-02)
+
+- Applied the cumulative R2/R4 implementation patch on top of `162decc`
+  (`input_patch_sha256=17d59f09…`).
+- Popups are modal without dimming and consume outside clicks; Signal Truth
+  nodes have exclusive pointer/keyboard interaction; stage pictograms and
+  evidence microbadges are independent; the rail dynamic height preserves
+  first/last semantics.
+- Advanced Graphic10 and PEAK10 share the canonical quick draft; preset loading
+  only stages a draft; FIR and Signal / Resampling are read-only; Apply/Discard
+  appear only where an edit is possible.
+- Engine/Output use the route icon and route selection skin; NowPlaying carries
+  the integrated Signal Truth capsule; DSP identity mismatch is visible in the
+  header.
+- KWin isolated pointer matrix: Source click, ten chevron toggles and an
+  outside click over a library row all left track `pcm16_44100_30s` unchanged;
+  the outside click did not activate the row. Scroll and full keyboard traversal
+  are NOT_RUN.
+- Captures: `f11_vr_r2_pointer_source_click.png`,
+  `f11_vr_r2_chevron_10x.png`, `f11_vr_r2_outside_click_consumed.png`, SHA-pinned
+  in `F11_VR_R2_EVIDENCE.json`.
+- R2 code and test commit: `c5635e6`.
+- Verification: pointer guard 10 passed; combined R2 batch 226 passed;
+  QML/runtime regression 182 passed; productive hosted EQ 1 passed; full suite
+  6457 passed, 41 skipped, 0 failed (exit 0, 1916.19 s); ruff check/format and
+  `git diff --check` clean. Exact-SHA CI remains pending for the R2 commit.
+- R2 remains NO-GO for F11 closure; the open gates are unchanged.
+
+### R2 review fix
+
+- Restored the NowPlaying album line to `textSecondary` + `opacity: 0.7`; the R2 capsule refactor had dropped the opacity expected by the M9 editorial contract. Targeted `tests/test_m9_r2_4_playlist_editorial.py` -> 28 passed.
+- Python qmllint 6.11.1 on the R2 QML files exits 0; only unqualified-access warnings and the `pragma ComponentBehavior: Bound` suggestion.
+- Factory preset asset validated: 8 reviewed presets, 10 bands each, MICHI_10 layout.

@@ -101,3 +101,40 @@ Visual Recovery R1 corrected the authority and surface defects and recorded
 honest evidence in `F11_VR_*`. It remains **NO-GO** until active playback
 ST-02/03/07/08/09/11, the sidebar W1–W9 matrix, high-contrast/reduced-motion
 captures, Advanced capability contracts and new exact-SHA CI are complete.
+
+## Visual Recovery R2 (2026-11-02)
+
+R2 addresses the pointer-authority defect and the remaining surface gaps from
+the R2 design/QA brief:
+
+- popups are modal without dimming and consume outside clicks; the underlying
+  library row is never activated;
+- Signal Truth nodes have exclusive pointer and keyboard handling, semantic
+  stage pictograms and independent evidence microbadges;
+- the stage rail is dynamic and preserves first/last semantics;
+- Advanced Graphic10 and PEAK10 editors share the canonical quick draft, and
+  preset loading only loads a draft;
+- FIR and Signal / Resampling remain read-only, capability-gated views;
+- footer Apply/Discard appear only for editable tabs;
+- engine and output popups use the route icon and route selection skin system;
+- NowPlaying carries the integrated historical/active Signal Truth capsule;
+- the header shows `DSP detected · identity unverified` when a DSP is detected
+  without a verified identity.
+
+Evidence: `docs/audio/phase2/F11_VR_R2_EVIDENCE.json`. KWin pointer captures are
+SHA-pinned in `evidence/f11/2026-11-02-f11-vr/`. The pointer matrix passed
+Source click, ten consecutive chevron toggles and outside-click consumption,
+with the active track unchanged and the library row not activated. Scroll and
+full keyboard traversal remain **NOT_RUN**. R2 code and tests are in commit
+`c5635e6`.
+
+R2 targeted verification: pointer guard 10 passed; combined R2 batch 226
+passed; QML/runtime regression 182 passed; productive hosted EQ 1 passed;
+full suite **6457 passed, 41 skipped, 0 failed (exit 0, 1916.19 s)**; ruff
+check/format and `git diff --check` clean. Exact-SHA CI for the R2 commit is
+still pending at the time of this note.
+
+R2 does not change the verdict: **NO-GO / F11 ACTIVE**. The open gates remain
+active DSD/DoP/DSP-effective captures, the sidebar W1–W9 matrix, high-contrast
+and reduced-motion captures, Advanced backend contracts, the DSD→PCM quick-EQ
+signal provider, an automated pixel/perceptual golden, and new exact-SHA CI.
