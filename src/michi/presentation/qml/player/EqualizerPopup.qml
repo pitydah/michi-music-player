@@ -49,7 +49,9 @@ Popup {
     }
 
     padding: MichiSpacing.lg
-    modal: false
+    // The library is never an event target while quick EQ is open.
+    modal: true
+    dim: false
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     // Popup.parent is the opener button, not the window. Sizing against the

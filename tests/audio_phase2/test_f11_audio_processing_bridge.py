@@ -122,6 +122,36 @@ def test_response_curve_fails_closed_without_a_decoded_signal() -> None:
     assert "track" in bridge.responseReason
 
 
+def test_refresh_queries_unknown_capabilities_without_blocking_the_owner() -> None:
+    class _Unknown(_Processing):
+        def __init__(self) -> None:
+            super().__init__()
+            self.capability_state = "unknown"
+            self.refreshes = 0
+
+        def processing_truth(self) -> dict[str, Any]:
+            data = super().processing_truth()
+            data["capability_state"] = self.capability_state
+            return data
+
+        def refresh_capabilities(self):
+            self.refreshes += 1
+            self.capability_state = "queried"
+            return None
+
+    service = _Unknown()
+    bridge = AudioProcessingBridge(
+        service,
+        signal_provider=_signal,
+        async_submit=lambda work, completed: completed(work(), None),
+    )
+
+    assert bridge.available is False
+    bridge.refresh()
+    assert service.refreshes == 1
+    assert bridge.available is True
+
+
 def test_factory_presets_have_unique_ids() -> None:
     bridge, _ = _bridge()
     ids = [preset["id"] for preset in bridge.factoryPresets]

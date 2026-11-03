@@ -7,6 +7,8 @@ import "../theme"
 ColumnLayout {
     id: root
     property string iconName: ""
+    // Optional specialised audio-route icon; unrelated headers are unchanged.
+    property string routeIconName: ""
     property string title: ""
     property string subtitle: ""
     property string badgeText: ""
@@ -22,10 +24,17 @@ ColumnLayout {
         spacing: MichiSpacing.md
 
         MichiIcon {
-            visible: root.iconName !== ""
+            visible: root.iconName !== "" && root.routeIconName === ""
             name: root.iconName
             width: MichiMetrics.iconMedium
             height: width
+            iconColor: MichiPalette.auroraCyan
+        }
+        MichiAudioRouteIcon {
+            visible: root.routeIconName !== ""
+            roleName: root.routeIconName
+            Layout.preferredWidth: MichiMetrics.iconMedium
+            Layout.preferredHeight: MichiMetrics.iconMedium
             iconColor: MichiPalette.auroraCyan
         }
 

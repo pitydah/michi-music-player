@@ -29,7 +29,8 @@ Popup {
 
     padding: MichiSpacing.lg
     margins: MichiSpacing.sm
-    modal: false
+    modal: true
+    dim: false
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     width: Math.max(340, Math.min(380,
@@ -138,7 +139,7 @@ Popup {
         spacing: MichiSpacing.sm
         MichiPopupHeader {
             Layout.fillWidth: true
-            iconName: "audio-output"
+            routeIconName: "dac"
             title: qsTr("Audio Output")
             subtitle: qsTr("Choose where Michi plays")
             badgeText: root.activeStatusText()
@@ -167,7 +168,7 @@ Popup {
                 required property int index
                 objectName: "outputPopupRow_" + (modelData.stableDeviceId || "shared")
                 Layout.fillWidth: true
-                Layout.preferredHeight: modelData.isGroupHeader ? 42 : 62
+                Layout.preferredHeight: modelData.isGroupHeader ? 34 : 66
                 focusPolicy: modelData.isGroupHeader && modelData.stableDeviceId !== "__display_audio__"
                     ? Qt.NoFocus : Qt.StrongFocus
                 hoverEnabled: true
@@ -190,29 +191,65 @@ Popup {
                     + row.modelData.statusLabel
                     + (row.modelData.pending && row.modelData.pendingReason
                         ? " · " + row.modelData.pendingReason : "")
-                Accessible.description: row.modelData.quickSubtitle
-                    || row.modelData.transportLabel || ""
+                Accessible.description: row.modelData.isGroupHeader
+                    ? (row.modelData.stableDeviceId === "__display_audio__"
+                        ? qsTr("Toggle display audio outputs") : qsTr("Output category"))
+                    : (row.modelData.quickSubtitle || row.modelData.transportLabel || "")
+                readonly property string routeIcon: {
+                    var identity = (String(row.modelData.iconType || "") + " "
+                        + String(row.modelData.transportLabel || "") + " "
+                        + String(row.modelData.displayName || "")).toLowerCase()
+                    if (row.modelData.isShared || identity.indexOf("system") >= 0)
+                        return "system"
+                    if (identity.indexOf("display") >= 0 || identity.indexOf("hdmi") >= 0)
+                        return "display"
+                    if (identity.indexOf("usb") >= 0 || identity.indexOf("external") >= 0)
+                        return "usb"
+                    if (identity.indexOf("built") >= 0 || identity.indexOf("integrated") >= 0)
+                        return "internal"
+                    return "dac"
+                }
 
                 contentItem: RowLayout {
                     spacing: MichiSpacing.md
-                    MichiIcon {
+                    Rectangle {
                         visible: !row.modelData.isGroupHeader
-                        Layout.preferredWidth: 20
-                        Layout.preferredHeight: 20
-                        name: row.modelData.iconType || "audio-output"
-                        iconColor: row.modelData.available
-                            ? MichiPalette.textSecondary : MichiPalette.textDisabled
+                        Layout.preferredWidth: 14
+                        Layout.preferredHeight: 14
+                        radius: 7
+                        color: "transparent"
+                        border.width: 1
+                        border.color: row.modelData.selected
+                            ? MichiPalette.auroraBlue : MichiPalette.textMuted
+                        Rectangle {
+                            anchors.centerIn: parent
+                            width: 6
+                            height: 6
+                            radius: 3
+                            visible: row.modelData.selected
+                            color: MichiPalette.auroraBlue
+                        }
                     }
                     Rectangle {
                         visible: !row.modelData.isGroupHeader
-                        Layout.preferredWidth: 10
-                        Layout.preferredHeight: 10
-                        radius: 5
-                        color: row.modelData.selected
-                            ? MichiPalette.auroraCyan : "transparent"
-                        border.width: row.modelData.selected ? 0 : 1
-                        border.color: row.modelData.available
-                            ? MichiPalette.textMuted : MichiPalette.warning
+                        Layout.preferredWidth: 32
+                        Layout.preferredHeight: 32
+                        radius: 9
+                        color: row.modelData.active ? MichiSemanticColors.auroraCyanSurface
+                            : MichiPalette.trackSurfaceBottom
+                        border.width: 1
+                        border.color: row.modelData.active ? MichiSemanticColors.auroraCyanBorderSubtle
+                            : MichiSemanticColors.borderSubtle
+                        MichiAudioRouteIcon {
+                            anchors.centerIn: parent
+                            width: 20
+                            height: 20
+                            roleName: row.routeIcon
+                            iconColor: row.modelData.active ? MichiPalette.auroraCyan
+                                : row.modelData.available
+                                    ? MichiPalette.textSecondary
+                                    : MichiPalette.textDisabled
+                        }
                     }
                     ColumnLayout {
                         Layout.fillWidth: true
@@ -251,12 +288,15 @@ Popup {
                         role: "secondary"
                     }
                 }
-                background: Rectangle {
-                    radius: MichiRadius.sm
-                    color: row.pressed ? MichiSemanticColors.surfacePressed
-                        : row.hovered ? MichiSemanticColors.surfaceHover : "transparent"
-                    border.width: row.visualFocus || row.modelData.selected ? 1 : 0
-                    border.color: row.visualFocus ? MichiSemanticColors.focusRing : MichiSemanticColors.borderStrong
+                background: MichiRouteSelectionSkin {
+                    selected: !row.modelData.isGroupHeader && row.modelData.selected
+                    active: !row.modelData.isGroupHeader && row.modelData.active
+                    hovered: row.hovered && row.enabled
+                    pressed: row.pressed
+                    visualFocus: row.visualFocus
+                    available: row.modelData.available
+                    // Headers are section labels, except Display Audio's real toggle.
+                    opacity: row.modelData.isGroupHeader ? 0.34 : 1.0
                 }
             }
         }
@@ -292,7 +332,10 @@ Popup {
             objectName: "openAudioOutputSettingsButton"
             Layout.fillWidth: true
             text: qsTr("Audio Output Settings")
+            iconName: "settings"
             variant: "secondary"
+            selected: true
+            accessibleName: qsTr("Open detailed audio output settings")
             onClicked: root.settingsRequested()
         }
     }

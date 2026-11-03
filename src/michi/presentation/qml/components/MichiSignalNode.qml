@@ -11,6 +11,7 @@ Item {
     id: root
     property int stageIndex: 0
     property int stageCount: 1
+    property bool compact: false
     property bool first: stageIndex === 0
     property bool last: stageIndex === Math.max(0, stageCount - 1)
     property bool expanded: false
@@ -53,15 +54,31 @@ Item {
         : root.stageState === "pending" ? MichiPalette.auroraBlue
         : MichiPalette.textMuted
 
-    implicitHeight: content.implicitHeight + MichiSpacing.sm
-    Accessible.role: Accessible.StaticText
+    // The height is content-driven, including expanded evidence rows.
+    implicitHeight: Math.max(root.compact ? 56 : 68,
+        content.implicitHeight + (root.compact ? MichiSpacing.sm : MichiSpacing.md))
+    activeFocusOnTab: root.expandable
+    Accessible.role: root.expandable ? Accessible.Button : Accessible.StaticText
     Accessible.name: qsTr("%1: %2. %3").arg(root.title).arg(root.summary).arg(
         root.stateText)
     Accessible.description: root.detail
+    Keys.onReturnPressed: event => {
+        if (root.expandable) { root.toggleRequested(); event.accepted = true }
+    }
+    Keys.onSpacePressed: event => {
+        if (root.expandable) { root.toggleRequested(); event.accepted = true }
+    }
 
-    TapHandler {
+    // EXCLUSIVE mouse owner. Unlike a passive TapHandler, this accepts the
+    // event; no TrackRow beneath this popup may receive the same pointer tap.
+    // Nested explicit buttons render above this background input surface.
+    MouseArea {
+        anchors.fill: parent
+        enabled: root.expandable
         acceptedButtons: Qt.LeftButton
-        onTapped: root.toggleRequested()
+        preventStealing: true
+        propagateComposedEvents: false
+        onClicked: root.toggleRequested()
     }
 
     RowLayout {
@@ -69,39 +86,61 @@ Item {
         spacing: 0
 
         Item {
-            Layout.preferredWidth: 54
+            Layout.preferredWidth: root.compact ? 42 : 46
             Layout.fillHeight: true
 
+            // Continuous rail follows the WHOLE delegate height; expansion
+            // cannot leave a fixed 40px disconnected segment.
             Rectangle {
                 visible: !root.first
-                x: 11
+                x: 16
                 y: 0
                 width: 2
                 height: 12
                 color: root.segmentColor
-                opacity: root.stageState === "unknown" ? 0.72 : 0.95
+                opacity: 0.75
             }
             Rectangle {
                 visible: !root.last
-                x: 11
-                y: 12
+                x: 16
+                y: 40
                 width: 2
-                height: 40
+                height: Math.max(0, parent.height - 40)
                 color: root.segmentColor
-                opacity: root.stageState === "unknown" ? 0.72 : 0.95
+                opacity: 0.75
             }
             Rectangle {
-                width: 24
-                height: 24
-                radius: 12
-                color: MichiSemanticColors.statusSurface(root.stateColor)
+                x: 3
+                y: 12
+                width: 28
+                height: 28
+                radius: 10
+                color: MichiPalette.smoke
+                border.width: 1
+                border.color: MichiSemanticColors.borderSubtle
+                MichiSignalStageIcon {
+                    anchors.centerIn: parent
+                    width: 19
+                    height: 19
+                    roleName: root.iconName
+                    iconColor: MichiPalette.textPrimary
+                }
+            }
+            // Evidence is NOT the identity icon. It is a separate badge.
+            Rectangle {
+                x: 24
+                y: 32
+                width: 15
+                height: 15
+                radius: 7.5
+                color: MichiPalette.smoke
                 border.width: 1
                 border.color: root.stateColor
                 MichiIcon {
                     anchors.centerIn: parent
                     name: root.glyphName
-                    width: 12
-                    height: 12
+                    width: 9
+                    height: 9
                     iconColor: root.stateColor
                 }
             }
@@ -110,8 +149,8 @@ Item {
         ColumnLayout {
             id: content
             Layout.fillWidth: true
-            Layout.topMargin: MichiSpacing.xxs
-            spacing: 1
+            Layout.topMargin: root.compact ? MichiSpacing.xs : MichiSpacing.sm
+            spacing: root.compact ? 1 : MichiSpacing.xxs
 
             RowLayout {
                 Layout.fillWidth: true
@@ -145,7 +184,8 @@ Item {
                 text: root.summary
                 role: "body"
                 Layout.fillWidth: true
-                elide: Text.ElideRight
+                wrapMode: root.expanded ? Text.WrapAnywhere : Text.NoWrap
+                elide: root.expanded ? Text.ElideNone : Text.ElideRight
             }
 
             MichiText {

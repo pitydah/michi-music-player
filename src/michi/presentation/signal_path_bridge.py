@@ -437,6 +437,10 @@ class SignalPathBridge(QObject):
                 ("Graph factories", ", ".join(engine_graph_factories))
             )
 
+        if verdict_state == "dsp" and processing_state == "unknown":
+            headline = "DSP detected · identity unverified"
+            tone = "warning"
+
         requested = plan.get("requested") or {}
         output_observed = alsa or engine or None
         output_format = _pcm_label(output_observed)

@@ -15,12 +15,15 @@ Popup {
     property var processingBridge: null
     property var focusReturnTarget: null
     property string activeTab: "graphic"
+    readonly property bool editableTab: activeTab === "graphic" || activeTab === "parametric" || activeTab === "profiles"
+    readonly property bool pendingDraft: bridgeValue("draftDirty", false)
+    readonly property bool canCommit: editableTab && pendingDraft && bridgeValue("canApply", false)
     readonly property var tabs: [
-        {"id": "graphic", "label": qsTr("Graphic")},
-        {"id": "parametric", "label": qsTr("Parametric")},
-        {"id": "convolution", "label": qsTr("Convolution / FIR")},
-        {"id": "signal", "label": qsTr("Signal / Resampling")},
-        {"id": "profiles", "label": qsTr("Profiles")}
+        {"id": "graphic", "label": qsTr("Graphic 10")},
+        {"id": "parametric", "label": qsTr("PEAK 10")},
+        {"id": "convolution", "label": qsTr("FIR status")},
+        {"id": "signal", "label": qsTr("Signal status")},
+        {"id": "profiles", "label": qsTr("Presets")}
     ]
     readonly property var bands: processingBridge ? processingBridge.bands : []
     readonly property string effectiveState: processingBridge
@@ -34,7 +37,9 @@ Popup {
     }
 
     padding: MichiSpacing.lg
-    modal: false
+    // Never let background TrackRow TapHandlers activate when editing.
+    modal: true
+    dim: false
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     // Advanced EQ is centred in the scene, so the window overlay owns both
@@ -83,7 +88,7 @@ Popup {
         MichiPopupHeader {
             iconName: "sliders"
             title: qsTr("Advanced Equalizer")
-            subtitle: qsTr("Precision sound shaping")
+            subtitle: qsTr("10-band editing · readback-first DSP")
             badgeText: root.effectiveState === "effective"
                 ? qsTr("Applied · revision %1").arg(root.bridgeValue("committedRevision", 0))
                 : root.effectiveState === "bypassed" ? qsTr("Bypassed")
@@ -125,7 +130,7 @@ Popup {
                     width: parent.width
                     spacing: MichiSpacing.md
                     MichiText {
-                        text: qsTr("Graphic 31-band workspace")
+                        text: qsTr("Graphic equalizer · 10 editable bands")
                         role: "section"
                     }
                     Rectangle {
@@ -154,7 +159,7 @@ Popup {
                                     font.weight: Font.DemiBold
                                 }
                                 MichiText {
-                                    text: qsTr("The 31 ISO bands need a proven GRAPHIC_EQ_NBANDS graph, negotiated sample contract and readback receipt. The ten-band Quick EQ is ready now.")
+                                    text: qsTr("Ten-band editing is live below. Native ISO-31 stays gated until GRAPHIC_EQ_NBANDS has host readback and a matching runtime identity.")
                                     role: "secondary"
                                     color: MichiPalette.textSecondary
                                     wrapMode: Text.WordWrap
@@ -164,7 +169,7 @@ Popup {
                         }
                     }
                     MichiText {
-                        text: qsTr("No editable 31-band controls are shown until that contract exists.")
+                        text: qsTr("31-band is unavailable · the following ten bands edit the REAL PCM DSP draft.")
                         role: "caption"
                         color: MichiPalette.textMuted
                         wrapMode: Text.WordWrap
@@ -175,6 +180,35 @@ Popup {
                         Layout.preferredHeight: 170
                         points: root.bridgeValue("responseCurve", [])
                         sampleRate: 0
+                    }
+                    MichiText {
+                        Layout.fillWidth: true
+                        text: qsTr("Draft response · calculated, not measured · bands ±12 dB")
+                        role: "caption"
+                        color: MichiPalette.textSecondary
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: MichiSpacing.xs
+                        Repeater {
+                            model: root.bands
+                            delegate: MichiEqSlider {
+                                required property var modelData
+                                required property int index
+                                objectName: "advancedGraphicBand_" + index
+                                Layout.fillWidth: true
+                                Layout.minimumWidth: 34
+                                bandLabel: modelData.label
+                                gainDb: modelData.gainDb
+                                inactive: modelData.inactiveReason !== ""
+                                inactiveReason: modelData.inactiveReason
+                                enabled: root.bridgeValue("canEdit", false)
+                                onGainCommitted: gain => {
+                                    if (root.processingBridge)
+                                        root.processingBridge.set_draft_band(index, gain)
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -191,7 +225,7 @@ Popup {
                         role: "section"
                     }
                     MichiText {
-                        text: qsTr("The quick EQ is stored as ten PEAK biquads. Editing filter type or Q requires a backend capability that is not wired yet.")
+                        text: qsTr("Edit gain for ten real PEAK filters (fixed centres and Q=√2). Arbitrary frequency, type and Q are NOT supported yet.")
                         role: "secondary"
                         color: MichiPalette.textSecondary
                         wrapMode: Text.WordWrap
@@ -204,7 +238,7 @@ Popup {
                         sampleRate: 0
                     }
                     MichiText {
-                        text: qsTr("Calculated response · not measured")
+                        text: qsTr("Draft curve · 256 points; no live spectrum")
                         role: "micro"
                         color: MichiPalette.textMuted
                     }
@@ -212,27 +246,42 @@ Popup {
                         model: root.bands
                         delegate: RowLayout {
                             required property var modelData
+                            required property int index
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 36
+                            Layout.preferredHeight: 42
                             spacing: MichiSpacing.md
                             MichiText {
                                 text: modelData.label + " Hz"
                                 role: "technical"
                                 technical: true
-                                Layout.preferredWidth: 90
+                                Layout.preferredWidth: 80
                             }
                             MichiText {
-                                text: qsTr("PEAK")
+                                text: qsTr("PEAK · Q 1.414")
                                 role: "caption"
                                 color: MichiPalette.textSecondary
-                                Layout.preferredWidth: 70
+                                Layout.preferredWidth: 116
+                            }
+                            MichiSlider {
+                                objectName: "advancedPeqGain_" + index
+                                Layout.fillWidth: true
+                                from: -12
+                                to: 12
+                                stepSize: 0.5
+                                value: modelData.gainDb
+                                enabled: root.bridgeValue("canEdit", false) && modelData.enabled
+                                accessibleName: qsTr("PEAK gain at %1 Hz").arg(modelData.label)
+                                onMoved: {
+                                    if (root.processingBridge)
+                                        root.processingBridge.set_draft_band(index, value)
+                                }
                             }
                             MichiText {
                                 text: (modelData.gainDb >= 0 ? "+" : "")
                                     + modelData.gainDb.toFixed(1) + " dB"
                                 role: "technical"
                                 technical: true
-                                Layout.fillWidth: true
+                                Layout.preferredWidth: 64
                             }
                         }
                     }
@@ -308,17 +357,28 @@ Popup {
                             required property var modelData
                             Layout.fillWidth: true
                             Layout.preferredHeight: 44
+                            spacing: MichiSpacing.md
                             MichiText {
-                                text: modelData.displayName || modelData.label || modelData.id || ""
+                                text: modelData.displayName || modelData.id || ""
                                 role: "body"
                                 Layout.fillWidth: true
                             }
                             MichiStatusChip {
                                 text: root.bridgeValue("presetId", "") === modelData.id
-                                    ? qsTr("Draft preset") : qsTr("Available")
+                                    ? qsTr("Selected draft") : qsTr("Available")
                                 tone: root.bridgeValue("presetId", "") === modelData.id
                                     ? "active" : "neutral"
                                 dotVisible: false
+                            }
+                            MichiButton {
+                                text: qsTr("Load to draft")
+                                variant: "ghost"
+                                enabled: root.bridgeValue("canEdit", false)
+                                accessibleName: qsTr("Load %1 into EQ draft").arg(modelData.displayName)
+                                onClicked: {
+                                    if (root.processingBridge)
+                                        root.processingBridge.select_preset(modelData.id)
+                                }
                             }
                         }
                     }
@@ -334,30 +394,42 @@ Popup {
         }
 
         MichiPopupFooter {
+            note: root.editableTab
+                ? qsTr("Edits are drafts until Apply confirms host readback")
+                : qsTr("Inspection only · no DSP changes")
             MichiButton {
-                text: qsTr("Discard")
+                text: qsTr("Discard draft")
                 variant: "ghost"
+                visible: root.editableTab
+                enabled: root.pendingDraft && !root.bridgeValue("busy", false)
                 onClicked: {
                     if (root.processingBridge)
                         root.processingBridge.discard_draft()
-                    root.close()
                 }
             }
             MichiButton {
                 text: qsTr("Validate")
                 variant: "ghost"
+                visible: root.editableTab
+                enabled: root.pendingDraft && !root.bridgeValue("busy", false)
                 onClicked: {
                     if (root.processingBridge)
                         root.processingBridge.validate_draft()
                 }
             }
             MichiButton {
-                text: qsTr("Apply")
-                enabled: root.processingBridge ? root.processingBridge.canApply : false
+                text: qsTr("Apply draft")
+                visible: root.editableTab
+                enabled: root.canCommit
                 onClicked: {
-                    if (root.processingBridge)
+                    if (root.processingBridge && root.canCommit)
                         root.processingBridge.apply_draft_async()
                 }
+            }
+            MichiButton {
+                text: qsTr("Close")
+                variant: "ghost"
+                onClicked: root.close()
             }
         }
     }

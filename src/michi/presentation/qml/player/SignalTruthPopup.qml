@@ -31,13 +31,21 @@ Popup {
     property string expandedStageId: ""
 
     padding: MichiSpacing.lg
-    modal: false
+    // P0 KX11-16: modal overlay absorbs pointer presses BEFORE the library's
+    // TrackRow TapHandler. dim:false retains the smoked Michi presentation.
+    // Never revert to modal:false without a real background-click isolation test.
+    modal: true
+    dim: false
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-    // The opener is a small capsule; the popup measures the window overlay.
+    // Position is still anchored to the quality capsule, but size belongs to
+    // the window overlay, never the 34px opener.
     width: Math.max(320, Math.min(480, (Overlay.overlay
         ? Overlay.overlay.width : 480) - 24))
-    height: Math.min(Overlay.overlay ? Overlay.overlay.height * 0.78 : 760, 760)
+    // Five rows should not create a 760px empty column in the audio inspector.
+    // Larger disclosures scroll inside the bounded viewport.
+    height: Math.min(560, Math.max(0, (Overlay.overlay
+        ? Overlay.overlay.height : 584) - 24))
 
     enter: Transition {
         enabled: !MichiAccessibility.reducedMotion

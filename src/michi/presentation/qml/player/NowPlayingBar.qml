@@ -134,27 +134,70 @@ Item {
             Layout.preferredWidth: root.narrow ? 88 : root.compact ? 252 : 326
             Layout.minimumWidth: root.narrow ? 76 : 204
             Layout.maximumWidth: 334
-            Layout.preferredHeight: 94
+            Layout.preferredHeight: 88
             Layout.alignment: Qt.AlignVCenter
-            elevation: trackHover.hovered ? "elevated" : "standard"
+            // Embedded smoked-glass sub-surface, not a raised graphite card.
+            // Reuse the player backplane / grain without costly recursive blur.
+            elevation: "subtle"
+            materialOpacityOverride: 1.0
+            allowBackdropBlur: false
             contentPadding: 0
-            shadowed: true
-            textured: true
-            accented: root.hasTrack
-            accentColor: MichiPalette.auroraCyan
-            radius: 17
+            shadowed: false
+            textured: false
+            accented: false
+            radius: 14
+            activeFocusOnTab: true
+            Accessible.role: Accessible.Button
+            Accessible.name: root.hasTrack
+                ? qsTr("Open Now Playing: %1 by %2").arg(root.trackTitle).arg(root.artist)
+                : qsTr("Open Now Playing")
+            Keys.onReturnPressed: event => {
+                root.nowPlayingRequested()
+                event.accepted = true
+            }
+            Keys.onSpacePressed: event => {
+                root.nowPlayingRequested()
+                event.accepted = true
+            }
 
+            Rectangle {
+                anchors.fill: parent
+                radius: trackCard.radius
+                gradient: Gradient {
+                    GradientStop { position: 0; color: MichiPalette.trackSurfaceTop }
+                    GradientStop { position: 1; color: MichiPalette.trackSurfaceBottom }
+                }
+                border.width: 1
+                border.color: trackHover.hovered || trackCard.activeFocus
+                    ? MichiSemanticColors.auroraCyanBorderSubtle
+                    : MichiSemanticColors.borderSubtle
+            }
+            MichiMaterialTexture {
+                anchors.fill: parent
+                tileSeed: 17
+                opacity: 0.30
+                visible: !MichiAccessibility.highContrast
+            }
+            Rectangle {
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.leftMargin: 14
+                anchors.rightMargin: 14
+                height: 1
+                color: MichiSemanticColors.innerHighlight
+            }
             RowLayout {
                 anchors.fill: parent
                 anchors.margins: 10
-                spacing: 14
+                spacing: 12
 
                 Artwork {
                     objectName: "trackArtwork"
-                    Layout.preferredWidth: 72
-                    Layout.preferredHeight: 72
+                    Layout.preferredWidth: 66
+                    Layout.preferredHeight: 66
                     Layout.alignment: Qt.AlignVCenter
-                    radius: 11
+                    radius: 10
                     sourcePath: root.artworkPath
                     fallbackText: root.trackTitle.length > 0 ? root.trackTitle : "M"
                 }
@@ -168,9 +211,10 @@ Item {
                     MichiText {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 24
-                        text: root.hasTrack ? root.trackTitle : "No track selected"
+                        text: root.hasTrack ? root.trackTitle : qsTr("No track selected")
                         role: "body"
                         font.weight: Font.DemiBold
+                        color: MichiPalette.textPrimary
                         elide: Text.ElideRight
                         verticalAlignment: Text.AlignVCenter
                     }
@@ -181,6 +225,7 @@ Item {
                             ? (root.artist.length > 0 ? root.artist : "Unknown artist")
                             : "Add music"
                         role: "secondary"
+                        color: MichiPalette.textSecondary
                         elide: Text.ElideRight
                         verticalAlignment: Text.AlignVCenter
                     }

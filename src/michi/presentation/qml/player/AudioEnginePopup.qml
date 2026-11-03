@@ -27,7 +27,9 @@ Popup {
     signal engineSwitchRequested(string engineId)
 
     padding: MichiSpacing.lg
-    modal: false
+    // Modal, but without dimming the shell: avoid library-row event leakage.
+    modal: true
+    dim: false
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     width: Math.max(320, Math.min(360, (Overlay.overlay
@@ -78,19 +80,29 @@ Popup {
 
         MichiPopupHeader {
             Layout.fillWidth: true
-            iconName: "audio-engine"
+            routeIconName: "engine"
             title: qsTr("Audio Engine")
             subtitle: qsTr("Choose the backend that plays your music")
         }
 
-        MichiText {
+        RowLayout {
             visible: root.statusSummary.length > 0
-            text: root.statusSummary
-            role: "secondary"
-            wrapMode: Text.WordWrap
             Layout.fillWidth: true
             Layout.bottomMargin: MichiSpacing.xs
-            color: MichiPalette.textSecondary
+            spacing: MichiSpacing.sm
+            Rectangle {
+                Layout.preferredWidth: 6
+                Layout.preferredHeight: 6
+                radius: 3
+                color: MichiPalette.auroraCyan
+            }
+            MichiText {
+                text: root.statusSummary
+                role: "caption"
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+                color: MichiPalette.textSecondary
+            }
         }
 
         Repeater {
@@ -102,7 +114,7 @@ Popup {
                 required property int index
                 objectName: "enginePopupRow_" + row.modelData.id
                 Layout.fillWidth: true
-                Layout.preferredHeight: 56
+                Layout.preferredHeight: 62
                 focusPolicy: Qt.StrongFocus
                 hoverEnabled: true
                 enabled: row.modelData.selectionAllowed
@@ -112,6 +124,16 @@ Popup {
                 property bool isActive: row.modelData.id === root.activeEngineId
                 property bool isSelected: row.modelData.id === root.selectedEngineId
                 property bool isSwitching: row.modelData.switching
+                readonly property string routeIcon: {
+                    var identity = String(row.modelData.id || "") + " "
+                        + String(row.modelData.displayName || "")
+                    identity = identity.toLowerCase()
+                    if (identity.indexOf("gstream") >= 0 || identity.indexOf("gst") >= 0)
+                        return "gstreamer"
+                    if (identity.indexOf("mpd") >= 0)
+                        return "mpd"
+                    return "qt"
+                }
 
                 function statusLabel() {
                     if (row.isSwitching)
@@ -154,27 +176,42 @@ Popup {
 
                     // Selection intent (separate from the Active badge).
                     Rectangle {
-                        Layout.preferredWidth: 16
-                        Layout.preferredHeight: 16
-                        radius: 8
+                        Layout.preferredWidth: 14
+                        Layout.preferredHeight: 14
+                        radius: 7
                         color: "transparent"
-                        border.width: row.isSelected ? 5 : 1
+                        border.width: 1
                         border.color: row.isSelected
-                            ? MichiPalette.auroraBlue
-                            : MichiPalette.textDisabled
-                        opacity: row.modelData.canActivate || row.isActive ? 1 : 0.45
+                            ? MichiPalette.auroraBlue : MichiPalette.textMuted
+                        opacity: row.modelData.canActivate || row.isActive ? 1 : 0.55
+                        Rectangle {
+                            anchors.centerIn: parent
+                            width: 6
+                            height: 6
+                            radius: 3
+                            visible: row.isSelected
+                            color: MichiPalette.auroraBlue
+                        }
                     }
-
-                    MichiIcon {
-                        name: row.modelData.iconType || "audio-engine"
-                        width: MichiMetrics.iconMedium
-                        height: width
-                        strokeWidth: 1.7
-                        iconColor: row.isActive
-                            ? MichiPalette.auroraCyan
-                            : row.modelData.canActivate
-                                ? MichiPalette.textSecondary
-                                : MichiPalette.textDisabled
+                    Rectangle {
+                        Layout.preferredWidth: 32
+                        Layout.preferredHeight: 32
+                        radius: 9
+                        color: row.isActive ? MichiSemanticColors.auroraCyanSurface
+                            : MichiPalette.trackSurfaceBottom
+                        border.width: 1
+                        border.color: row.isActive ? MichiSemanticColors.auroraCyanBorderSubtle
+                            : MichiSemanticColors.borderSubtle
+                        MichiAudioRouteIcon {
+                            anchors.centerIn: parent
+                            width: 20
+                            height: 20
+                            roleName: row.routeIcon
+                            iconColor: row.isActive ? MichiPalette.auroraCyan
+                                : row.modelData.canActivate
+                                    ? MichiPalette.textSecondary
+                                    : MichiPalette.textDisabled
+                        }
                     }
 
                     ColumnLayout {
@@ -220,18 +257,13 @@ Popup {
                     }
                 }
 
-                background: Rectangle {
-                    radius: MichiRadius.md
-                    color: row.pressed
-                        ? MichiSemanticColors.surfacePressed
-                        : row.hovered ? MichiSemanticColors.surfaceHover
-                        : row.isSelected ? MichiSemanticColors.surfaceSelected
-                        : "transparent"
-                    border.width: row.visualFocus ? 1
-                        : row.isSelected ? 1 : 0
-                    border.color: row.visualFocus
-                        ? MichiSemanticColors.focusRing
-                        : MichiSemanticColors.borderSubtle
+                background: MichiRouteSelectionSkin {
+                    selected: row.isSelected
+                    active: row.isActive
+                    hovered: row.hovered
+                    pressed: row.pressed
+                    visualFocus: row.visualFocus
+                    available: row.modelData.canActivate || row.isActive
                     MichiFocusRing { visualFocus: row.visualFocus }
                 }
             }

@@ -20,6 +20,7 @@ ColumnLayout {
             Layout.fillWidth: true
             stageIndex: index
             stageCount: root.stages.length
+            compact: root.compact
             first: modelData.first !== undefined ? modelData.first : index === 0
             last: modelData.last !== undefined ? modelData.last
                 : index === root.stages.length - 1
@@ -39,7 +40,9 @@ ColumnLayout {
             summary: modelData.summary || ""
             detail: modelData.detail || ""
             detailRows: modelData.detailRows || []
-            configAction: modelData.configAction || "NONE"
+            // DAC compact inspector has no navigation callback; never render a
+            // dead configuration button in that variant.
+            configAction: root.compact ? "NONE" : (modelData.configAction || "NONE")
             stageState: modelData.state || "unknown"
             onToggleRequested: {
                 root.expandedStageId = root.expandedStageId === modelData.id

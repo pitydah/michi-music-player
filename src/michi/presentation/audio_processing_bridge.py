@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Callable
+from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
@@ -110,6 +111,7 @@ class AudioProcessingBridge(QObject):
         self._profiles = profiles
         self._disposed = False
         self._busy = False
+        self._refreshing_capabilities = False
         self._bands: list[dict[str, Any]] = self._flat_bands()
         self._preamp_db = 0.0
         self._bypass_requested = False
@@ -120,6 +122,7 @@ class AudioProcessingBridge(QObject):
         self._committed_bands = self._flat_bands()
         self._committed_preamp = 0.0
         self._committed_bypass = False
+        self._committed_preset_id = "flat"
         self._factory_presets = self._load_factory_presets()
         self._curve_key: tuple | None = None
         self._curve_points: list[dict[str, float]] = []
@@ -176,10 +179,10 @@ class AudioProcessingBridge(QObject):
     def available(self) -> bool:
         if self._source_family() in {"dsd", "dop", "native_dsd"}:
             return False
-        if self._truth().get("capability_state") == "unavailable":
+        if self._truth().get("capability_state") != "queried":
             return False
         strategies = self._strategies()
-        return not strategies or {"BIQUAD_CASCADE", "GAIN"}.issubset(strategies)
+        return {"BIQUAD_CASCADE", "GAIN"}.issubset(strategies)
 
     @Property(str, notify=state_changed)
     def capabilityReason(self) -> str:
@@ -192,8 +195,10 @@ class AudioProcessingBridge(QObject):
                 return "Audio processing capabilities have not been queried yet"
         if state == "unavailable":
             return "Audio processing is unavailable for the current output"
+        if state != "queried":
+            return "DSP strategy capabilities are not confirmed"
         strategies = self._strategies()
-        if strategies and not {"BIQUAD_CASCADE", "GAIN"}.issubset(strategies):
+        if not {"BIQUAD_CASCADE", "GAIN"}.issubset(strategies):
             return "This output does not support the ten-band equalizer"
         return ""
 
@@ -374,7 +379,7 @@ class AudioProcessingBridge(QObject):
         if self._signal() is None:
             return False
         strategies = self._strategies()
-        return {"BIQUAD_CASCADE", "GAIN"}.issubset(strategies) or not strategies
+        return {"BIQUAD_CASCADE", "GAIN"}.issubset(strategies)
 
     @Property(str, notify=state_changed)
     def errorCode(self) -> str:
@@ -453,7 +458,7 @@ class AudioProcessingBridge(QObject):
         self._bands = [dict(item) for item in self._committed_bands]
         self._preamp_db = self._committed_preamp
         self._bypass_requested = self._committed_bypass
-        self._preset_id = "custom" if not self._is_flat() else "flat"
+        self._preset_id = self._committed_preset_id
         self._clear_error()
         self.state_changed.emit()
 
@@ -471,10 +476,28 @@ class AudioProcessingBridge(QObject):
 
     @Slot()
     def refresh(self) -> None:
-        """Re-read the canonical truth after an external state change."""
-        if self._disposed:
+        """Reconcile capability truth without blocking the owner thread."""
+        if self._disposed or self._busy or self._refreshing_capabilities:
             return
-        self.state_changed.emit()
+        if self._truth().get("capability_state") == "queried":
+            self.state_changed.emit()
+            return
+        self._refreshing_capabilities = True
+
+        def work():
+            return self._service.refresh_capabilities()
+
+        def completed(_value, _error) -> None:
+            self._refreshing_capabilities = False
+            if not self._disposed:
+                self.state_changed.emit()
+
+        if self._async_submit is None:
+            with suppress(Exception):
+                work()
+            completed(None, None)
+            return
+        self._async_submit(work, completed)
 
     # ------------------------------------------------------------------
     # runtime transactions
@@ -568,8 +591,7 @@ class AudioProcessingBridge(QObject):
         self._committed_bands = [dict(item) for item in self._bands]
         self._committed_preamp = self._preamp_db
         self._committed_bypass = False
-        if not self._is_flat():
-            self._preset_id = "custom"
+        self._committed_preset_id = self._preset_id
         self._clear_error()
         logger.debug("F11 quick EQ committed: %s", result.get("plan_id"))
         self.state_changed.emit()
@@ -581,7 +603,8 @@ class AudioProcessingBridge(QObject):
         if bypassed:
             self._committed_bands = [dict(item) for item in self._bands]
             self._committed_preamp = self._preamp_db
-            self._committed_bypass = False
+            self._committed_bypass = True
+            self._committed_preset_id = self._preset_id
             self._clear_error()
         else:
             self._set_error(

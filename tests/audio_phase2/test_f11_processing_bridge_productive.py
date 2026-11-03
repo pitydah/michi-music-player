@@ -77,6 +77,7 @@ def test_quick_eq_applies_and_bypasses_through_the_productive_chain(
             port.dispatch_pending()
             time.sleep(0.02)
 
+        graph.audio_processing.refresh_capabilities()
         signal = PcmSignalFormat(
             rate_hz=44_100,
             transport_format="S16LE",
