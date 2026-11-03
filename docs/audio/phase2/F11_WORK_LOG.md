@@ -207,3 +207,30 @@ review and exact-SHA CI.
   DSD→PCM `DSD_PCM_TARGET_UNQUALIFIED`; Native active playback has no recorder
   snapshot, so Signal Truth stays Pending/Unknown. Sidebar W1–W9 and Advanced
   CRUD remain NOT_RUN. F11 remains NO-GO/ACTIVE.
+
+## Visual Recovery R6 (2026-11-03)
+
+- `fix(audio): type the F11 quality badge and anchor signal truth`:
+  SignalPathBridge now publishes `sourceQualityClass`, format and rate/depth
+  strings, `pathProofState` and accessible quality text from structured facts.
+  The NowPlaying capsule is an 8 px solid dot plus format and depth; path proof
+  is separate. SignalTruthPopup is parented to `Overlay.overlay`, positioned from
+  measured badge geometry on open and resize, and covered by Qt tests at
+  1920×1036, 1920×1080, 1366×768 and 900×600 (8–12 px gap, 420–520 px surface,
+  focus return, no track/seek/engine/device signal).
+- `feat(audio): turn signal truth and advanced EQ into premium inspectors`:
+  Signal Truth has an uppercase header, one LIVE/LAST PLAYBACK badge, typed
+  source context, five semantic stages with 32 px icon boxes, a single global
+  historical state and a device display name instead of a raw USB id. The
+  Advanced workspace is a 960×700 desktop console with fixed header/tabs/footer,
+  labelled ±12 dB and 20 Hz–20 kHz response axes, ten aligned rails and ten fixed
+  PEAK gain rows; unsupported FIR/31-band/profile CRUD stays capability-gated.
+  The quick-EQ preset row no longer widens the popup and clips the ten rails.
+- KWin isolated session `wayland-mcp-2028722-1793743183`, 1920×1080 at 100 %:
+  NowPlaying, quick EQ, Advanced EQ (1100 and 900), live Signal Truth,
+  historical Signal Truth (900), Audio Engine and Audio Output captured after
+  the fade-in. Evidence: `F11_VR_R6_EVIDENCE.json` and
+  `evidence/f11/2026-11-03-f11-vr-r6/`.
+- Honest limits: no human screenshot sign-off, no pixel/perceptual golden, DPI
+  scales above 100 % not exercised, physical DAC not re-run, and the Advanced
+  body scrolls in short windows. F11 remains NO-GO/ACTIVE.

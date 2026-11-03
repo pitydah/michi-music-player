@@ -1,0 +1,157 @@
+{
+  "schema_version": "michi.f11.vr.r6.evidence.v1",
+  "phase": "AP2-F11",
+  "sprint": "F11-VR-R6",
+  "baseline_sha": "c8ea68fd7f1b85ed1116db092abd5d03a27d42b5",
+  "code_sha": "9d918c0ded47f73d4ee367bf4d5ee9399acf3bdc",
+  "date": "2026-11-03",
+  "scope": "killcritic x10: typed quality badge, measured signal truth geometry, premium inspector and advanced equalizer workspace",
+  "contracts": {
+    "quality_badge": {
+      "status": "PASS",
+      "facts": [
+        "solid 8x8 dot",
+        "typed sourceQualityClass",
+        "separate pathProofState",
+        "format plus rate/depth in one capsule",
+        "accessible nominal quality and proof"
+      ],
+      "tests": ["tests/audio_phase2/test_f11_signal_path_bridge.py", "tests/test_f11_qml_contract.py"]
+    },
+    "signal_truth_geometry": {
+      "status": "PASS",
+      "viewports": ["1920x1036", "1920x1080", "1366x768", "900x600"],
+      "facts": [
+        "parent Overlay.overlay",
+        "measured from qualityBadge.mapToItem",
+        "right edges aligned",
+        "8-12 px gap",
+        "bounded height inside the overlay",
+        "focus returns to the badge",
+        "no track, seek, engine or device signal on open/close"
+      ],
+      "tests": ["tests/test_f11_qml_contract.py::test_signal_truth_popup_is_measured_against_the_quality_badge"]
+    },
+    "signal_truth_inspector": {
+      "status": "PASS_WITH_LIMITATIONS",
+      "facts": [
+        "uppercase SIGNAL TRUTH header",
+        "one global LIVE or LAST PLAYBACK badge",
+        "typed source context with quality dot",
+        "five semantic stages",
+        "device display name instead of raw USB id",
+        "no generic Close footer",
+        "focus starts on the first expandable stage"
+      ],
+      "limitations": ["stage body scrolls in short windows"]
+    },
+    "advanced_equalizer": {
+      "status": "PASS_WITH_LIMITATIONS",
+      "workspace": "960x700 desktop target",
+      "facts": [
+        "fixed header, tabs and footer",
+        "calculated response plot with labelled axes and one draft legend",
+        "ten aligned rails with +12/0/-12 marks",
+        "ten fixed PEAK gain rows",
+        "presets load to draft only",
+        "body scrolls at 900x600 while the footer remains reachable"
+      ],
+      "limitations": [
+        "Graphic31, arbitrary PEQ editing, FIR import and profile CRUD remain capability-gated",
+        "no physical DAC qualification in this sprint"
+      ]
+    },
+    "engine_output_coherence": {
+      "status": "PASS",
+      "facts": [
+        "engine popup clamped inside the overlay",
+        "selection radio separate from Active badge",
+        "output selected intent separate from Playing route",
+        "fixed output settings footer"
+      ]
+    }
+  },
+  "kwin": {
+    "session": "wayland-mcp-2028722-1793743183",
+    "resolution": "1920x1080",
+    "scale": "100%",
+    "runtime_log": "evidence/f11/2026-11-03-f11-vr-r6/f11_vr_r6_kwin_runtime_log.txt",
+    "runtime_log_verdict": "PASS",
+    "runtime_log_note": "only Qt AT-SPI adaptor diagnostics; no QML TypeError, ReferenceError or binding warning",
+    "captures": [
+      {
+        "file": "evidence/f11/2026-11-03-f11-vr-r6/f11_vr_r6_nowplaying_full.png",
+        "sha256": "95d11f3f939b0e8c1882c7df6e1052a9d92b5cad65d3021f061cda5a93a5daee",
+        "surface": "nowplaying_full",
+        "viewport": "1100x700",
+        "review": "PASS"
+      },
+      {
+        "file": "evidence/f11/2026-11-03-f11-vr-r6/f11_vr_r6_quick_eq.png",
+        "sha256": "ed3330da9eb5852093951066e84e85dc1830532ca749c2c222b68bf287e08203",
+        "surface": "quick_equalizer",
+        "viewport": "1100x700",
+        "review": "PASS"
+      },
+      {
+        "file": "evidence/f11/2026-11-03-f11-vr-r6/f11_vr_r6_advanced_graphic.png",
+        "sha256": "b71cf8818f2b4f98204ff763e3922c903dac6c64baf809d72332a7e68acf52bb",
+        "surface": "advanced_graphic",
+        "viewport": "1100x700",
+        "review": "PASS"
+      },
+      {
+        "file": "evidence/f11/2026-11-03-f11-vr-r6/f11_vr_r6_advanced_900.png",
+        "sha256": "6444f8d73a2aa204e31f3166f600e7f7e86b03a8ce53f7aac466eeb62eca57b2",
+        "surface": "advanced_graphic",
+        "viewport": "900x600",
+        "review": "PASS_WITH_INTERNAL_SCROLL"
+      },
+      {
+        "file": "evidence/f11/2026-11-03-f11-vr-r6/f11_vr_r6_signal_truth_live.png",
+        "sha256": "e661a2104eaea39bef5a360b85626d3686c663062c4142abfbd7fbf262e0b477",
+        "surface": "signal_truth_live",
+        "viewport": "1100x700",
+        "review": "PASS"
+      },
+      {
+        "file": "evidence/f11/2026-11-03-f11-vr-r6/f11_vr_r6_signal_truth_historical_900.png",
+        "sha256": "783c998b0515ebff8e805431a417c5770c824529a7f5def416bc7b258abb0c0b",
+        "surface": "signal_truth_historical",
+        "viewport": "900x600",
+        "review": "PASS_WITH_INTERNAL_SCROLL"
+      },
+      {
+        "file": "evidence/f11/2026-11-03-f11-vr-r6/f11_vr_r6_engine.png",
+        "sha256": "98fc645cbeef4aa41ea07e2a507918a3a4ad30b66086f257eb46d5e596a19786",
+        "surface": "audio_engine",
+        "viewport": "1100x700",
+        "review": "PASS"
+      },
+      {
+        "file": "evidence/f11/2026-11-03-f11-vr-r6/f11_vr_r6_output.png",
+        "sha256": "debea097875ae960f712157448d4982f97e3a7bc064859a37506e4dd8db354c8",
+        "surface": "audio_output",
+        "viewport": "1100x700",
+        "review": "PASS"
+      }
+    ]
+  },
+  "verification": {
+    "qt_qml_contract": "PASS",
+    "kwin_runtime_log": "PASS",
+    "kwin_pointer_matrix": "PASS_FROM_R2",
+    "human_screenshot_review": "NOT_RUN",
+    "pixel_golden_diff": "NOT_RUN",
+    "dpi_scales": ["100%"],
+    "dpi_scales_not_run": ["125%", "150%", "200%"],
+    "physical_dac": "NOT_RUN",
+    "full_suite": "PENDING",
+    "ci": "PENDING"
+  },
+  "f11_closure": "NO_GO",
+  "notes": [
+    "VR-R6 improves presentation and coherence; it does not satisfy F11 global closure by itself.",
+    "No bit-perfect, auditory or physical DAC certification is claimed."
+  ]
+}

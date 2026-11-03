@@ -118,6 +118,7 @@ jobs:
             tests/test_f11_kwin_visual_contract.py \
             tests/test_f11_signal_truth_pointer_guard.py \
             tests/test_f11_vr_r3_evidence.py \
+            tests/test_f11_vr_r6_evidence.py \
             -q | tee /tmp/f11-surfaces-run.txt
           grep -Eq '^[0-9]+ passed' /tmp/f11-surfaces-run.txt
           if grep -Eq '[0-9]+ (skipped|xfailed|xpassed|error)' /tmp/f11-surfaces-run.txt; then

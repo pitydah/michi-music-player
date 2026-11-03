@@ -171,3 +171,20 @@ Honest remaining failures:
   automated pixel golden remain NOT_RUN.
 
 R3 does not change the verdict: **NO-GO / F11 ACTIVE**.
+
+## Visual Recovery R6 (2026-11-03)
+
+VR-R6 replaces the remaining string-driven quality badge with typed source
+quality and a separate path-proof state, measures Signal Truth against the
+opener at four viewports, and turns Signal Truth and Advanced EQ into coherent
+inspector surfaces. The quick EQ preset row is horizontally bounded so ten
+rails fit the 440 px popup, and the engine popup is clamped inside the overlay.
+
+Evidence: `docs/audio/phase2/F11_VR_R6_EVIDENCE.json` and
+`evidence/f11/2026-11-03-f11-vr-r6/` (8 SHA-pinned captures plus clean KWin
+runtime log).
+
+Honest limits: human screenshot review, pixel/perceptual goldens, DPI scales
+above 100 %, physical DAC re-qualification and the capability-gated Advanced
+features remain NOT_RUN. R6 does not close F11; the verdict remains
+**NO-GO / F11 ACTIVE**.
