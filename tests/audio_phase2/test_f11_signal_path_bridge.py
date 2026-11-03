@@ -11,6 +11,8 @@ from michi.domain.signal_truth import (
     DecodedRuntimeEvidence,
     EngineRuntimeEvidence,
     OutputPlanEvidence,
+    ProcessingTruthEvent,
+    ProcessingTruthState,
     SignalTruthIdentity,
     SignalTruthRecorder,
     SignalTruthSnapshot,
@@ -227,6 +229,65 @@ def test_matching_processing_receipt_is_the_only_dsp_claim() -> None:
     assert processing["summary"] == "DSP active"
     assert "bands" not in processing["summary"]
     assert bridge.indicatorState == "transformed"
+
+
+def test_processing_receipt_binds_to_the_output_pipeline_not_the_plan_id() -> None:
+    recorder = _recorder_with_active(_snapshot())
+    recorder.record_processing_event(
+        ProcessingTruthEvent(
+            state=ProcessingTruthState.EFFECTIVE,
+            processing_generation=3,
+            plan_id="dsp:quick-eq",
+            bit_perfect=False,
+            host_generation=1,
+            pipeline_generation=1,
+            readback_proven=True,
+        )
+    )
+
+    class _MatchingPipeline(_Processing):
+        truth = {
+            "effective_state": "effective",
+            "effective_revision": 3,
+            "effective_plan_id": "dsp:quick-eq",
+        }
+
+    bridge = SignalPathBridge(recorder, _Output(), _MatchingPipeline())
+
+    processing = next(stage for stage in bridge.stages if stage["id"] == "processing")
+    assert processing["state"] == "transformed"
+    assert processing["summary"] == "DSP active"
+    assert ["Pipeline generation", "1"] in processing["detailRows"]
+    assert bridge.headline == "Processing active"
+    assert bridge.indicatorState == "transformed"
+
+
+def test_processing_receipt_from_another_pipeline_never_claims_effect() -> None:
+    recorder = _recorder_with_active(_snapshot())
+    recorder.record_processing_event(
+        ProcessingTruthEvent(
+            state=ProcessingTruthState.EFFECTIVE,
+            processing_generation=3,
+            plan_id="dsp:quick-eq",
+            bit_perfect=False,
+            host_generation=1,
+            pipeline_generation=2,
+            readback_proven=True,
+        )
+    )
+
+    class _MatchingPlan(_Processing):
+        truth = {
+            "effective_state": "effective",
+            "effective_revision": 3,
+            "effective_plan_id": "dsp:quick-eq",
+        }
+
+    bridge = SignalPathBridge(recorder, _Output(), _MatchingPlan())
+
+    processing = next(stage for stage in bridge.stages if stage["id"] == "processing")
+    assert processing["state"] == "unknown"
+    assert "identity unverified" in processing["summary"]
 
 
 def _snapshot() -> SignalTruthSnapshot:

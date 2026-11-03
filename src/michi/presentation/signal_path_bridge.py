@@ -172,6 +172,44 @@ class SignalPathBridge(QObject):
         except Exception:  # noqa: BLE001
             return {}
 
+    def _processing_event_for(
+        self,
+        identity: dict[str, Any],
+        effective_plan_id: str,
+    ) -> tuple[bool, object | None]:
+        """Correlate the processing receipt with this exact output pipeline.
+
+        The processing plan id and the output plan id belong to different
+        authorities and are never equal. The durable link is the pipeline
+        generation the processing child observed when it committed. Return
+        ``(events_available, event)`` so callers can distinguish "no evidence
+        stream" (legacy/test doubles) from "a receipt that belongs elsewhere".
+        """
+        try:
+            events = tuple(self._recorder.processing_events)
+        except Exception:  # noqa: BLE001 - projection failure is not runtime truth
+            return False, None
+        if not events:
+            return False, None
+        port_generation = int(
+            identity.get("port_generation") or identity.get("execution_generation") or 0
+        )
+        if port_generation <= 0:
+            return True, None
+        for event in reversed(events):
+            state = getattr(event, "state", None)
+            state_value = str(getattr(state, "value", state) or "")
+            if state_value != "effective":
+                continue
+            if not bool(getattr(event, "readback_proven", False)):
+                continue
+            if str(getattr(event, "plan_id", None) or "") != effective_plan_id:
+                continue
+            pipeline_generation = int(getattr(event, "pipeline_generation", 0) or 0)
+            if pipeline_generation == port_generation:
+                return True, event
+        return True, None
+
     def _output_value(self, name: str, fallback: Any = None) -> Any:
         try:
             return self._output.property(name)
@@ -366,12 +404,22 @@ class SignalPathBridge(QObject):
         effective_state = str(truth.get("effective_state", "unknown"))
         effective_plan_id = str(truth.get("effective_plan_id") or "")
         snapshot_plan_id = str(identity.get("plan_id") or "")
-        processing_matches = bool(
-            effective_state == "effective"
-            and effective_plan_id
-            and snapshot_plan_id
-            and effective_plan_id == snapshot_plan_id
+        events_available, processing_event = self._processing_event_for(
+            identity, effective_plan_id
         )
+        if events_available:
+            processing_matches = bool(
+                effective_state == "effective" and processing_event is not None
+            )
+        else:
+            # Compatibility for read-model doubles that publish the processing
+            # truth without a recorder event stream.
+            processing_matches = bool(
+                effective_state == "effective"
+                and effective_plan_id
+                and snapshot_plan_id
+                and effective_plan_id == snapshot_plan_id
+            )
         engine_graph_factories = [
             str(item) for item in engine.get("graph_factories", []) or []
         ]
@@ -393,16 +441,25 @@ class SignalPathBridge(QObject):
             processing_summary = "DSP active"
             processing_detail = "Readback confirmed for this signal path"
             processing_state = "transformed"
+            event_plan = str(getattr(processing_event, "plan_id", "") or "")
+            event_revision = getattr(processing_event, "processing_generation", 0)
+            event_pipeline = getattr(processing_event, "pipeline_generation", 0)
             processing_rows.extend(
                 (
-                    ("Plan", effective_plan_id),
+                    ("Plan", event_plan or effective_plan_id),
                     (
                         "Revision",
-                        str(truth.get("effective_revision", 0)),
+                        str(
+                            event_revision
+                            if event_revision
+                            else truth.get("effective_revision", 0)
+                        ),
                     ),
                     ("Readback", "confirmed"),
                 )
             )
+            if event_pipeline:
+                processing_rows.append(("Pipeline generation", str(event_pipeline)))
         elif effective_state == "effective":
             processing_summary = "Processing active · identity unverified"
             processing_detail = (
@@ -440,6 +497,15 @@ class SignalPathBridge(QObject):
         if verdict_state == "dsp" and processing_state == "unknown":
             headline = "DSP detected · identity unverified"
             tone = "warning"
+        elif processing_matches and verdict_state in {
+            "direct",
+            "direct_container_adapted",
+        }:
+            # The DAC snapshot is captured before the live graph gains its DSP
+            # filter. A readback-proven processing event bound to the same
+            # pipeline generation is the authority for the processing stage.
+            headline = "Processing active"
+            tone = "neutral"
 
         requested = plan.get("requested") or {}
         output_observed = alsa or engine or None
