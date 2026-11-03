@@ -151,5 +151,9 @@
     "dac_repository_alignment": "aligned YES; critical hashes OK",
     "ruff_check": "PASS",
     "ruff_format_check": "662 files already formatted"
+  },
+  "runtime_log_scan": {
+    "source": "/tmp/kwin-mcp-screenshots-f97r0cru/app_python_*.log",
+    "result": "PASS - no TypeError, ReferenceError, Unable to assign, Cannot read property or QML warning fingerprints"
   }
 }
