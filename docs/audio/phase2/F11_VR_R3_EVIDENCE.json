@@ -144,5 +144,6 @@
     "The reduced-motion capture is static; animation suppression is covered by QML gates, not by a still image.",
     "No physical DAC certification or bit-perfect claim is made.",
     "F11 remains ACTIVE/NO-GO until the remaining truth and Advanced contracts close."
-  ]
+  ],
+  "evidence_sha": "7fe8891"
 }
