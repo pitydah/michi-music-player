@@ -188,3 +188,22 @@ review and exact-SHA CI.
 - Restored the NowPlaying album line to `textSecondary` + `opacity: 0.7`; the R2 capsule refactor had dropped the opacity expected by the M9 editorial contract. Targeted `tests/test_m9_r2_4_playlist_editorial.py` -> 28 passed.
 - Python qmllint 6.11.1 on the R2 QML files exits 0; only unqualified-access warnings and the `pragma ComponentBehavior: Bound` suggestion.
 - Factory preset asset validated: 8 reviewed presets, 10 bands each, MICHI_10 layout.
+
+## Visual Recovery R3 (2026-11-03)
+
+- `9a468bf` `fix(audio): keep signal truth inside a short window`: SignalTruthPopup
+  now positions against `Overlay.overlay` with clamped x/y and a 560 px cap, so the
+  fixed header/footer remain visible at 900×600 while the stage body scrolls.
+- `8a94acd` `fix(audio): bind processing truth to the output pipeline`: DSP
+  processing events are correlated by readback-proven pipeline generation instead
+  of comparing unrelated processing and output plan ids. Live quick EQ now shows
+  `Processing active`, `DSP active`, plan, revision and pipeline generation.
+- R3 KWin captures: active PCM Direct, live quick EQ/readback, 900×600 responsive,
+  Native DSD active with truth pending, high contrast and reduced motion.
+  Evidence: `F11_VR_R3_EVIDENCE.json`, `evidence/f11/2026-11-03-f11-vr-r3/`.
+- Pointer/keyboard: Source click, 10× chevron, outside click, scroll, full Tab
+  traversal, Enter disclosure and Escape focus return PASS; track unchanged.
+- Honest failures: DoP `DOP_QUALIFICATION_FAILED: probe deadline exceeded`;
+  DSD→PCM `DSD_PCM_TARGET_UNQUALIFIED`; Native active playback has no recorder
+  snapshot, so Signal Truth stays Pending/Unknown. Sidebar W1–W9 and Advanced
+  CRUD remain NOT_RUN. F11 remains NO-GO/ACTIVE.
