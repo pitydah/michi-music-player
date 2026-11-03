@@ -1,0 +1,148 @@
+{
+  "schema_version": "michi.f11.vr.r3.evidence.v1",
+  "phase": "AP2-F11",
+  "sprint": "F11 Visual Recovery R3",
+  "base_sha": "8b7c7ea6601a77f016b2f95330d3dab63817cbef",
+  "code_sha": "8a94acd",
+  "date": "2026-11-03",
+  "commits": [
+    "9a468bf",
+    "8a94acd"
+  ],
+  "scope": [
+    "Signal Truth stays fully inside a 900x600 window by positioning against the overlay and clamping x/y",
+    "DSP processing truth binds to the exact output pipeline generation instead of comparing unrelated plan ids",
+    "active PCM Direct and live quick-EQ captures on the real SMSL DAC through alsasink",
+    "keyboard traversal, Enter disclosure and Escape focus return in Signal Truth"
+  ],
+  "fixes": {
+    "responsive_signal_truth": {
+      "commit": "9a468bf",
+      "files": [
+        "src/michi/presentation/qml/player/SignalTruthPopup.qml",
+        "src/michi/presentation/qml/player/NowPlayingBar.qml",
+        "tests/test_f11_qml_contract.py"
+      ],
+      "before": "At 900x600 the popup opened above the window and its fixed header was clipped.",
+      "after": "The popup is parented to Overlay.overlay, clamped inside the overlay, keeps a 560 px cap and scrolls its stage body.",
+      "evidence": [
+        "signal_active_stress_900x600"
+      ]
+    },
+    "dsp_pipeline_correlation": {
+      "commit": "8a94acd",
+      "files": [
+        "src/michi/presentation/signal_path_bridge.py",
+        "tests/audio_phase2/test_f11_signal_path_bridge.py"
+      ],
+      "before": "Effective DSP was reported as identity unverified because the processing plan id and output plan id belong to different authorities.",
+      "after": "The bridge correlates the latest readback-proven processing event by pipeline generation and exposes plan, revision and pipeline generation.",
+      "evidence": [
+        "signal_dsp_active",
+        "signal_dsp_active_readback",
+        "signal_dsp_identity_unverified_before_fix"
+      ]
+    }
+  },
+  "tests": {
+    "signal_path_bridge": "11 passed",
+    "qml_contract": "10 passed",
+    "targeted_f11": "41 passed in 31.12s",
+    "ruff_check": "PASS",
+    "ruff_format_check": "PASS",
+    "full_suite": "PENDING",
+    "ci": "PENDING",
+    "mandatory_f11_gate": "53 passed in 31.30s with zero skips",
+    "r3_evidence": "2 passed"
+  },
+  "pointer_keyboard_matrix": {
+    "source_node_click": "PASS - track pcm16_44100_30s unchanged",
+    "source_chevron_10_consecutive_clicks": "PASS - track unchanged",
+    "outside_click_over_library_row": "PASS - popup closed, row not activated",
+    "scroll_inside_popup": "PASS - vertical scroll did not change track or media",
+    "keyboard_traversal": "PASS - Shift+Tab reached DAC/Device; Tab cycled Close, Source, Source disclosure, Decode, Decode disclosure",
+    "keyboard_enter": "PASS - Decode details toggled to Show details for Decoded",
+    "keyboard_escape": "PASS - popup closed and focus returned to the Signal Truth opener",
+    "track_before_and_after": "pcm16_44100_30s"
+  },
+  "captures": [
+    {
+      "name": "signal_active_stress_900x600",
+      "file": "evidence/f11/2026-11-03-f11-vr-r3/f11_vr_r3_signal_active_stress_900x600.png",
+      "sha256": "55b24ff345c2aa514d17291c0903faf077fae59ff242a30356c4ce7dc4c1742e",
+      "viewport": "1600x900 downscale of 1920x1080 session",
+      "window": "900x600",
+      "state": "PCM Direct active at 900x600; full Signal Truth header, five stages and footer visible after the responsive fix"
+    },
+    {
+      "name": "signal_pcm_direct_active",
+      "file": "evidence/f11/2026-11-03-f11-vr-r3/f11_vr_r3_signal_pcm_direct_active.png",
+      "sha256": "b30bac3e7182df35753d3cadc45646f48f1e662d35e9e99b4c5f0cf31673b672",
+      "viewport": "1600x900 downscale of 1920x1080 session",
+      "window": "1100x700",
+      "state": "PCM Direct active at 1100x700; real SMSL alsasink; five observed stages and device identity"
+    },
+    {
+      "name": "signal_dsp_active",
+      "file": "evidence/f11/2026-11-03-f11-vr-r3/f11_vr_r3_signal_dsp_active.png",
+      "sha256": "0344ceac45716247bf23d54284a0ed918108e522498bc8f9ea140942d8c3ecf0",
+      "viewport": "1600x900 downscale of 1920x1080 session",
+      "window": "1100x700",
+      "state": "Quick EQ effective on a live PCM Direct run; headline Processing active and Processing stage Transformed"
+    },
+    {
+      "name": "signal_dsp_active_readback",
+      "file": "evidence/f11/2026-11-03-f11-vr-r3/f11_vr_r3_signal_dsp_active_readback.png",
+      "sha256": "1b710f8f78acfe10865b1342b8ce64c698edd766c074055596304daf93e2f6a9",
+      "viewport": "1600x900 downscale of 1920x1080 session",
+      "window": "1100x700",
+      "state": "Processing disclosure with plan, revision, readback confirmed and pipeline generation"
+    },
+    {
+      "name": "signal_dsp_identity_unverified_before_fix",
+      "file": "evidence/f11/2026-11-03-f11-vr-r3/f11_vr_r3_signal_dsp_identity_unverified.png",
+      "sha256": "8c131e1a1b87354da5c7966af3cea83f501562474721ca47da6d17afdf5eea77",
+      "viewport": "1600x900 downscale of 1920x1080 session",
+      "window": "1100x700",
+      "state": "Before the correlation fix: DSP was effective but the surface claimed DSP detected identity unverified"
+    },
+    {
+      "name": "native_active_truth_pending",
+      "file": "evidence/f11/2026-11-03-f11-vr-r3/f11_vr_r3_native_active_truth_pending.png",
+      "sha256": "94260596947b310d219cc4187a5f9856e18acc6462251b7abbfed63417b4dd87",
+      "viewport": "1600x900 downscale of 1920x1080 session",
+      "window": "1100x700",
+      "state": "Native DSD active playback at 1100x700; Signal Truth remains Pending/Unknown because no native recorder snapshot exists"
+    },
+    {
+      "name": "high_contrast_active",
+      "file": "evidence/f11/2026-11-03-f11-vr-r3/f11_vr_r3_high_contrast_active.png",
+      "sha256": "10df1dc3509f2730d5909e626f55fbb70dc5db22ea9e13e655caa6cc98824a96",
+      "viewport": "1600x900 downscale of 1920x1080 session",
+      "window": "1100x700",
+      "state": "High-contrast preference active during real PCM playback"
+    },
+    {
+      "name": "reduced_motion_active",
+      "file": "evidence/f11/2026-11-03-f11-vr-r3/f11_vr_r3_reduced_motion_active.png",
+      "sha256": "f4e04a475378e393f8969617ca73fc9fe60ff4df8f5e477a11cbb632e02e0674",
+      "viewport": "1600x900 downscale of 1920x1080 session",
+      "window": "1100x700",
+      "state": "Reduced-motion preference active; static capture cannot prove animation suppression"
+    }
+  ],
+  "not_run": {
+    "dop_active_signal": "DOP_QUALIFICATION_FAILED: probe deadline exceeded in the isolated KWin session",
+    "dsd_pcm_active_signal": "DSD_PCM_TARGET_UNQUALIFIED: PCM target is not qualified for the hw SMSL binding",
+    "sidebar_w1_w9_isolation_matrix": "NOT_RUN",
+    "advanced_peq_fir_profiles_crud": "NOT_RUN",
+    "automated_pixel_golden_diff": "NOT_RUN"
+  },
+  "limitations": [
+    "Native DSD playback is active but Signal Truth has no native recorder snapshot, so the surface stays Pending/Unknown.",
+    "DoP and DSD-to-PCM could not be captured in this isolated session due to qualification failures; they are not claimed as PASS.",
+    "The reduced-motion capture is static; animation suppression is covered by QML gates, not by a still image.",
+    "No physical DAC certification or bit-perfect claim is made.",
+    "F11 remains ACTIVE/NO-GO until the remaining truth and Advanced contracts close."
+  ]
+}

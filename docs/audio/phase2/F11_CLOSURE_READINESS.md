@@ -140,3 +140,34 @@ R2 does not change the verdict: **NO-GO / F11 ACTIVE**. The open gates remain
 active DSD/DoP/DSP-effective captures, the sidebar W1–W9 matrix, high-contrast
 and reduced-motion captures, Advanced backend contracts, the DSD→PCM quick-EQ
 signal provider, an automated pixel/perceptual golden, and new exact-SHA CI.
+
+## Visual Recovery R3 (2026-11-03)
+
+R3 closes two concrete truth/geometry defects found on the live production UI:
+
+- Signal Truth no longer clips its fixed header at 900×600. The popup is
+  parented to `Overlay.overlay`, clamped inside the overlay, keeps a 560 px cap
+  and scrolls its stage body. Commit `9a468bf`.
+- Effective DSP no longer reports `DSP detected · identity unverified` merely
+  because the processing plan id differs from the output plan id. The bridge
+  correlates the latest readback-proven processing event by pipeline generation
+  and publishes plan, revision and pipeline generation. Commit `8a94acd`.
+
+R3 KWin evidence: active PCM Direct and live quick-EQ both captured on the real
+SMSL DAC through `alsasink`; keyboard traversal, Enter disclosure and Escape
+focus return passed; vertical scroll did not change the track. Captures and
+hashes are recorded in `docs/audio/phase2/F11_VR_R3_EVIDENCE.json` under
+`evidence/f11/2026-11-03-f11-vr-r3/`.
+
+Honest remaining failures:
+
+- Native DSD playback is active but Signal Truth has no native recorder
+  snapshot, so the popup stays Pending/Unknown.
+- DoP qualification failed in the isolated session with
+  `DOP_QUALIFICATION_FAILED: probe deadline exceeded`.
+- DSD→PCM failed with `DSD_PCM_TARGET_UNQUALIFIED: PCM target is not qualified`
+  for the `hw` SMSL binding.
+- The sidebar W1–W9 isolation matrix, Advanced PEQ/FIR/Profiles CRUD and an
+  automated pixel golden remain NOT_RUN.
+
+R3 does not change the verdict: **NO-GO / F11 ACTIVE**.
