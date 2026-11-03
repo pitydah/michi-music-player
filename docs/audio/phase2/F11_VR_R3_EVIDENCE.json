@@ -145,5 +145,11 @@
     "No physical DAC certification or bit-perfect claim is made.",
     "F11 remains ACTIVE/NO-GO until the remaining truth and Advanced contracts close."
   ],
-  "evidence_sha": "7fe8891"
+  "evidence_sha": "7fe8891",
+  "gates": {
+    "ap2_f11_alignment": "GO at 7fe8891; phase ACTIVE; spec sha256 4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12",
+    "dac_repository_alignment": "aligned YES; critical hashes OK",
+    "ruff_check": "PASS",
+    "ruff_format_check": "662 files already formatted"
+  }
 }
