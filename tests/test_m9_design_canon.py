@@ -504,8 +504,10 @@ def test_precision_pass_uses_resizable_smoked_surfaces_without_accent_rules() ->
     quality = bar.split('objectName: "qualityBadge"', 1)[1].split(
         'objectName: "queueButton"', 1
     )[0]
-    assert "MichiSignalIndicator" in quality
-    assert "indicatorState" in quality
+    assert "MichiSignalIndicator" not in quality
+    assert "Layout.preferredWidth: 8" in quality
+    assert "Layout.preferredHeight: 8" in quality
+    assert "qualityDotColor()" in quality
     assert "GradientStop" not in quality
 
 

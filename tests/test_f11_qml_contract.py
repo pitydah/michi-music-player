@@ -10,9 +10,10 @@ import sys
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import QObject
+from PySide6.QtCore import QMetaObject, QObject, QUrl
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlComponent, QQmlEngine
+from PySide6.QtTest import QTest
 
 QML_DIR = Path("src/michi/presentation/qml").resolve()
 NOW_PLAYING = QML_DIR / "player" / "NowPlayingBar.qml"
@@ -59,6 +60,18 @@ def _block(source: str, object_name: str) -> str:
             if depth == 0:
                 return source[start : index + 1]
     raise AssertionError(f"unterminated block for {object_name}")
+
+
+def _offset_within(item: QObject, root: QObject) -> tuple[float, float]:
+    x = 0.0
+    y = 0.0
+    current = item
+    while current is not None and current is not root:
+        x += float(current.property("x") or 0.0)
+        y += float(current.property("y") or 0.0)
+        current = current.parent()
+    assert current is root, "item is not inside the measured root"
+    return x, y
 
 
 def _layout(block: str, key: str) -> int:
@@ -115,7 +128,7 @@ def test_output_zone_slot_map_is_exact():
     assert "Layout.row: 2" in source
 
 
-def test_quality_badge_is_a_real_signal_truth_button():
+def test_quality_badge_is_a_typed_capsule_and_real_signal_truth_button():
     source = NOW_PLAYING.read_text(encoding="utf-8")
     marker = source.index('objectName: "qualityBadge"')
     block = _block(source, "qualityBadge")
@@ -123,8 +136,14 @@ def test_quality_badge_is_a_real_signal_truth_button():
     assert "Button" in prefix
     assert "signalTruthPopup.open()" in block
     assert "Accessible.role: Accessible.Button" in block
-    assert "MichiSignalIndicator" in block
-    assert "indicatorState" in block
+    assert "qualityAccessibleText" in block
+    assert "sourceFormatLabel" in block
+    assert "sourceRateDepthLabel" in block
+    assert "sourceQualityClass" not in block
+    assert "MichiSignalIndicator" not in block
+    assert "indicatorState" not in block
+    assert "Layout.preferredWidth: 8" in block
+    assert "Layout.preferredHeight: 8" in block
     assert "GradientStop" not in block
 
 
@@ -138,11 +157,16 @@ def test_signal_node_rail_uses_index_and_state_semantics():
     assert "segmentColor" in node
 
 
-def test_nowplaying_indicator_is_bound_to_the_signal_path_bridge():
+def test_quality_badge_and_proof_are_bound_to_typed_bridge_facts():
     source = NOW_PLAYING.read_text(encoding="utf-8")
     block = _block(source, "qualityBadge")
-    assert "signalPathBridge.indicatorState" in block
-    assert "signalPathBridge.indicatorTooltip" in block
+    assert "signalPathBridge.qualityAccessibleText" in block
+    assert "signalPathBridge.sourceFormatLabel" in block
+    assert "signalPathBridge.sourceRateDepthLabel" in block
+    assert "qualityDotColor()" in block
+    assert "function qualityDotColor()" in source
+    assert "signalPathBridge.sourceQualityClass" in source
+    assert "signalPathBridge.pathProofState" in source
     assert "hasTrack" not in block
 
 
@@ -196,6 +220,84 @@ def test_advanced_equalizer_has_the_five_named_tabs(qapp):
         popup.deleteLater()
 
 
+@pytest.mark.parametrize(
+    ("width", "height"),
+    [(1920, 1036), (1920, 1080), (1366, 768), (900, 600)],
+)
+def test_signal_truth_popup_is_measured_against_the_quality_badge(qapp, width, height):
+    engine = QQmlEngine()
+    engine.addImportPath(str(QML_DIR))
+    component = QQmlComponent(engine)
+    component.setData(
+        b"""
+        import QtQuick
+        import QtQuick.Controls
+        import "player"
+        ApplicationWindow {
+            visible: true
+            NowPlayingBar {
+                objectName: "barUnderTest"
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: 154
+            }
+        }
+        """,
+        QUrl.fromLocalFile(str(QML_DIR / "f11_measure_harness.qml")),
+    )
+    assert component.status() == QQmlComponent.Ready, "; ".join(
+        error.toString() for error in component.errors()
+    )
+    window = component.createWithInitialProperties({"width": width, "height": height})
+    assert window is not None
+    QTest.qWait(150)
+    try:
+        bar = _named(window, "barUnderTest")
+        badge = _named(bar, "qualityBadge")
+        popup = _named(bar, "SignalTruthPopup")
+        emitted: list[str] = []
+        bar.seekRequested.connect(lambda *_: emitted.append("seek"))
+        bar.playPauseRequested.connect(lambda *_: emitted.append("play"))
+        bar.audioEngineSwitchRequested.connect(lambda *_: emitted.append("engine"))
+        bar.audioOutputDeviceSelectionRequested.connect(
+            lambda *_: emitted.append("device")
+        )
+        QMetaObject.invokeMethod(bar, "positionTruthPopup")
+        QMetaObject.invokeMethod(popup, "open")
+        QTest.qWait(120)
+        assert popup.property("visible") is True
+        popup_width = float(popup.property("width"))
+        popup_height = float(popup.property("height"))
+        popup_x = float(popup.property("x"))
+        popup_y = float(popup.property("y"))
+        badge_x, badge_y = _offset_within(badge, bar)
+        badge_x += float(bar.property("x") or 0.0)
+        badge_y += float(bar.property("y") or 0.0)
+        badge_width = float(badge.property("width"))
+        badge_height = float(badge.property("height"))
+        assert abs((popup_x + popup_width) - (badge_x + badge_width)) <= 1.0
+        assert popup_x >= 8.0
+        assert popup_x + popup_width <= width - 8.0
+        assert popup_y >= 8.0
+        assert popup_y + popup_height <= height - 8.0
+        gap = badge_y - (popup_y + popup_height)
+        assert 8.0 <= gap <= 12.0
+        assert 420.0 <= popup_width <= 520.0
+        assert 420.0 <= popup_height <= 520.0
+        assert badge_height == pytest.approx(34.0)
+        QMetaObject.invokeMethod(popup, "close")
+        QTest.qWait(300)
+        assert popup.property("visible") is False
+        assert badge.property("activeFocus") is True
+        assert emitted == []
+    finally:
+        window.close()
+        window.deleteLater()
+        component.deleteLater()
+        engine.deleteLater()
+
+
 def test_signal_truth_popup_never_claims_unproven_truth(qapp):
     popup = _instantiate(QML_DIR / "player" / "SignalTruthPopup.qml", 440, 620)
     try:
@@ -219,7 +321,12 @@ def test_signal_truth_popup_never_claims_unproven_truth(qapp):
             encoding="utf-8"
         )
         assert "parent: Overlay.overlay" in now_playing
-        assert "Overlay.overlay.height - height - MichiSpacing.sm" in now_playing
-        assert "qualityBadge.mapToItem(Overlay.overlay, 0, 0).y" in now_playing
+        assert "function positionTruthPopup()" in now_playing
+        assert (
+            "Overlay.overlay.height - signalTruthPopup.height - MichiSpacing.sm"
+            in now_playing
+        )
+        assert "qualityBadge.mapToItem(Overlay.overlay, 0, 0)" in now_playing
+        assert "opener.y - signalTruthPopup.height" in now_playing
     finally:
         popup.deleteLater()

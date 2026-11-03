@@ -19,7 +19,11 @@ from michi.domain.signal_truth import (
     SignalTruthVerdict,
     SourceFileFactsEvidence,
 )
-from michi.presentation.signal_path_bridge import SignalPathBridge
+from michi.presentation.signal_path_bridge import (
+    SignalPathBridge,
+    _path_proof_label,
+    _path_proof_state,
+)
 
 _FORBIDDEN = (
     "Bit-perfect playback",
@@ -318,6 +322,110 @@ def _snapshot() -> SignalTruthSnapshot:
 def _recorder_with_active(snapshot: SignalTruthSnapshot) -> SignalTruthRecorder:
     recorder = SignalTruthRecorder()
     recorder._active = snapshot
+    return recorder
+
+
+def test_quality_badge_fields_are_typed_and_never_parsed_from_labels() -> None:
+    snapshot = _snapshot()
+    bridge = SignalPathBridge(
+        _recorder_with_active(snapshot),
+        _Output(),
+        _Processing(),
+    )
+
+    assert bridge.sourceQualityClass == "pcm_standard"
+    assert bridge.sourceFormatLabel == "FLAC"
+    assert bridge.sourceRateDepthLabel == "16-bit · 44.1 kHz"
+    assert bridge.pathProofState == "partially_verified"
+    assert bridge.pathProofLabel == "Partially verified"
+    assert "Nominal quality: FLAC 16-bit" in bridge.qualityAccessibleText
+    assert "No active path" not in bridge.qualityAccessibleText
+
+
+def test_wav_container_wins_over_the_raw_codec_name() -> None:
+    snapshot = _snapshot()
+    facts = SourceFileFactsEvidence(
+        snapshot.identity,
+        container="WAVE",
+        codec="pcm_s16le",
+        nominal_pcm=PcmTuple(44_100, "S16LE", 2, 16),
+    )
+    bridge = SignalPathBridge(
+        _recorder_with_active(replace(snapshot, source_file_facts=facts)),
+        _Output(),
+        _Processing(),
+    )
+
+    assert bridge.sourceFormatLabel == "WAVE"
+    assert bridge.sourceQualityClass == "pcm_standard"
+
+
+def test_hires_quality_requires_more_than_sixteen_bits_or_48_khz() -> None:
+    snapshot = _snapshot()
+    pcm = PcmTuple(96_000, "S24LE", 2, 24)
+    facts = SourceFileFactsEvidence(
+        snapshot.identity, container="FLAC", codec="flac", nominal_pcm=pcm
+    )
+    bridge = SignalPathBridge(
+        _recorder_with_active(replace(snapshot, source_file_facts=facts)),
+        _Output(),
+        _Processing(),
+    )
+
+    assert bridge.sourceQualityClass == "pcm_hires"
+    assert bridge.sourceRateDepthLabel == "24-bit · 96 kHz"
+
+
+def test_dsd_and_lossy_are_distinct_quality_classes() -> None:
+    snapshot = _snapshot()
+    dsd_facts = SourceFileFactsEvidence(
+        snapshot.identity, container="DSF", codec="dsd64", nominal_pcm=None
+    )
+    dsd_bridge = SignalPathBridge(
+        _recorder_with_active(replace(snapshot, source_file_facts=dsd_facts)),
+        _Output(),
+        _Processing(),
+    )
+    assert dsd_bridge.sourceQualityClass == "dsd"
+    assert dsd_bridge.sourceFormatLabel == "DSD64"
+    assert dsd_bridge.sourceRateDepthLabel == "1-bit"
+
+    lossy_facts = SourceFileFactsEvidence(
+        snapshot.identity, container="MP3", codec="mp3", nominal_pcm=None
+    )
+    lossy_bridge = SignalPathBridge(
+        _recorder_with_active(replace(snapshot, source_file_facts=lossy_facts)),
+        _Output(),
+        _Processing(),
+    )
+    assert lossy_bridge.sourceQualityClass == "lossy"
+    assert lossy_bridge.sourceFormatLabel == "MP3"
+
+
+def test_historical_and_contradicted_paths_never_publish_verified_proof() -> None:
+    snapshot = _snapshot()
+    historical = SignalPathBridge(
+        _recorder_with_last(snapshot),
+        _Output(),
+        _Processing(),
+    )
+    assert historical.pathProofState == "historical"
+    assert historical.pathProofLabel == "Last playback"
+    assert "Verified path" not in historical.qualityAccessibleText
+
+    contradicted = _path_proof_state(
+        temporal_status="ACTIVE",
+        verdict_state="contradicted",
+        tone="error",
+        proof_parts=["Source", "host", "transport", "device"],
+    )
+    assert contradicted == "contradicted"
+    assert _path_proof_label(contradicted) == "Output mismatch"
+
+
+def _recorder_with_last(snapshot: SignalTruthSnapshot) -> SignalTruthRecorder:
+    recorder = SignalTruthRecorder()
+    recorder._last = snapshot
     return recorder
 
 

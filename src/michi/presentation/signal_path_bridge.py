@@ -41,6 +41,110 @@ _CONFIG_ACTIONS = {
     "OPEN_DEVICE_SETUP",
 }
 
+_LOSSY_TOKENS = ("mp3", "aac", "vorbis", "opus", "wma", "lossy")
+_DSD_TOKENS = ("dsd", "dsf", "dff")
+
+
+def _quality_class(source: dict[str, Any] | None) -> str:
+    """Classify the nominal source quality from structured facts only."""
+    if not source:
+        return "unknown"
+    codec = str(source.get("codec") or "").casefold()
+    container = str(source.get("container") or "").casefold()
+    nominal = source.get("nominal_pcm") or {}
+    transport = str(nominal.get("format") or "").casefold()
+    token = f"{codec} {container} {transport}"
+    if any(item in token for item in _DSD_TOKENS):
+        return "dsd"
+    if any(item in token for item in _LOSSY_TOKENS):
+        return "lossy"
+    if nominal:
+        bits = int(nominal.get("significant_bits") or 0)
+        rate = int(nominal.get("rate_hz") or 0)
+        if bits > 16 or rate > 48_000:
+            return "pcm_hires"
+        return "pcm_standard"
+    return "unknown"
+
+
+def _quality_format_label(
+    source: dict[str, Any] | None, path: str, quality_class: str
+) -> str:
+    if quality_class == "dsd":
+        token = " ".join(
+            str((source or {}).get(key) or "").casefold()
+            for key in ("codec", "container")
+        )
+        for family in ("dsd256", "dsd128", "dsd64"):
+            if family in token:
+                return family.upper()
+        return "DSD"
+    source = source or {}
+    codec = str(source.get("codec") or "").strip()
+    container = str(source.get("container") or "").strip()
+    if container and (not codec or codec.casefold().startswith("pcm_")):
+        return container.upper()
+    if codec:
+        return codec.upper()
+    if container:
+        return container.upper()
+    suffix = path.rsplit(".", 1)[-1].strip() if "." in path else ""
+    return suffix.upper() if suffix else "NO TRACK"
+
+
+def _quality_rate_depth_label(source: dict[str, Any] | None, quality_class: str) -> str:
+    if not source:
+        return "format unknown"
+    nominal = source.get("nominal_pcm") or {}
+    if quality_class == "dsd" and not nominal:
+        return "1-bit"
+    rate = int(nominal.get("rate_hz") or 0)
+    bits = int(nominal.get("significant_bits") or 0)
+    parts: list[str] = []
+    if bits > 0:
+        parts.append(f"{bits}-bit")
+    if rate > 0:
+        parts.append(f"{rate / 1000:g} kHz")
+    if parts:
+        return " · ".join(parts)
+    if quality_class == "lossy":
+        return "lossy"
+    return "format unknown"
+
+
+def _path_proof_state(
+    *,
+    temporal_status: str,
+    verdict_state: str,
+    tone: str,
+    proof_parts: list[str],
+) -> str:
+    if temporal_status == "NONE":
+        return "no_path"
+    if temporal_status == "PENDING":
+        return "pending"
+    if temporal_status == "HISTORICAL":
+        return "historical"
+    if verdict_state == "contradicted" or tone == "error":
+        return "contradicted"
+    expected = {"Source", "host", "transport", "device"}
+    if expected.issubset(set(proof_parts)):
+        return "verified"
+    if proof_parts:
+        return "partially_verified"
+    return "no_path"
+
+
+def _path_proof_label(state: str) -> str:
+    return {
+        "no_path": "No verified path",
+        "pending": "Preparing path",
+        "historical": "Last playback",
+        "verified": "Verified path",
+        "partially_verified": "Partially verified",
+        "contradicted": "Output mismatch",
+    }.get(state, "No verified path")
+
 
 def _pcm_label(item: dict[str, Any] | None) -> str:
     if not item:
@@ -324,11 +428,24 @@ class SignalPathBridge(QObject):
                     state="unknown",
                 ),
             ]
+            quality_class = "unknown"
+            format_label = _quality_format_label(None, path, quality_class)
+            rate_depth_label = _quality_rate_depth_label(None, quality_class)
+            proof_state = "no_path"
+            proof_label = _path_proof_label(proof_state)
             self._projection = {
                 "headline": headline,
                 "proofLevel": "Not verified",
                 "generation": self._generation,
                 "sourceIdentity": path,
+                "sourceQualityClass": quality_class,
+                "sourceFormatLabel": format_label,
+                "sourceRateDepthLabel": rate_depth_label,
+                "pathProofState": proof_state,
+                "pathProofLabel": proof_label,
+                "qualityAccessibleText": (
+                    f"Nominal quality: {format_label}. Path: {proof_label}"
+                ),
                 "stages": self._decorate_stages(stages),
                 "reasonCodes": list(
                     self._output_value("signalTruthReasonCodes", []) or []
@@ -364,6 +481,9 @@ class SignalPathBridge(QObject):
             else (output_label or canonical_headline)
         )
         source = diagnostics.get("source") or {}
+        quality_class = _quality_class(source)
+        format_label = _quality_format_label(source, str(path or ""), quality_class)
+        rate_depth_label = _quality_rate_depth_label(source, quality_class)
         decoded = diagnostics.get("decoded")
         engine = diagnostics.get("engine") or {}
         alsa = diagnostics.get("alsa")
@@ -686,6 +806,13 @@ class SignalPathBridge(QObject):
         if snapshot_device:
             proof_parts.append("device")
         proof_level = " · ".join(proof_parts) or "Not verified"
+        proof_state = _path_proof_state(
+            temporal_status=temporal_status,
+            verdict_state=str(verdict_state),
+            tone=tone,
+            proof_parts=proof_parts,
+        )
+        proof_label = _path_proof_label(proof_state)
         if historical:
             indicator_state = "historical"
             indicator_tooltip = "Signal Truth: last playback (historical)"
@@ -715,6 +842,15 @@ class SignalPathBridge(QObject):
             "proofLevel": proof_level,
             "generation": self._generation,
             "sourceIdentity": str(path or ""),
+            "sourceQualityClass": quality_class,
+            "sourceFormatLabel": format_label,
+            "sourceRateDepthLabel": rate_depth_label,
+            "pathProofState": proof_state,
+            "pathProofLabel": proof_label,
+            "qualityAccessibleText": (
+                f"Nominal quality: {format_label} {rate_depth_label}. "
+                f"Path: {proof_label}"
+            ).strip(),
             "stages": stages,
             "reasonCodes": reasons,
             "headlineTone": tone,
@@ -782,6 +918,30 @@ class SignalPathBridge(QObject):
     @Property(str, notify=state_changed)
     def pathVerdict(self) -> str:
         return str(self._get("pathVerdict", "unknown"))
+
+    @Property(str, notify=state_changed)
+    def sourceQualityClass(self) -> str:
+        return str(self._get("sourceQualityClass", "unknown"))
+
+    @Property(str, notify=state_changed)
+    def sourceFormatLabel(self) -> str:
+        return str(self._get("sourceFormatLabel", "NO TRACK"))
+
+    @Property(str, notify=state_changed)
+    def sourceRateDepthLabel(self) -> str:
+        return str(self._get("sourceRateDepthLabel", "format unknown"))
+
+    @Property(str, notify=state_changed)
+    def pathProofState(self) -> str:
+        return str(self._get("pathProofState", "no_path"))
+
+    @Property(str, notify=state_changed)
+    def pathProofLabel(self) -> str:
+        return str(self._get("pathProofLabel", "No verified path"))
+
+    @Property(str, notify=state_changed)
+    def qualityAccessibleText(self) -> str:
+        return str(self._get("qualityAccessibleText", "Nominal quality unknown"))
 
     @Property(str, notify=state_changed)
     def indicatorState(self) -> str:

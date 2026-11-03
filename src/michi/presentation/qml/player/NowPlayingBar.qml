@@ -691,49 +691,87 @@ Item {
                 hoverEnabled: true
                 Accessible.role: Accessible.Button
                 Accessible.name: root.signalPathBridge
-                    ? root.signalPathBridge.indicatorTooltip
-                    : qsTr("Signal Truth: path not verified")
-                Accessible.description: qsTr("Nominal format: %1").arg(
-                    root.qualityText())
+                    ? root.signalPathBridge.qualityAccessibleText
+                    : qsTr("Nominal quality unknown. No verified path")
+                Accessible.description: qsTr("Open Signal Truth")
                 onClicked: {
                     root.closeOtherAudioPopups("truth")
+                    root.positionTruthPopup()
                     signalTruthPopup.open()
                 }
 
-                contentItem: Row {
-                    anchors.centerIn: parent
-                    spacing: MichiSpacing.xs
-                    MichiSignalIndicator {
-                        anchors.verticalCenter: parent.verticalCenter
-                        indicatorState: root.signalPathBridge
-                            ? root.signalPathBridge.indicatorState : "unknown"
-                        tooltip: root.signalPathBridge
-                            ? root.signalPathBridge.indicatorTooltip
-                            : qsTr("Signal Truth: path not verified")
+                contentItem: RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: MichiSpacing.md
+                    anchors.rightMargin: MichiSpacing.sm
+                    spacing: 7
+                    Rectangle {
+                        Layout.alignment: Qt.AlignVCenter
+                        Layout.preferredWidth: 8
+                        Layout.preferredHeight: 8
+                        radius: 4
+                        color: root.qualityDotColor()
+                        Accessible.ignored: true
                     }
                     MichiText {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: qualityBadge.width - MichiSpacing.xl * 2
-                        text: root.qualityText()
+                        Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignVCenter
+                        text: root.signalPathBridge
+                            ? root.signalPathBridge.sourceFormatLabel
+                            : root.qualityText()
                         role: "technical"
                         technical: true
                         color: MichiPalette.textPrimary
                         font.weight: Font.DemiBold
                         elide: Text.ElideRight
                     }
+                    MichiText {
+                        visible: root.signalPathBridge
+                            && root.signalPathBridge.sourceRateDepthLabel !== ""
+                        Layout.alignment: Qt.AlignVCenter
+                        text: "·"
+                        role: "technical"
+                        color: MichiPalette.textMuted
+                    }
+                    MichiText {
+                        visible: root.signalPathBridge
+                            && root.signalPathBridge.sourceRateDepthLabel !== ""
+                        Layout.alignment: Qt.AlignVCenter
+                        Layout.maximumWidth: qualityBadge.width * 0.52
+                        text: root.signalPathBridge
+                            ? root.signalPathBridge.sourceRateDepthLabel : ""
+                        role: "technical"
+                        color: MichiPalette.textSecondary
+                        elide: Text.ElideRight
+                    }
+                    MichiIcon {
+                        Layout.alignment: Qt.AlignVCenter
+                        Layout.preferredWidth: 12
+                        Layout.preferredHeight: 12
+                        visible: root.signalPathBridge !== null
+                        name: "chevron-right"
+                        iconColor: root.signalPathBridge
+                            && root.signalPathBridge.pathProofState === "contradicted"
+                            ? MichiPalette.error
+                            : root.signalPathBridge
+                                && root.signalPathBridge.pathProofState === "verified"
+                                ? MichiPalette.textSecondary
+                                : MichiPalette.textMuted
+                        strokeWidth: 1.6
+                    }
                 }
 
                 background: Rectangle {
-                    radius: 13
+                    radius: MichiRadius.pill
                     color: qualityBadge.pressed
                         ? MichiSemanticColors.surfacePressed
                         : qualityBadge.hovered
                             ? MichiSemanticColors.surfaceHover
-                            : MichiSemanticColors.auroraPurpleSurfaceSoft
+                            : MichiPalette.smoke
                     border.width: 1
                     border.color: qualityBadge.visualFocus
                         ? MichiSemanticColors.focusRing
-                        : MichiSemanticColors.auroraPurpleBorderMedium
+                        : MichiSemanticColors.borderSubtle
                     MichiFocusRing { visualFocus: qualityBadge.visualFocus }
                 }
             }
@@ -741,14 +779,6 @@ Item {
             SignalTruthPopup {
                 id: signalTruthPopup
                 parent: Overlay.overlay
-                x: Math.max(MichiSpacing.sm, Math.min(
-                    Overlay.overlay.width - width - MichiSpacing.sm,
-                    qualityBadge.mapToItem(Overlay.overlay, 0, 0).x
-                        + qualityBadge.width - width))
-                y: Math.max(MichiSpacing.sm, Math.min(
-                    Overlay.overlay.height - height - MichiSpacing.sm,
-                    qualityBadge.mapToItem(Overlay.overlay, 0, 0).y
-                        - height - MichiSpacing.md))
                 signalPathBridge: root.signalPathBridge
                 focusReturnTarget: qualityBadge
                 onConfigurationAction: {
@@ -796,6 +826,37 @@ Item {
             return root.formatLabel
         return root.hasTrack ? "QUALITY —" : "NO TRACK"
     }
+
+    function qualityDotColor() {
+        const qualityClass = root.signalPathBridge
+            ? root.signalPathBridge.sourceQualityClass : "unknown"
+        if (qualityClass === "pcm_hires")
+            return MichiPalette.auroraBlue
+        if (qualityClass === "dsd")
+            return MichiPalette.auroraPurple
+        if (qualityClass === "pcm_standard")
+            return MichiPalette.success
+        if (qualityClass === "lossy")
+            return MichiPalette.warning
+        return MichiPalette.textMuted
+    }
+
+    function positionTruthPopup() {
+        if (!Overlay.overlay || !signalTruthPopup)
+            return
+        const opener = qualityBadge.mapToItem(Overlay.overlay, 0, 0)
+        signalTruthPopup.x = Math.max(MichiSpacing.sm, Math.min(
+            Overlay.overlay.width - signalTruthPopup.width - MichiSpacing.sm,
+            opener.x + qualityBadge.width - signalTruthPopup.width))
+        signalTruthPopup.y = Math.max(MichiSpacing.sm, Math.min(
+            Overlay.overlay.height - signalTruthPopup.height - MichiSpacing.sm,
+            opener.y - signalTruthPopup.height - MichiSpacing.md))
+    }
+
+    onWidthChanged: if (signalTruthPopup && signalTruthPopup.opened)
+        positionTruthPopup()
+    onYChanged: if (signalTruthPopup && signalTruthPopup.opened)
+        positionTruthPopup()
 
     function closeOtherAudioPopups(exceptId) {
         if (exceptId !== "equalizer")
