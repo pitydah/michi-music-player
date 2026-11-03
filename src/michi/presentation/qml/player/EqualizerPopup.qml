@@ -128,7 +128,7 @@ Popup {
                     ? "success" : "neutral"
 
             trailingData: MichiSwitch {
-                checked: root.bridgeValue("enabledDraft", true)
+                checked: root.bridgeValue("enabledEffective", false)
                 enabled: root.controlsEnabled
                 focusPolicy: Qt.StrongFocus
                 Accessible.name: qsTr("Enable equalizer")
@@ -217,31 +217,40 @@ Popup {
             }
         }
 
-        RowLayout {
+        Flickable {
             Layout.fillWidth: true
-            spacing: MichiSpacing.xs
-            MichiText {
-                text: qsTr("Presets")
-                role: "caption"
-                color: MichiPalette.textSecondary
-            }
-            Repeater {
-                model: root.presets
-                delegate: MichiButton {
-                    required property var modelData
-                    text: modelData.displayName || modelData.label || modelData.id || ""
-                    variant: "ghost"
-                    implicitHeight: MichiMetrics.controlSmall
-                    selected: root.bridgeValue("presetId", "") === modelData.id
-                    enabled: root.controlsEnabled
-                    onClicked: {
-                        if (root.processingBridge)
-                            root.processingBridge.select_preset(modelData.id)
-                        root.commitDraft()
+            Layout.preferredHeight: MichiMetrics.controlSmall
+            contentWidth: presetRow.implicitWidth
+            contentHeight: height
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+
+            RowLayout {
+                id: presetRow
+                height: parent.height
+                spacing: MichiSpacing.xs
+                MichiText {
+                    text: qsTr("Presets")
+                    role: "caption"
+                    color: MichiPalette.textSecondary
+                }
+                Repeater {
+                    model: root.presets
+                    delegate: MichiButton {
+                        required property var modelData
+                        text: modelData.displayName || modelData.label || modelData.id || ""
+                        variant: "ghost"
+                        implicitHeight: MichiMetrics.controlSmall
+                        selected: root.bridgeValue("presetId", "") === modelData.id
+                        enabled: root.controlsEnabled
+                        onClicked: {
+                            if (root.processingBridge)
+                                root.processingBridge.select_preset(modelData.id)
+                            root.commitDraft()
+                        }
                     }
                 }
             }
-            Item { Layout.fillWidth: true }
         }
 
         RowLayout {

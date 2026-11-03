@@ -640,6 +640,7 @@ Item {
             // The popup stays LIVE-BOUND to the projections below: engine
             // state is never copied imperatively, so it updates while open.
             MichiIconButton {
+                id: audioEngineButton
                 objectName: "audioEngineButton"
                 Layout.row: 1
                 Layout.column: 0
@@ -653,6 +654,7 @@ Item {
                     // Paint cached facts immediately. The isolated refresh
                     // updates the live-bound rows after the popup is visible.
                     root.closeOtherAudioPopups("engine")
+                    root.positionEnginePopup()
                     enginePopup.open()
                     root.audioEngineRefreshRequested()
                 }
@@ -661,8 +663,7 @@ Item {
 
             AudioEnginePopup {
                 id: enginePopup
-                y: -height - MichiSpacing.md
-                x: 0
+                parent: Overlay.overlay
                 // LIVE BINDINGS (M11.3-UI-R1): no imperative copies — the
                 // popup always mirrors the current bridge projections,
                 // including while it is open.
@@ -837,10 +838,30 @@ Item {
             opener.y - signalTruthPopup.height - MichiSpacing.md))
     }
 
-    onWidthChanged: if (signalTruthPopup && signalTruthPopup.opened)
-        positionTruthPopup()
-    onYChanged: if (signalTruthPopup && signalTruthPopup.opened)
-        positionTruthPopup()
+    function positionEnginePopup() {
+        if (!Overlay.overlay || !enginePopup)
+            return
+        const opener = audioEngineButton.mapToItem(Overlay.overlay, 0, 0)
+        enginePopup.x = Math.max(MichiSpacing.sm, Math.min(
+            Overlay.overlay.width - enginePopup.width - MichiSpacing.sm,
+            opener.x))
+        enginePopup.y = Math.max(MichiSpacing.sm, Math.min(
+            Overlay.overlay.height - enginePopup.height - MichiSpacing.sm,
+            opener.y - enginePopup.height - MichiSpacing.md))
+    }
+
+    onWidthChanged: {
+        if (signalTruthPopup && signalTruthPopup.opened)
+            positionTruthPopup()
+        if (enginePopup && enginePopup.opened)
+            positionEnginePopup()
+    }
+    onYChanged: {
+        if (signalTruthPopup && signalTruthPopup.opened)
+            positionTruthPopup()
+        if (enginePopup && enginePopup.opened)
+            positionEnginePopup()
+    }
 
     function closeOtherAudioPopups(exceptId) {
         if (exceptId !== "equalizer")

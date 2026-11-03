@@ -156,13 +156,9 @@ Popup {
                 ColumnLayout {
                     width: parent.width
                     spacing: MichiSpacing.md
-                    MichiText {
-                        text: qsTr("Graphic equalizer · 10 editable bands")
-                        role: "section"
-                    }
                     Rectangle {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 60
+                        Layout.preferredHeight: 48
                         radius: MichiRadius.lg
                         color: MichiPalette.smoke
                         border.width: 1
@@ -229,6 +225,7 @@ Popup {
                                 objectName: "advancedGraphicBand_" + index
                                 Layout.fillWidth: true
                                 Layout.minimumWidth: 34
+                                Layout.preferredHeight: 180
                                 bandLabel: modelData.label
                                 gainDb: modelData.gainDb
                                 inactive: modelData.inactiveReason !== ""
@@ -265,7 +262,7 @@ Popup {
                     MichiEqResponsePlot {
                         Layout.fillWidth: true
                         Layout.preferredHeight: Math.min(240,
-                            Math.max(180, root.height * 0.30))
+                            Math.max(220, root.height * 0.30))
                         points: root.bridgeValue("responseCurve", [])
                         sampleRate: 0
                     }
