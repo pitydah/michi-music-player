@@ -55,7 +55,7 @@ Item {
         : MichiPalette.textMuted
 
     // The height is content-driven, including expanded evidence rows.
-    implicitHeight: Math.max(root.compact ? 56 : 68,
+    implicitHeight: Math.max(root.compact ? 64 : 76,
         content.implicitHeight + (root.compact ? MichiSpacing.sm : MichiSpacing.md))
     activeFocusOnTab: root.expandable
     Accessible.role: root.expandable ? Accessible.Button : Accessible.StaticText
@@ -93,43 +93,43 @@ Item {
             // cannot leave a fixed 40px disconnected segment.
             Rectangle {
                 visible: !root.first
-                x: 16
+                x: 17
                 y: 0
                 width: 2
-                height: 12
+                height: 10
                 color: root.segmentColor
                 opacity: 0.75
             }
             Rectangle {
                 visible: !root.last
-                x: 16
-                y: 40
+                x: 17
+                y: 42
                 width: 2
-                height: Math.max(0, parent.height - 40)
+                height: Math.max(0, parent.height - 42)
                 color: root.segmentColor
                 opacity: 0.75
             }
             Rectangle {
-                x: 3
-                y: 12
-                width: 28
-                height: 28
+                x: 2
+                y: 10
+                width: 32
+                height: 32
                 radius: 10
                 color: MichiPalette.smoke
                 border.width: 1
                 border.color: MichiSemanticColors.borderSubtle
                 MichiSignalStageIcon {
                     anchors.centerIn: parent
-                    width: 19
-                    height: 19
+                    width: 20
+                    height: 20
                     roleName: root.iconName
                     iconColor: MichiPalette.textPrimary
                 }
             }
             // Evidence is NOT the identity icon. It is a separate badge.
             Rectangle {
-                x: 24
-                y: 32
+                x: 26
+                y: 34
                 width: 15
                 height: 15
                 radius: 7.5

@@ -115,7 +115,8 @@ def test_observed_snapshot_projects_canonical_facts_and_no_future_claims() -> No
     assert bridge.active is True
     assert bridge.historical is False
     assert bridge.indicatorState == "observed"
-    assert bridge.stages[0]["summary"] == "flac · FLAC"
+    assert bridge.stages[0]["summary"] == "FLAC"
+    assert bridge.stages[0]["detail"] == "16-bit · 44.1 kHz"
     assert bridge.stages[0]["first"] is True
     assert bridge.stages[-1]["last"] is True
     assert bridge.stages[2]["summary"] == "Bypassed"
@@ -135,7 +136,8 @@ def test_historical_snapshot_is_never_presented_as_active() -> None:
     assert bridge.historical is True
     assert bridge.headline == "Last playback · historical"
     assert bridge.indicatorState == "historical"
-    assert all(stage["state"] == "historical" for stage in bridge.stages)
+    assert all(stage.get("historical") is True for stage in bridge.stages)
+    assert all(stage["state"] != "historical" for stage in bridge.stages)
     assert bridge.statusLabel == "Last playback · historical"
 
 
@@ -421,6 +423,26 @@ def test_historical_and_contradicted_paths_never_publish_verified_proof() -> Non
     )
     assert contradicted == "contradicted"
     assert _path_proof_label(contradicted) == "Output mismatch"
+
+
+def test_device_stage_prefers_route_name_over_raw_usb_identity() -> None:
+    class _NamedOutput(_Output):
+        devices = [
+            {
+                "stableDeviceId": "usb:f11",
+                "displayName": "Studio DAC",
+            }
+        ]
+
+    bridge = SignalPathBridge(
+        _recorder_with_active(_snapshot()),
+        _NamedOutput(),
+        _Processing(),
+    )
+
+    device = next(stage for stage in bridge.stages if stage["id"] == "device")
+    assert device["summary"] == "Studio DAC"
+    assert ["Stable ID", "usb:f11"] in device["detailRows"]
 
 
 def _recorder_with_last(snapshot: SignalTruthSnapshot) -> SignalTruthRecorder:

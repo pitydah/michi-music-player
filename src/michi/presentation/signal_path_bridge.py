@@ -314,6 +314,25 @@ class SignalPathBridge(QObject):
                 return True, event
         return True, None
 
+    def _device_display_name(self, stable_device_id: str) -> str:
+        devices = self._output_value("devices", []) or []
+        try:
+            rows = list(devices)
+        except TypeError:
+            return "Audio device"
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            identity = str(
+                row.get("stableDeviceId") or row.get("stable_device_id") or ""
+            )
+            if identity != stable_device_id:
+                continue
+            name = str(row.get("displayName") or row.get("display_name") or "")
+            if name:
+                return name
+        return "Audio device" if stable_device_id else "Device not selected"
+
     def _output_value(self, name: str, fallback: Any = None) -> Any:
         try:
             return self._output.property(name)
@@ -359,8 +378,10 @@ class SignalPathBridge(QObject):
         decorated: list[dict[str, Any]] = []
         for index, stage in enumerate(stages):
             row = dict(stage)
-            if historical and row["state"] != "error":
-                row["state"] = "historical"
+            # Historical is a property of the whole capture, not of every
+            # stage. One global badge prevents five repeated "Historical"
+            # labels while the observed facts remain readable.
+            row["historical"] = historical
             row["index"] = index
             row["count"] = count
             row["first"] = index == 0
@@ -499,11 +520,9 @@ class SignalPathBridge(QObject):
 
         source_container = str(source.get("container") or "").strip()
         source_codec = str(source.get("codec") or "").strip()
-        source_name = " · ".join(
-            part for part in (source_codec, source_container) if part
-        ) or (path.rsplit("/", 1)[-1] if path else "Source observed")
+        source_name = format_label
         nominal = source.get("nominal_pcm")
-        source_detail = _pcm_label(nominal) if nominal else "Nominal format unknown"
+        source_detail = rate_depth_label if source else "Nominal format unknown"
         source_rows: list[tuple[str, str]] = []
         if source_container:
             source_rows.append(("Container", source_container))
@@ -653,7 +672,7 @@ class SignalPathBridge(QObject):
 
         snapshot_device = str(identity.get("stable_device_id") or "")
         selected_device = str(self._output_value("activeDeviceId", "") or "")
-        device_summary = snapshot_device or selected_device or "Device not selected"
+        device_summary = self._device_display_name(snapshot_device or selected_device)
         device_detail = str(self._output_value("signalTruthSummary", "") or "")
         device_action = "OPEN_DEVICE_SETUP"
         device_state = "observed" if snapshot_device else "unknown"

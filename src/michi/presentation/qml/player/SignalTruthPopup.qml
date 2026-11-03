@@ -22,6 +22,27 @@ Popup {
         ? signalPathBridge.proofLevel : qsTr("Not verified")
     readonly property string statusLabel: signalPathBridge
         ? signalPathBridge.statusLabel : qsTr("No active path")
+    readonly property string temporalStatus: signalPathBridge
+        ? signalPathBridge.status : "NONE"
+    readonly property string temporalBadge: signalPathBridge
+        ? signalPathBridge.status === "ACTIVE" ? qsTr("LIVE")
+        : signalPathBridge.status === "HISTORICAL" ? qsTr("LAST PLAYBACK")
+        : signalPathBridge.status === "PENDING" ? qsTr("PREPARING")
+        : qsTr("NOT ACTIVE")
+        : qsTr("NOT ACTIVE")
+    readonly property string proofState: signalPathBridge
+        ? signalPathBridge.pathProofState : "no_path"
+    readonly property string proofLabel: signalPathBridge
+        ? signalPathBridge.pathProofLabel : qsTr("No verified path")
+    readonly property string proofTone: proofState === "verified" ? "success"
+        : proofState === "contradicted" ? "error"
+        : proofState === "partially_verified" ? "warning"
+        : proofState === "pending" ? "active"
+        : "neutral"
+    readonly property string sourceLine: signalPathBridge
+        ? signalPathBridge.sourceFormatLabel + " · "
+            + signalPathBridge.sourceRateDepthLabel
+        : qsTr("NO TRACK")
     readonly property string indicatorState: signalPathBridge
         ? signalPathBridge.indicatorState : "none"
     readonly property string indicatorTooltip: signalPathBridge
@@ -77,7 +98,7 @@ Popup {
 
     onOpened: {
         root.expandedStageId = ""
-        closeButton.forceActiveFocus()
+        Qt.callLater(stageView.focusFirstStage)
     }
     onClosed: if (focusReturnTarget) focusReturnTarget.forceActiveFocus()
 
@@ -86,14 +107,39 @@ Popup {
 
         MichiPopupHeader {
             iconName: "output-status"
-            title: qsTr("Signal Truth")
-            subtitle: qsTr("Observed signal path")
-            badgeText: root.statusLabel
-            badgeTone: root.indicatorState === "error" ? "error"
-                : root.indicatorState === "pending" ? "active"
-                : root.indicatorState === "observed"
-                    || root.indicatorState === "transformed" ? "success"
+            title: qsTr("SIGNAL TRUTH")
+            subtitle: qsTr("Actual audio signal path")
+            badgeText: root.temporalBadge
+            badgeTone: root.temporalStatus === "ACTIVE" ? "success"
+                : root.temporalStatus === "PENDING" ? "active"
                 : "neutral"
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.minimumHeight: 38
+            spacing: 8
+            MichiQualityDot {
+                Layout.alignment: Qt.AlignVCenter
+                diameter: 8
+                qualityClass: root.signalPathBridge
+                    ? root.signalPathBridge.sourceQualityClass : "unknown"
+            }
+            MichiText {
+                text: root.sourceLine
+                role: "technical"
+                technical: true
+                font.weight: Font.DemiBold
+                color: MichiPalette.textPrimary
+                Layout.fillWidth: true
+                elide: Text.ElideRight
+            }
+            MichiStatusChip {
+                visible: root.temporalStatus !== "HISTORICAL"
+                text: root.proofLabel
+                tone: root.proofTone
+                dotVisible: false
+            }
         }
 
         RowLayout {
@@ -127,6 +173,7 @@ Popup {
             ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
             MichiSignalPathView {
+                id: stageView
                 width: stagesScroll.availableWidth
                 stages: root.stages
                 expandedStageId: root.expandedStageId
@@ -141,13 +188,6 @@ Popup {
 
         MichiPopupFooter {
             note: qsTr("Proof scope · %1").arg(root.proofLevel)
-            MichiButton {
-                id: closeButton
-                text: qsTr("Close")
-                variant: "ghost"
-                implicitHeight: MichiMetrics.controlSmall
-                onClicked: root.close()
-            }
         }
     }
 }

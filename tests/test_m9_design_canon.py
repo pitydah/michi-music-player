@@ -505,9 +505,8 @@ def test_precision_pass_uses_resizable_smoked_surfaces_without_accent_rules() ->
         'objectName: "queueButton"', 1
     )[0]
     assert "MichiSignalIndicator" not in quality
-    assert "Layout.preferredWidth: 8" in quality
-    assert "Layout.preferredHeight: 8" in quality
-    assert "qualityDotColor()" in quality
+    assert "MichiQualityDot" in quality
+    assert "qualityClass" in quality
     assert "GradientStop" not in quality
 
 

@@ -139,11 +139,10 @@ def test_quality_badge_is_a_typed_capsule_and_real_signal_truth_button():
     assert "qualityAccessibleText" in block
     assert "sourceFormatLabel" in block
     assert "sourceRateDepthLabel" in block
-    assert "sourceQualityClass" not in block
+    assert "MichiQualityDot" in block
+    assert "sourceQualityClass" in block
     assert "MichiSignalIndicator" not in block
     assert "indicatorState" not in block
-    assert "Layout.preferredWidth: 8" in block
-    assert "Layout.preferredHeight: 8" in block
     assert "GradientStop" not in block
 
 
@@ -163,8 +162,7 @@ def test_quality_badge_and_proof_are_bound_to_typed_bridge_facts():
     assert "signalPathBridge.qualityAccessibleText" in block
     assert "signalPathBridge.sourceFormatLabel" in block
     assert "signalPathBridge.sourceRateDepthLabel" in block
-    assert "qualityDotColor()" in block
-    assert "function qualityDotColor()" in source
+    assert "MichiQualityDot" in block
     assert "signalPathBridge.sourceQualityClass" in source
     assert "signalPathBridge.pathProofState" in source
     assert "hasTrack" not in block
@@ -209,13 +207,29 @@ def test_advanced_equalizer_has_the_five_named_tabs(qapp):
             encoding="utf-8"
         )
         for tab in (
-            "Graphic",
-            "Parametric",
-            "Convolution / FIR",
-            "Signal / Resampling",
-            "Profiles",
+            "Graphic 10",
+            "PEAK 10",
+            "FIR status",
+            "Signal status",
+            "Presets",
         ):
             assert tab in source
+        assert "Math.min(960" in source
+        assert "Math.min(700" in source
+        assert "Layout.preferredHeight: Math.min(240" in source
+        assert 'text: qsTr("Discard draft")' in source
+        assert 'text: qsTr("Validate")' in source
+        assert 'text: qsTr("Apply draft")' in source
+        assert 'text: qsTr("Close")' not in source
+        plot = (QML_DIR / "components" / "MichiEqResponsePlot.qml").read_text(
+            encoding="utf-8"
+        )
+        assert "padLeft = 40" in plot
+        assert "padRight = 16" in plot
+        assert "padTop = 16" in plot
+        assert "padBottom = 26" in plot
+        assert 'qsTr("Calculated response · draft")' in plot
+        assert plot.count("Calculated response") == 1
     finally:
         popup.deleteLater()
 
@@ -316,6 +330,13 @@ def test_signal_truth_popup_never_claims_unproven_truth(qapp):
         assert "stages: root.stages" in source
         assert "expandedStageId" in source
         assert "signalTruthStagesScroll" in source
+        assert "MichiQualityDot" in source
+        assert "sourceLine" in source
+        assert "proofLabel" in source
+        assert "focusFirstStage" in source
+        assert "SIGNAL TRUTH" in source
+        assert "LAST PLAYBACK" in source
+        assert 'text: qsTr("Close")' not in source
         assert "Overlay.overlay.height : 584" in source
         now_playing = (QML_DIR / "player" / "NowPlayingBar.qml").read_text(
             encoding="utf-8"

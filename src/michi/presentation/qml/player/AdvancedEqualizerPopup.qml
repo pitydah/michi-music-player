@@ -28,6 +28,26 @@ Popup {
     readonly property var bands: processingBridge ? processingBridge.bands : []
     readonly property string effectiveState: processingBridge
         ? processingBridge.effectiveState : "unavailable"
+    readonly property bool busy: bridgeValue("busy", false)
+    readonly property bool dirty: bridgeValue("draftDirty", false)
+    readonly property string errorCode: bridgeValue("errorCode", "")
+    readonly property string workspaceState: errorCode !== "" ? "failed"
+        : busy ? (dirty ? "applying" : "validating")
+        : dirty ? "draft"
+        : effectiveState
+    readonly property string stateLabel: workspaceState === "draft" ? qsTr("Draft")
+        : workspaceState === "validating" ? qsTr("Validating")
+        : workspaceState === "applying" ? qsTr("Applying")
+        : workspaceState === "effective" ? qsTr("Effective · revision %1")
+            .arg(root.bridgeValue("committedRevision", 0))
+        : workspaceState === "bypassed" ? qsTr("Bypassed")
+        : workspaceState === "failed" ? qsTr("Failed")
+        : qsTr("Unavailable")
+    readonly property string stateTone: workspaceState === "effective" ? "success"
+        : workspaceState === "failed" ? "error"
+        : workspaceState === "unavailable" ? "warning"
+        : workspaceState === "applying" || workspaceState === "validating"
+            ? "active" : "neutral"
 
     function bridgeValue(name, fallback) {
         if (!processingBridge)
@@ -44,10 +64,10 @@ Popup {
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     // Advanced EQ is centred in the scene, so the window overlay owns both
     // dimensions. Binding to the opener clipped the whole surface to 2 px.
-    width: Math.max(320, Math.min(880, (Overlay.overlay
-        ? Overlay.overlay.width : 880) - 24))
-    height: Math.max(360, Math.min(680, (Overlay.overlay
-        ? Overlay.overlay.height : 700) - 24))
+    width: Math.max(320, Math.min(960, (Overlay.overlay
+        ? Overlay.overlay.width : 960) - 32))
+    height: Math.max(360, Math.min(700, (Overlay.overlay
+        ? Overlay.overlay.height : 700) - 32))
     enter: Transition {
         enabled: !MichiAccessibility.reducedMotion
         NumberAnimation {
@@ -87,19 +107,17 @@ Popup {
 
         MichiPopupHeader {
             iconName: "sliders"
+            Layout.minimumHeight: 68
             title: qsTr("Advanced Equalizer")
             subtitle: qsTr("10-band editing · readback-first DSP")
-            badgeText: root.effectiveState === "effective"
-                ? qsTr("Applied · revision %1").arg(root.bridgeValue("committedRevision", 0))
-                : root.effectiveState === "bypassed" ? qsTr("Bypassed")
-                : qsTr("Unavailable")
-            badgeTone: root.effectiveState === "effective" ? "success"
-                : root.effectiveState === "bypassed" ? "neutral" : "warning"
+            badgeText: root.stateLabel
+            badgeTone: root.stateTone
         }
 
         Flow {
             id: tabBar
             Layout.fillWidth: true
+            Layout.preferredHeight: 40
             spacing: 0
             Repeater {
                 model: root.tabs
@@ -112,6 +130,15 @@ Popup {
                     onClicked: root.activeTab = modelData.id
                 }
             }
+        }
+
+        MichiText {
+            visible: root.errorCode !== ""
+            Layout.fillWidth: true
+            text: root.bridgeValue("errorMessage", root.errorCode)
+            role: "caption"
+            color: MichiPalette.error
+            wrapMode: Text.WordWrap
         }
 
         StackLayout {
@@ -135,61 +162,65 @@ Popup {
                     }
                     Rectangle {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 118
+                        Layout.preferredHeight: 60
                         radius: MichiRadius.lg
                         color: MichiPalette.smoke
                         border.width: 1
                         border.color: MichiSemanticColors.borderSubtle
                         RowLayout {
                             anchors.fill: parent
-                            anchors.margins: MichiSpacing.lg
+                            anchors.margins: MichiSpacing.md
                             spacing: MichiSpacing.md
                             MichiIcon {
                                 name: "equalizer"
-                                width: 24
-                                height: 24
+                                width: 20
+                                height: 20
                                 iconColor: MichiPalette.warning
                             }
-                            ColumnLayout {
+                            MichiText {
+                                text: qsTr("ISO-31 awaits host readback. The ten rails below edit the real PCM DSP draft.")
+                                role: "secondary"
+                                color: MichiPalette.textSecondary
+                                wrapMode: Text.WordWrap
                                 Layout.fillWidth: true
-                                spacing: MichiSpacing.xxs
-                                MichiText {
-                                    text: qsTr("Requires host confirmation")
-                                    role: "body"
-                                    font.weight: Font.DemiBold
-                                }
-                                MichiText {
-                                    text: qsTr("Ten-band editing is live below. Native ISO-31 stays gated until GRAPHIC_EQ_NBANDS has host readback and a matching runtime identity.")
-                                    role: "secondary"
-                                    color: MichiPalette.textSecondary
-                                    wrapMode: Text.WordWrap
-                                    Layout.fillWidth: true
-                                }
                             }
                         }
                     }
-                    MichiText {
-                        text: qsTr("31-band is unavailable · the following ten bands edit the REAL PCM DSP draft.")
-                        role: "caption"
-                        color: MichiPalette.textMuted
-                        wrapMode: Text.WordWrap
-                        Layout.fillWidth: true
-                    }
                     MichiEqResponsePlot {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 170
+                        Layout.preferredHeight: Math.min(240,
+                            Math.max(180, root.height * 0.32))
                         points: root.bridgeValue("responseCurve", [])
                         sampleRate: 0
-                    }
-                    MichiText {
-                        Layout.fillWidth: true
-                        text: qsTr("Draft response · calculated, not measured · bands ±12 dB")
-                        role: "caption"
-                        color: MichiPalette.textSecondary
                     }
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: MichiSpacing.xs
+                        Item {
+                            Layout.preferredWidth: 40
+                            Layout.fillHeight: true
+                            MichiText {
+                                anchors.top: parent.top
+                                anchors.right: parent.right
+                                text: qsTr("+12")
+                                role: "micro"
+                                color: MichiPalette.textMuted
+                            }
+                            MichiText {
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.right: parent.right
+                                text: qsTr("0")
+                                role: "micro"
+                                color: MichiPalette.textMuted
+                            }
+                            MichiText {
+                                anchors.bottom: parent.bottom
+                                anchors.right: parent.right
+                                text: qsTr("−12")
+                                role: "micro"
+                                color: MichiPalette.textMuted
+                            }
+                        }
                         Repeater {
                             model: root.bands
                             delegate: MichiEqSlider {
@@ -233,14 +264,21 @@ Popup {
                     }
                     MichiEqResponsePlot {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 150
+                        Layout.preferredHeight: Math.min(240,
+                            Math.max(180, root.height * 0.30))
                         points: root.bridgeValue("responseCurve", [])
                         sampleRate: 0
                     }
-                    MichiText {
-                        text: qsTr("Draft curve · 256 points; no live spectrum")
-                        role: "micro"
-                        color: MichiPalette.textMuted
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 28
+                        spacing: MichiSpacing.md
+                        MichiText { text: qsTr("ON"); role: "micro"; Layout.preferredWidth: 36 }
+                        MichiText { text: qsTr("TYPE"); role: "micro"; Layout.preferredWidth: 120 }
+                        MichiText { text: qsTr("FREQ"); role: "micro"; Layout.preferredWidth: 88 }
+                        MichiText { text: qsTr("GAIN"); role: "micro"; Layout.fillWidth: true }
+                        MichiText { text: qsTr("Q"); role: "micro"; Layout.preferredWidth: 68 }
+                        MichiText { text: qsTr("FIXED"); role: "micro"; Layout.preferredWidth: 43 }
                     }
                     Repeater {
                         model: root.bands
@@ -251,16 +289,22 @@ Popup {
                             Layout.preferredHeight: 42
                             spacing: MichiSpacing.md
                             MichiText {
+                                text: qsTr("On")
+                                role: "micro"
+                                color: MichiPalette.success
+                                Layout.preferredWidth: 36
+                            }
+                            MichiText {
+                                text: qsTr("PEAK")
+                                role: "caption"
+                                color: MichiPalette.textSecondary
+                                Layout.preferredWidth: 120
+                            }
+                            MichiText {
                                 text: modelData.label + " Hz"
                                 role: "technical"
                                 technical: true
-                                Layout.preferredWidth: 80
-                            }
-                            MichiText {
-                                text: qsTr("PEAK · Q 1.414")
-                                role: "caption"
-                                color: MichiPalette.textSecondary
-                                Layout.preferredWidth: 116
+                                Layout.preferredWidth: 88
                             }
                             MichiSlider {
                                 objectName: "advancedPeqGain_" + index
@@ -281,7 +325,13 @@ Popup {
                                     + modelData.gainDb.toFixed(1) + " dB"
                                 role: "technical"
                                 technical: true
-                                Layout.preferredWidth: 64
+                                Layout.preferredWidth: 68
+                            }
+                            MichiText {
+                                text: qsTr("Fixed")
+                                role: "micro"
+                                color: MichiPalette.textMuted
+                                Layout.preferredWidth: 43
                             }
                         }
                     }
@@ -425,11 +475,6 @@ Popup {
                     if (root.processingBridge && root.canCommit)
                         root.processingBridge.apply_draft_async()
                 }
-            }
-            MichiButton {
-                text: qsTr("Close")
-                variant: "ghost"
-                onClicked: root.close()
             }
         }
     }

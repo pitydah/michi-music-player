@@ -12,6 +12,15 @@ ColumnLayout {
     spacing: 0
     signal configurationRequested(string action)
 
+    function focusFirstStage() {
+        for (let index = 0; index < children.length; index += 1) {
+            if (children[index].activeFocusOnTab) {
+                children[index].forceActiveFocus()
+                return
+            }
+        }
+    }
+
     Repeater {
         model: root.stages
         delegate: MichiSignalNode {

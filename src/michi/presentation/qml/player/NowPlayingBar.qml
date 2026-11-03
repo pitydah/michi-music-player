@@ -705,13 +705,11 @@ Item {
                     anchors.leftMargin: MichiSpacing.md
                     anchors.rightMargin: MichiSpacing.sm
                     spacing: 7
-                    Rectangle {
+                    MichiQualityDot {
                         Layout.alignment: Qt.AlignVCenter
-                        Layout.preferredWidth: 8
-                        Layout.preferredHeight: 8
-                        radius: 4
-                        color: root.qualityDotColor()
-                        Accessible.ignored: true
+                        diameter: 8
+                        qualityClass: root.signalPathBridge
+                            ? root.signalPathBridge.sourceQualityClass : "unknown"
                     }
                     MichiText {
                         Layout.fillWidth: true
@@ -825,20 +823,6 @@ Item {
         if (root.formatLabel.length > 0)
             return root.formatLabel
         return root.hasTrack ? "QUALITY —" : "NO TRACK"
-    }
-
-    function qualityDotColor() {
-        const qualityClass = root.signalPathBridge
-            ? root.signalPathBridge.sourceQualityClass : "unknown"
-        if (qualityClass === "pcm_hires")
-            return MichiPalette.auroraBlue
-        if (qualityClass === "dsd")
-            return MichiPalette.auroraPurple
-        if (qualityClass === "pcm_standard")
-            return MichiPalette.success
-        if (qualityClass === "lossy")
-            return MichiPalette.warning
-        return MichiPalette.textMuted
     }
 
     function positionTruthPopup() {

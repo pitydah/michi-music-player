@@ -8,7 +8,7 @@ Item {
     id: root
     property var points: []
     property real sampleRate: 0
-    implicitHeight: 112
+    implicitHeight: 220
     Accessible.role: Accessible.StaticText
     Accessible.name: qsTr("Calculated equalizer response, not a measurement")
 
@@ -20,19 +20,22 @@ Item {
         onPaint: {
             var ctx = getContext("2d")
             ctx.clearRect(0, 0, width, height)
-            var padX = 8
-            var padY = 8
+            var padLeft = 40
+            var padRight = 16
+            var padTop = 16
+            var padBottom = 26
             var minHz = root.points[0].hz
             var maxHz = root.points[root.points.length - 1].hz
             var logMin = Math.log(minHz)
             var logSpan = Math.log(maxHz) - logMin
             function xFor(hz) {
-                return padX + (Math.log(hz) - logMin) / logSpan
-                    * (width - 2 * padX)
+                return padLeft + (Math.log(hz) - logMin) / logSpan
+                    * (width - padLeft - padRight)
             }
             function yFor(db) {
                 var clamped = Math.max(-18, Math.min(18, db))
-                return height / 2 - clamped / 18 * (height / 2 - padY)
+                var mid = padTop + (height - padTop - padBottom) / 2
+                return mid - clamped / 18 * ((height - padTop - padBottom) / 2)
             }
 
             ctx.strokeStyle = MichiSemanticColors.borderSubtle
@@ -43,15 +46,38 @@ Item {
                     continue
                 var x = xFor(marks[i])
                 ctx.beginPath()
-                ctx.moveTo(x, padY)
-                ctx.lineTo(x, height - padY)
+                ctx.moveTo(x, padTop)
+                ctx.lineTo(x, height - padBottom)
                 ctx.stroke()
             }
-            ctx.strokeStyle = MichiSemanticColors.borderStrong
-            ctx.beginPath()
-            ctx.moveTo(padX, height / 2)
-            ctx.lineTo(width - padX, height / 2)
-            ctx.stroke()
+
+            ctx.fillStyle = MichiPalette.textMuted
+            ctx.font = "10px sans-serif"
+            ctx.textAlign = "right"
+            ctx.textBaseline = "middle"
+            var levels = [12, 0, -12]
+            for (var level = 0; level < levels.length; ++level) {
+                var levelY = yFor(levels[level])
+                ctx.strokeStyle = levels[level] === 0
+                    ? MichiSemanticColors.borderStrong
+                    : MichiSemanticColors.borderSubtle
+                ctx.beginPath()
+                ctx.moveTo(padLeft, levelY)
+                ctx.lineTo(width - padRight, levelY)
+                ctx.stroke()
+                ctx.fillText((levels[level] > 0 ? "+" : "")
+                    + levels[level] + " dB", padLeft - 6, levelY)
+            }
+
+            ctx.textAlign = "center"
+            ctx.textBaseline = "top"
+            var labels = [[20, "20"], [1000, "1k"], [20000, "20k"]]
+            for (var label = 0; label < labels.length; ++label) {
+                if (labels[label][0] < minHz || labels[label][0] > maxHz)
+                    continue
+                ctx.fillText(labels[label][1] + " Hz",
+                    xFor(labels[label][0]), height - padBottom + 6)
+            }
 
             ctx.strokeStyle = MichiPalette.auroraCyan
             ctx.lineWidth = 2
@@ -65,6 +91,12 @@ Item {
                     ctx.lineTo(px, py)
             }
             ctx.stroke()
+
+            ctx.fillStyle = MichiPalette.textSecondary
+            ctx.textAlign = "right"
+            ctx.textBaseline = "top"
+            ctx.fillText(qsTr("Calculated response · draft"),
+                width - padRight, padTop + 2)
         }
 
         Connections {
@@ -83,11 +115,4 @@ Item {
         color: MichiPalette.textMuted
     }
 
-    MichiText {
-        anchors.left: parent.left
-        anchors.bottom: parent.bottom
-        text: qsTr("Calculated response · not measured")
-        role: "micro"
-        color: MichiPalette.textMuted
-    }
 }

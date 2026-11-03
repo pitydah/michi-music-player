@@ -15,7 +15,7 @@ Item {
     signal gainCommitted(real gain)
 
     implicitWidth: 34
-    implicitHeight: 172
+    implicitHeight: 196
 
     ColumnLayout {
         anchors.fill: parent
@@ -84,7 +84,7 @@ Item {
                 x: (slider.availableWidth - width) / 2
                 y: (slider.availableHeight - height) / 2
                 width: 6
-                height: Math.min(125, slider.availableHeight)
+                height: Math.min(160, slider.availableHeight)
                 radius: MichiRadius.pill
                 color: MichiPalette.smokeRaised
                 opacity: root.inactive ? 0.45 : 1
