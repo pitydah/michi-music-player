@@ -130,7 +130,8 @@ full keyboard traversal remain **NOT_RUN**. R2 code and tests are in commit
 
 R2 targeted verification: pointer guard 10 passed; combined R2 batch 226
 passed; QML/runtime regression 182 passed; productive hosted EQ 1 passed;
-full suite **6457 passed, 41 skipped, 0 failed (exit 0, 1916.19 s)**; ruff
+mandatory F11 CI gate 49 passed in 31.11 s with zero skips; full suite
+**6457 passed, 41 skipped, 0 failed (exit 0, 1916.19 s)**; ruff
 check/format and `git diff --check` clean. Exact-SHA CI for the R2 commit is
 still pending at the time of this note.
 

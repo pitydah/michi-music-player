@@ -174,7 +174,8 @@ review and exact-SHA CI.
   in `F11_VR_R2_EVIDENCE.json`.
 - R2 code and test commit: `c5635e6`.
 - Verification: pointer guard 10 passed; combined R2 batch 226 passed;
-  QML/runtime regression 182 passed; productive hosted EQ 1 passed; full suite
+  QML/runtime regression 182 passed; productive hosted EQ 1 passed; mandatory
+  F11 CI gate 49 passed in 31.11 s with zero skips; full suite
   6457 passed, 41 skipped, 0 failed (exit 0, 1916.19 s); ruff check/format and
   `git diff --check` clean. Exact-SHA CI remains pending for the R2 commit.
 - R2 remains NO-GO for F11 closure; the open gates are unchanged.
