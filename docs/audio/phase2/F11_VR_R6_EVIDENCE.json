@@ -16,11 +16,19 @@
         "format plus rate/depth in one capsule",
         "accessible nominal quality and proof"
       ],
-      "tests": ["tests/audio_phase2/test_f11_signal_path_bridge.py", "tests/test_f11_qml_contract.py"]
+      "tests": [
+        "tests/audio_phase2/test_f11_signal_path_bridge.py",
+        "tests/test_f11_qml_contract.py"
+      ]
     },
     "signal_truth_geometry": {
       "status": "PASS",
-      "viewports": ["1920x1036", "1920x1080", "1366x768", "900x600"],
+      "viewports": [
+        "1920x1036",
+        "1920x1080",
+        "1366x768",
+        "900x600"
+      ],
       "facts": [
         "parent Overlay.overlay",
         "measured from qualityBadge.mapToItem",
@@ -30,7 +38,9 @@
         "focus returns to the badge",
         "no track, seek, engine or device signal on open/close"
       ],
-      "tests": ["tests/test_f11_qml_contract.py::test_signal_truth_popup_is_measured_against_the_quality_badge"]
+      "tests": [
+        "tests/test_f11_qml_contract.py::test_signal_truth_popup_is_measured_against_the_quality_badge"
+      ]
     },
     "signal_truth_inspector": {
       "status": "PASS_WITH_LIMITATIONS",
@@ -43,7 +53,9 @@
         "no generic Close footer",
         "focus starts on the first expandable stage"
       ],
-      "limitations": ["stage body scrolls in short windows"]
+      "limitations": [
+        "stage body scrolls in short windows"
+      ]
     },
     "advanced_equalizer": {
       "status": "PASS_WITH_LIMITATIONS",
@@ -143,10 +155,26 @@
     "kwin_pointer_matrix": "PASS_FROM_R2",
     "human_screenshot_review": "NOT_RUN",
     "pixel_golden_diff": "NOT_RUN",
-    "dpi_scales": ["100%"],
-    "dpi_scales_not_run": ["125%", "150%", "200%"],
+    "dpi_scales": [
+      "100%"
+    ],
+    "dpi_scales_not_run": [
+      "125%",
+      "150%",
+      "200%"
+    ],
     "physical_dac": "NOT_RUN",
-    "full_suite": "PENDING",
+    "full_suite": {
+      "command": "python -m pytest tests/ -q",
+      "result": "6474 passed, 41 skipped, 19 warnings",
+      "passed": 6474,
+      "skipped": 41,
+      "failed": 0,
+      "exit_code": 0,
+      "duration_seconds": 1886.9,
+      "log": "/tmp/opencode/vr6_full_suite.log",
+      "post_summary_warning": "AlbumContextMenu.qml:49 TypeError canQueueTracks of null (did not affect exit code or recorded failures)"
+    },
     "ci": "PENDING"
   },
   "f11_closure": "NO_GO",
