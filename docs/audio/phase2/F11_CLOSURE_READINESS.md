@@ -132,8 +132,9 @@ R2 targeted verification: pointer guard 10 passed; combined R2 batch 226
 passed; QML/runtime regression 182 passed; productive hosted EQ 1 passed;
 mandatory F11 CI gate 49 passed in 31.11 s with zero skips; full suite
 **6457 passed, 41 skipped, 0 failed (exit 0, 1916.19 s)**; ruff
-check/format and `git diff --check` clean. Exact-SHA CI for the R2 commit is
-still pending at the time of this note.
+check/format and `git diff --check` clean. Exact-SHA CI run `41567906735` at
+`d94991a7f1dd13536f8646b5577e6fa21af09f05` completed 4/4 success (`check`,
+`min-qt`, `dac-v35-software-closure`, `dop-native-gate-a`).
 
 R2 does not change the verdict: **NO-GO / F11 ACTIVE**. The open gates remain
 active DSD/DoP/DSP-effective captures, the sidebar W1–W9 matrix, high-contrast

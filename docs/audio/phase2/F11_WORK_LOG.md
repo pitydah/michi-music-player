@@ -177,7 +177,10 @@ review and exact-SHA CI.
   QML/runtime regression 182 passed; productive hosted EQ 1 passed; mandatory
   F11 CI gate 49 passed in 31.11 s with zero skips; full suite
   6457 passed, 41 skipped, 0 failed (exit 0, 1916.19 s); ruff check/format and
-  `git diff --check` clean. Exact-SHA CI remains pending for the R2 commit.
+  `git diff --check` clean.
+- Exact-SHA CI: run `41567906735` at `d94991a7f1dd13536f8646b5577e6fa21af09f05`
+  completed 4/4 success (`check`, `min-qt`, `dac-v35-software-closure`,
+  `dop-native-gate-a`).
 - R2 remains NO-GO for F11 closure; the open gates are unchanged.
 
 ### R2 review fix

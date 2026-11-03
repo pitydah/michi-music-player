@@ -34,6 +34,17 @@
     "python_qmllint": "PASS (Qt 6.11.1, exit 0; only unqualified-access warnings and pragma suggestion)",
     "preset_asset_validation": "PASS (8 presets, 10 bands each, reviewed)"
   },
+  "ci": {
+    "run": 41567906735,
+    "sha": "d94991a7f1dd13536f8646b5577e6fa21af09f05",
+    "status": "success",
+    "jobs": {
+      "check": "success",
+      "min-qt": "success",
+      "dac-v35-software-closure": "success",
+      "dop-native-gate-a": "success"
+    }
+  },
   "pointer_matrix": {
     "source_node_click": "PASS - library track pcm16_44100_30s unchanged after click",
     "source_chevron_10_consecutive_clicks": "PASS - track unchanged after ten disclosure toggles",
