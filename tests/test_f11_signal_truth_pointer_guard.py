@@ -32,7 +32,9 @@ def test_signal_node_has_exclusive_mouse_owner_and_one_semantic_icon() -> None:
     assert "MichiSignalStageIcon" in node
     assert "roleName: root.iconName" in node
     assert "name: root.glyphName" in node  # independent evidence badge
-    assert "height: Math.max(0, parent.height - 40)" in node
+    assert "height: Math.max(0, parent.height - 42)" in node
+    assert "width: 32" in node
+    assert "height: 32" in node
     assert "Keys.onSpacePressed" in node
 
 
