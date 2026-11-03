@@ -42,8 +42,9 @@ Popup {
     // the window overlay, never the 34px opener.
     width: Math.max(320, Math.min(480, (Overlay.overlay
         ? Overlay.overlay.width : 480) - 24))
-    // Five rows should not create a 760px empty column in the audio inspector.
-    // Larger disclosures scroll inside the bounded viewport.
+    // Keep the fixed header and footer inside the window even when the quality
+    // capsule sits close to the bottom edge. The opener positions this popup
+    // inside the overlay and the stage body scrolls inside the remaining height.
     height: Math.min(560, Math.max(0, (Overlay.overlay
         ? Overlay.overlay.height : 584) - 24))
 

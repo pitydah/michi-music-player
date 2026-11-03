@@ -740,9 +740,15 @@ Item {
 
             SignalTruthPopup {
                 id: signalTruthPopup
-                parent: qualityBadge
-                x: qualityBadge.width - width
-                y: -height - MichiSpacing.md
+                parent: Overlay.overlay
+                x: Math.max(MichiSpacing.sm, Math.min(
+                    Overlay.overlay.width - width - MichiSpacing.sm,
+                    qualityBadge.mapToItem(Overlay.overlay, 0, 0).x
+                        + qualityBadge.width - width))
+                y: Math.max(MichiSpacing.sm, Math.min(
+                    Overlay.overlay.height - height - MichiSpacing.sm,
+                    qualityBadge.mapToItem(Overlay.overlay, 0, 0).y
+                        - height - MichiSpacing.md))
                 signalPathBridge: root.signalPathBridge
                 focusReturnTarget: qualityBadge
                 onConfigurationAction: {

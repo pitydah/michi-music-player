@@ -214,5 +214,12 @@ def test_signal_truth_popup_never_claims_unproven_truth(qapp):
         assert "stages: root.stages" in source
         assert "expandedStageId" in source
         assert "signalTruthStagesScroll" in source
+        assert "Overlay.overlay.height : 584" in source
+        now_playing = (QML_DIR / "player" / "NowPlayingBar.qml").read_text(
+            encoding="utf-8"
+        )
+        assert "parent: Overlay.overlay" in now_playing
+        assert "Overlay.overlay.height - height - MichiSpacing.sm" in now_playing
+        assert "qualityBadge.mapToItem(Overlay.overlay, 0, 0).y" in now_playing
     finally:
         popup.deleteLater()
