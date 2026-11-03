@@ -116,6 +116,7 @@ jobs:
             tests/audio_phase2/test_f11_processing_bridge_productive.py \
             tests/test_f11_qml_contract.py \
             tests/test_f11_kwin_visual_contract.py \
+            tests/test_f11_signal_truth_pointer_guard.py \
             -q | tee /tmp/f11-surfaces-run.txt
           grep -Eq '^[0-9]+ passed' /tmp/f11-surfaces-run.txt
           if grep -Eq '[0-9]+ (skipped|xfailed|xpassed|error)' /tmp/f11-surfaces-run.txt; then
