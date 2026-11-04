@@ -56,7 +56,7 @@ Item {
 
     // The height is content-driven, including expanded evidence rows.
     implicitHeight: Math.max(root.compact ? 64 : 76,
-        content.implicitHeight + (root.compact ? MichiSpacing.sm : MichiSpacing.md))
+        content.implicitHeight)
     activeFocusOnTab: root.expandable
     Accessible.role: root.expandable ? Accessible.Button : Accessible.StaticText
     Accessible.name: qsTr("%1: %2. %3").arg(root.title).arg(root.summary).arg(
@@ -155,7 +155,7 @@ Item {
         ColumnLayout {
             id: content
             Layout.fillWidth: true
-            Layout.topMargin: root.compact ? MichiSpacing.xs : MichiSpacing.sm
+            Layout.topMargin: root.compact ? 0 : MichiSpacing.sm
             spacing: root.compact ? 1 : MichiSpacing.xxs
 
             RowLayout {
@@ -212,8 +212,8 @@ Item {
             MichiText {
                 visible: root.expanded && root.detail !== ""
                 text: root.detail
-                role: "caption"
-                color: MichiPalette.textMuted
+                role: "secondary"
+                color: MichiPalette.textSecondary
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
             }
@@ -232,8 +232,8 @@ Item {
                         MichiText {
                             Layout.preferredWidth: 96
                             text: modelData[0]
-                            role: "micro"
-                            color: MichiPalette.textMuted
+                            role: "caption"
+                            color: MichiPalette.textSecondary
                         }
                         MichiText {
                             Layout.fillWidth: true

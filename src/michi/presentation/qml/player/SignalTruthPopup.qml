@@ -59,12 +59,16 @@ Popup {
     readonly property real safeOverlayHeight: Math.max(0,
         (Overlay.overlay ? Overlay.overlay.height : 768) - 2 * MichiSpacing.md)
     readonly property bool compactDensity: safeOverlayHeight < 680
-    readonly property real stageViewportLimit: Math.max(160,
-        safeOverlayHeight - (compactDensity ? 198 : 218))
+    readonly property real stageAvailableHeight: Math.min(safeOverlayHeight,
+        maxPopupHeight > 0 ? maxPopupHeight : safeOverlayHeight)
+    // Header + summary card + headline + footer + spacing. The stage area is
+    // the only region allowed to shrink; the footer must stay visible.
+    readonly property real stageViewportLimit: Math.max(120,
+        stageAvailableHeight - 252)
     readonly property real desiredHeight: panel.implicitHeight
         + topPadding + bottomPadding
 
-    padding: MichiSpacing.lg + MichiSpacing.xs
+    padding: compactDensity ? MichiSpacing.lg : MichiSpacing.lg + MichiSpacing.xs
     // P0 KX11-16: modal overlay absorbs pointer presses BEFORE the library's
     // TrackRow TapHandler. dim:false retains the smoked Michi presentation.
     // Never revert to modal:false without a real background-click isolation test.
@@ -105,6 +109,7 @@ Popup {
         contentPadding: 0
         tileSeed: 17
         materialOpacityOverride: 1.0
+        allowBackdropBlur: false
     }
 
     onOpened: {
@@ -115,7 +120,7 @@ Popup {
 
     contentItem: ColumnLayout {
         id: panel
-        spacing: MichiSpacing.md
+        spacing: root.compactDensity ? MichiSpacing.sm : MichiSpacing.md
 
         MichiPopupHeader {
             iconName: "output-status"
@@ -130,7 +135,8 @@ Popup {
         Rectangle {
             id: summaryCard
             Layout.fillWidth: true
-            implicitHeight: summaryColumn.implicitHeight + 2 * MichiSpacing.md
+            implicitHeight: summaryColumn.implicitHeight
+                + 2 * (root.compactDensity ? MichiSpacing.sm : MichiSpacing.md)
             radius: MichiRadius.lg
             color: MichiPalette.graphite
             border.width: 1
@@ -139,7 +145,8 @@ Popup {
             ColumnLayout {
                 id: summaryColumn
                 anchors.fill: parent
-                anchors.margins: MichiSpacing.md
+                anchors.margins: root.compactDensity
+                    ? MichiSpacing.sm : MichiSpacing.md
                 spacing: MichiSpacing.xs
 
                 RowLayout {
@@ -199,11 +206,13 @@ Popup {
             Layout.fillWidth: true
             Layout.preferredHeight: Math.min(stageView.implicitHeight,
                 root.stageViewportLimit)
+            Layout.maximumHeight: root.stageViewportLimit
             contentWidth: width
             contentHeight: stageView.implicitHeight
             boundsBehavior: Flickable.StopAtBounds
             interactive: contentHeight > height + 1
             clip: interactive
+            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
             Accessible.name: qsTr("Signal stages; full path is visible unless the window is too short")
 
             MichiSignalPathView {

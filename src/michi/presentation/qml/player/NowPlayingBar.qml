@@ -787,9 +787,10 @@ Item {
                 parent: Overlay.overlay
                 signalPathBridge: root.signalPathBridge
                 focusReturnTarget: qualityBadge
-                // Re-anchor whenever an expansion or stage count changes
-                // the height; keep the inspector attached to the opener.
-                onHeightChanged: if (opened) Qt.callLater(root.positionTruthPopup)
+                // Re-anchor on every height change, including the height that
+                // settles during the opening transition.
+                onOpened: Qt.callLater(root.positionTruthPopup)
+                onHeightChanged: root.positionTruthPopup()
                 onConfigurationAction: {
                     root.handleSignalTruthConfiguration(action)
                 }
@@ -847,7 +848,7 @@ Item {
             opener.x + qualityBadge.width - signalTruthPopup.width))
         signalTruthPopup.y = Math.max(MichiSpacing.sm, Math.min(
             Overlay.overlay.height - signalTruthPopup.height - MichiSpacing.sm,
-            opener.y - signalTruthPopup.height - MichiSpacing.md))
+            opener.y - signalTruthPopup.height - MichiSpacing.sm))
     }
 
     function positionEnginePopup() {
@@ -863,14 +864,10 @@ Item {
     }
 
     onWidthChanged: {
-        if (signalTruthPopup && signalTruthPopup.opened)
-            positionTruthPopup()
         if (enginePopup && enginePopup.opened)
             positionEnginePopup()
     }
     onYChanged: {
-        if (signalTruthPopup && signalTruthPopup.opened)
-            positionTruthPopup()
         if (enginePopup && enginePopup.opened)
             positionEnginePopup()
     }
