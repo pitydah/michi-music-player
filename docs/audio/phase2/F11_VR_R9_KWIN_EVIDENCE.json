@@ -17,6 +17,16 @@
       "viewport": "1100x700",
       "scroll": false,
       "notes": "All five stages visible; official Tabler geometry; footer inside surface; no QML binding-loop warning in the application log."
+    },
+    {
+      "name": "processing_expanded_1100x700",
+      "file": "evidence/f11/2026-11-04-f11-vr-r9/f11_r9_signal_truth_processing_expanded_1100x700.png",
+      "sha256": "35832b31f32ce5fd5f08b34c214315e21e8ec13c8972b1cc9fd8d97e4db4d378",
+      "source": "FLAC 16-bit 44.1 kHz",
+      "path": "Last playback, Processing expanded",
+      "viewport": "1100x700",
+      "scroll": false,
+      "notes": "Footer Proof scope remains inside the popup surface; no painting over NowPlayingBar."
     }
   ],
   "truth": {
@@ -28,7 +38,9 @@
     "reduced_motion_capture": "NOT_RUN",
     "fractional_scale_capture": "NOT_RUN",
     "qt_quick_profiler": "NOT_RUN",
-    "independent_killcritic_review": "NOT_RUN"
+    "independent_killcritic_review": "NOT_RUN",
+    "footer_containment": "PASS",
+    "expanded_processing_capture": "PASS"
   },
   "limitations": [
     "Virtual isolated KWin session, not an operator audibility assessment.",
