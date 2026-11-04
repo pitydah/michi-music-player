@@ -14,6 +14,7 @@ def test_unknown_verdict_is_not_fully_verified_despite_four_receipts():
             verdict_state="unknown",
             tone="neutral",
             proof_parts=_FULL,
+            processing_verified=True,
         )
         == "partially_verified"
     )
@@ -26,6 +27,7 @@ def test_direct_verdict_with_full_path_can_be_verified():
             verdict_state="direct",
             tone="neutral",
             proof_parts=_FULL,
+            processing_verified=True,
         )
         == "verified"
     )
@@ -38,6 +40,7 @@ def test_full_verdict_without_negotiated_transport_remains_partial():
             verdict_state="direct",
             tone="neutral",
             proof_parts=["Source", "host", "device"],
+            processing_verified=True,
         )
         == "partially_verified"
     )
@@ -50,6 +53,7 @@ def test_temporal_status_overrides_path_verification():
             verdict_state="direct",
             tone="neutral",
             proof_parts=_FULL,
+            processing_verified=True,
         )
         == "historical"
     )

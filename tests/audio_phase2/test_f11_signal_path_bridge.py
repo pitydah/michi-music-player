@@ -8,6 +8,7 @@ from dataclasses import replace
 
 from michi.domain.audio_evidence import PcmTuple
 from michi.domain.signal_truth import (
+    AlsaRuntimeEvidence,
     DecodedRuntimeEvidence,
     EngineRuntimeEvidence,
     OutputPlanEvidence,
@@ -420,9 +421,39 @@ def test_historical_and_contradicted_paths_never_publish_verified_proof() -> Non
         verdict_state="contradicted",
         tone="error",
         proof_parts=["Source", "host", "transport", "device"],
+        processing_verified=True,
     )
     assert contradicted == "contradicted"
     assert _path_proof_label(contradicted) == "Output mismatch"
+
+
+def test_unverified_dsp_never_verifies_the_whole_path() -> None:
+    class _UnverifiedDspProcessing(_Processing):
+        truth = {
+            "effective_state": "effective",
+            "effective_revision": 3,
+            "effective_plan_id": "dsp:other-execution",
+        }
+
+    snapshot = _snapshot()
+    pcm = PcmTuple(44_100, "S16LE", 2, 16)
+    dsp_snapshot = replace(
+        snapshot,
+        verdict=SignalTruthVerdict.DSP,
+        device_negotiated=AlsaRuntimeEvidence(
+            snapshot.identity, pcm, None, None, None, None, ""
+        ),
+    )
+    bridge = SignalPathBridge(
+        _recorder_with_active(dsp_snapshot),
+        _Output(),
+        _UnverifiedDspProcessing(),
+    )
+
+    assert bridge.pathProofState == "partially_verified"
+    assert bridge.pathProofState != "verified"
+    assert bridge.headline == "DSP detected · identity unverified"
+    assert bridge.stages[2]["state"] == "unknown"
 
 
 def test_device_stage_prefers_route_name_over_raw_usb_identity() -> None:

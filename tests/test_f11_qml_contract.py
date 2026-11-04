@@ -403,6 +403,12 @@ def test_signal_truth_popup_never_claims_unproven_truth(qapp):
         assert "MichiQualityDot" in source
         assert "sourceLine" in source
         assert "proofLabel" in source
+        assert "id: summaryCard" in source
+        node = (QML_DIR / "components" / "MichiSignalNode.qml").read_text(
+            encoding="utf-8"
+        )
+        assert "root.title.toUpperCase()" in node
+        assert "width: 6" in node
         assert "focusFirstStage" in source
         assert "SIGNAL TRUTH" in source
         assert "LAST PLAYBACK" in source

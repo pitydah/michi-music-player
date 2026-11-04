@@ -134,18 +134,18 @@ Item {
             }
             // Evidence is a discrete microdot, NOT a repeated checkmark icon.
             Rectangle {
-                x: 27
-                y: 34
-                width: 13
-                height: 13
+                x: 26
+                y: 33
+                width: 14
+                height: 14
                 radius: width / 2
                 color: MichiPalette.obsidianRaised
                 border.width: 1
                 border.color: root.stateColor
                 Rectangle {
                     anchors.centerIn: parent
-                    width: 5
-                    height: 5
+                    width: 6
+                    height: 6
                     radius: width / 2
                     color: root.stateColor
                 }
@@ -163,7 +163,9 @@ Item {
                 spacing: MichiSpacing.sm
 
                 MichiText {
-                    text: root.title
+                    text: (root.stageIndex + 1 < 10 ? "0" : "")
+                        + (root.stageIndex + 1) + "  "
+                        + root.title.toUpperCase()
                     role: "technical"
                     technical: true
                     color: MichiPalette.textSecondary

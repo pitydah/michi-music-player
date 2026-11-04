@@ -64,7 +64,7 @@ Popup {
     readonly property real desiredHeight: panel.implicitHeight
         + topPadding + bottomPadding
 
-    padding: MichiSpacing.lg
+    padding: MichiSpacing.lg + MichiSpacing.xs
     // P0 KX11-16: modal overlay absorbs pointer presses BEFORE the library's
     // TrackRow TapHandler. dim:false retains the smoked Michi presentation.
     // Never revert to modal:false without a real background-click isolation test.
@@ -74,7 +74,7 @@ Popup {
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     // The stage list determines height: 5 rows ~600px, not a fixed 520px.
     // The overlay bounds are a safety limit, NOT the preferred size.
-    width: Math.max(320, Math.min(500, (Overlay.overlay
+    width: Math.max(440, Math.min(500, (Overlay.overlay
         ? Overlay.overlay.width : 500) - 24))
     height: Math.min(safeOverlayHeight,
         maxPopupHeight > 0 ? maxPopupHeight : safeOverlayHeight,
@@ -127,51 +127,66 @@ Popup {
                 : "neutral"
         }
 
-        RowLayout {
+        Rectangle {
+            id: summaryCard
             Layout.fillWidth: true
-            Layout.minimumHeight: 38
-            spacing: 8
-            MichiQualityDot {
-                Layout.alignment: Qt.AlignVCenter
-                diameter: 8
-                qualityClass: root.signalPathBridge
-                    ? root.signalPathBridge.sourceQualityClass : "unknown"
-            }
-            MichiText {
-                text: root.sourceLine
-                role: "technical"
-                technical: true
-                font.weight: Font.DemiBold
-                color: MichiPalette.textPrimary
-                Layout.fillWidth: true
-                elide: Text.ElideRight
-            }
-            MichiStatusChip {
-                visible: root.temporalStatus !== "HISTORICAL"
-                text: root.proofLabel
-                tone: root.proofTone
-                dotVisible: false
-            }
-        }
+            implicitHeight: summaryColumn.implicitHeight + 2 * MichiSpacing.md
+            radius: MichiRadius.lg
+            color: MichiPalette.graphite
+            border.width: 1
+            border.color: MichiSemanticColors.borderSubtle
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: MichiSpacing.sm
-            MichiSignalIndicator {
-                indicatorState: root.indicatorState
-                tooltip: root.indicatorTooltip
-                Layout.alignment: Qt.AlignTop
-                Layout.topMargin: 3
-            }
-            MichiText {
-                text: root.headline
-                role: "body"
-                font.weight: Font.DemiBold
-                color: root.indicatorState === "error" ? MichiPalette.error
-                    : root.indicatorState === "pending" ? MichiPalette.auroraBlue
-                    : MichiPalette.textPrimary
-                Layout.fillWidth: true
-                wrapMode: Text.WordWrap
+            ColumnLayout {
+                id: summaryColumn
+                anchors.fill: parent
+                anchors.margins: MichiSpacing.md
+                spacing: MichiSpacing.xs
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: MichiSpacing.sm
+                    MichiQualityDot {
+                        Layout.alignment: Qt.AlignVCenter
+                        diameter: 8
+                        qualityClass: root.signalPathBridge
+                            ? root.signalPathBridge.sourceQualityClass : "unknown"
+                    }
+                    MichiText {
+                        text: root.sourceLine
+                        role: "body"
+                        font.weight: Font.DemiBold
+                        color: MichiPalette.textPrimary
+                        Layout.fillWidth: true
+                        elide: Text.ElideRight
+                    }
+                    MichiStatusChip {
+                        visible: root.temporalStatus !== "HISTORICAL"
+                        text: root.proofLabel
+                        tone: root.proofTone
+                        dotVisible: false
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: MichiSpacing.sm
+                    MichiSignalIndicator {
+                        indicatorState: root.indicatorState
+                        tooltip: root.indicatorTooltip
+                        Layout.alignment: Qt.AlignTop
+                        Layout.topMargin: 2
+                    }
+                    MichiText {
+                        text: root.headline
+                        role: "body"
+                        font.weight: Font.DemiBold
+                        color: root.indicatorState === "error" ? MichiPalette.error
+                            : root.indicatorState === "pending" ? MichiPalette.auroraBlue
+                            : MichiPalette.textPrimary
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                    }
+                }
             }
         }
 

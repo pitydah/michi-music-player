@@ -118,6 +118,7 @@ def _path_proof_state(
     verdict_state: str,
     tone: str,
     proof_parts: list[str],
+    processing_verified: bool,
 ) -> str:
     if temporal_status == "NONE":
         return "no_path"
@@ -138,6 +139,8 @@ def _path_proof_state(
         "dsp",
     }
     if verified_verdict and expected.issubset(set(proof_parts)):
+        if not processing_verified:
+            return "partially_verified"
         return "verified"
     if proof_parts:
         return "partially_verified"
@@ -834,11 +837,15 @@ class SignalPathBridge(QObject):
         if snapshot_device:
             proof_parts.append("device")
         proof_level = " · ".join(proof_parts) or "Not verified"
+        processing_verified = not (
+            effective_state == "effective" and not processing_matches
+        )
         proof_state = _path_proof_state(
             temporal_status=temporal_status,
             verdict_state=str(verdict_state),
             tone=tone,
             proof_parts=proof_parts,
+            processing_verified=processing_verified,
         )
         proof_label = _path_proof_label(proof_state)
         if historical:
