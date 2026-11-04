@@ -85,9 +85,8 @@ Popup {
     // The overlay bounds are a safety limit, NOT the preferred size.
     width: Math.max(440, Math.min(500, (Overlay.overlay
         ? Overlay.overlay.width : 500) - 24))
-    height: Math.min(safeOverlayHeight,
-        maxPopupHeight > 0 ? maxPopupHeight : safeOverlayHeight,
-        Math.ceil(desiredHeight))
+    height: Math.min(680, safeOverlayHeight,
+        maxPopupHeight > 0 ? maxPopupHeight : safeOverlayHeight)
 
     enter: Transition {
         enabled: !MichiAccessibility.reducedMotion

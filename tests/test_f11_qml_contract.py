@@ -429,6 +429,6 @@ def test_signal_truth_popup_never_claims_unproven_truth(qapp):
             in now_playing
         )
         assert "qualityBadge.mapToItem(null, 0, 0)" in now_playing
-        assert "opener.y - signalTruthPopup.height" in now_playing
+        assert "openerY - signalTruthPopup.height" in now_playing
     finally:
         popup.deleteLater()

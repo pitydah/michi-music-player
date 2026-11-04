@@ -790,7 +790,7 @@ Item {
                 // Re-anchor on every height change, including the height that
                 // settles during the opening transition.
                 onOpened: Qt.callLater(root.positionTruthPopup)
-                onHeightChanged: root.positionTruthPopup()
+                onHeightChanged: root.anchorTruthPopup()
                 onConfigurationAction: {
                     root.handleSignalTruthConfiguration(action)
                 }
@@ -846,14 +846,26 @@ Item {
             "x": badgeScene.x - overlayOrigin.x,
             "y": badgeScene.y - overlayOrigin.y
         }
-        signalTruthPopup.maxPopupHeight = Math.max(260,
+        const nextMaxPopupHeight = Math.max(260,
             opener.y - 2 * MichiSpacing.sm)
+        if (signalTruthPopup.maxPopupHeight !== nextMaxPopupHeight)
+            signalTruthPopup.maxPopupHeight = nextMaxPopupHeight
+        anchorTruthPopup()
+    }
+
+    function anchorTruthPopup() {
+        if (!Overlay.overlay || !signalTruthPopup)
+            return
+        const overlayOrigin = Overlay.overlay.mapToItem(null, 0, 0)
+        const badgeScene = qualityBadge.mapToItem(null, 0, 0)
+        const openerX = badgeScene.x - overlayOrigin.x
+        const openerY = badgeScene.y - overlayOrigin.y
         signalTruthPopup.x = Math.max(MichiSpacing.sm, Math.min(
             Overlay.overlay.width - signalTruthPopup.width - MichiSpacing.sm,
-            opener.x + qualityBadge.width - signalTruthPopup.width))
+            openerX + qualityBadge.width - signalTruthPopup.width))
         signalTruthPopup.y = Math.max(MichiSpacing.sm, Math.min(
             Overlay.overlay.height - signalTruthPopup.height - MichiSpacing.sm,
-            opener.y - signalTruthPopup.height - MichiSpacing.sm))
+            openerY - signalTruthPopup.height - MichiSpacing.sm))
     }
 
     function positionEnginePopup() {
@@ -869,10 +881,14 @@ Item {
     }
 
     onWidthChanged: {
+        if (signalTruthPopup && signalTruthPopup.opened)
+            positionTruthPopup()
         if (enginePopup && enginePopup.opened)
             positionEnginePopup()
     }
     onYChanged: {
+        if (signalTruthPopup && signalTruthPopup.opened)
+            positionTruthPopup()
         if (enginePopup && enginePopup.opened)
             positionEnginePopup()
     }

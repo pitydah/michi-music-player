@@ -66,7 +66,7 @@ def test_normal_five_stage_panel_has_intrinsic_height_not_fixed_scrollbox():
     ).read_text()
     assert "desiredHeight: chromeHeight" in popup
     assert "Math.min(stageView.implicitHeight, stageViewportLimit)" in popup
-    assert "height: Math.min(safeOverlayHeight," in popup
+    assert "height: Math.min(680, safeOverlayHeight," in popup
     assert "maxPopupHeight > 0 ? maxPopupHeight : safeOverlayHeight" in popup
     assert "ScrollView {" not in popup
     assert "interactive: contentHeight > height + 1" in popup
