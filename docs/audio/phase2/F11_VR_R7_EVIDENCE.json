@@ -1,0 +1,137 @@
+{
+  "schema_version": "michi.f11.vr.r7.evidence.v1",
+  "phase": "AP2-F11",
+  "sprint": "F11-VR-R7",
+  "baseline_sha": "85f80230601f077c0fc10860d24c00f7afdb77cf",
+  "code_sha": "879099c25857d83e8392ed3c4933b180cb299ad9",
+  "date": "2026-11-03",
+  "scope": "Signal Truth intrinsic height, explicit proof states, semantic stage grammar and NowPlaying card balance",
+  "patch": {
+    "path": "/home/cristian/Descargas/MICHI_AP2_F11_SIGNAL_TRUTH_VR_R2_IMPLEMENTATION(1).patch",
+    "sha256": "04ee6f2f5d4a56c80f10a0a7e2aac94f03e3ef208e807ed8f2444c05ccb60a4d",
+    "applied_with": "git apply --unidiff-zero"
+  },
+  "contracts": {
+    "intrinsic_signal_truth": {
+      "status": "PASS",
+      "facts": [
+        "five collapsed stages determine the popup height through desiredHeight",
+        "normal desktop popup is 560-680 px tall",
+        "short-window popup is bounded above the badge and keeps the 8-12 px anchor gap",
+        "Flickable is interactive only when contentHeight exceeds its viewport",
+        "no persistent ScrollView and no scrollbar chrome",
+        "height changes reposition the popup through positionTruthPopup"
+      ],
+      "viewports": [
+        "1920x1036",
+        "1920x1080",
+        "1366x768",
+        "900x600"
+      ],
+      "tests": [
+        "tests/test_f11_qml_contract.py::test_signal_truth_popup_is_measured_against_the_quality_badge",
+        "tests/test_f11_vr_r7_signal_truth_integrity.py::test_normal_five_stage_panel_has_intrinsic_height_not_fixed_scrollbox"
+      ]
+    },
+    "proof_semantics": {
+      "status": "PASS",
+      "facts": [
+        "unknown canonical verdict with four proof parts is partially_verified",
+        "direct verdict with full source, host, transport and device evidence is verified",
+        "missing negotiated transport remains partially_verified",
+        "historical playback overrides path verification"
+      ],
+      "tests": [
+        "tests/test_f11_vr_r7_signal_truth_integrity.py"
+      ]
+    },
+    "stage_grammar": {
+      "status": "PASS",
+      "facts": [
+        "semantic stage icon remains the identity pictogram",
+        "5 px certainty microdot replaces repeated checkmarks",
+        "ordinary observed and historical text is suppressed per stage",
+        "configuration is an independent gear button",
+        "expanded stage uses a stronger surface and cyan border"
+      ]
+    },
+    "now_playing_balance": {
+      "status": "PASS",
+      "facts": [
+        "track card height 96 px",
+        "artwork 72 px",
+        "NowPlayingBar remains 154 px",
+        "transport geometry unchanged"
+      ],
+      "tests": [
+        "tests/test_m9_now_playing_golden.py",
+        "tests/test_m9_qml.py",
+        "tests/test_f11_qml_contract.py"
+      ]
+    },
+    "configuration_actions": {
+      "status": "PASS",
+      "facts": [
+        "configuration buttons render only with a real configAction",
+        "configurationEnabled is independent from compact density",
+        "DAC diagnostics remains read-only through configurationEnabled=false"
+      ]
+    }
+  },
+  "verification": {
+    "targeted_r7": {
+      "command": "QT_QPA_PLATFORM=offscreen python -m pytest tests/test_f11_signal_truth_pointer_guard.py tests/test_f11_qml_contract.py tests/test_f11_vr_r7_signal_truth_integrity.py tests/test_f11_vr_r6_evidence.py -q",
+      "result": "32 passed"
+    },
+    "f11_qml_regression": {
+      "command": "QT_QPA_PLATFORM=offscreen MICHI_GST_LAB_SINK=fakesink MICHI_DOP_PLUGIN_PREFIX=$PWD/build/lib.linux-x86_64-cpython-311/michi/native/gstreamer-1.0 python -m pytest tests/test_f11_vr_r7_signal_truth_integrity.py tests/test_f11_qml_contract.py tests/test_f11_vr_r6_evidence.py tests/test_f11_kwin_visual_contract.py tests/audio_phase2/test_f11_audio_processing_bridge.py tests/audio_phase2/test_f11_signal_path_bridge.py tests/audio_phase2/test_f11_processing_bridge_productive.py tests/test_qml_runtime_gate.py tests/test_m11_3_ui_qml_runtime.py tests/test_m11_3_ui_audio_engine.py tests/test_m9_qml.py tests/test_m9_now_playing_golden.py tests/test_m9_design_canon.py -q",
+      "result": "228 passed, 3 warnings"
+    },
+    "ruff": {
+      "status": "PASS",
+      "command": "python -m ruff check src/michi/presentation/signal_path_bridge.py tests/test_f11_qml_contract.py tests/test_f11_vr_r7_signal_truth_integrity.py"
+    },
+    "format": {
+      "status": "PASS",
+      "command": "python -m ruff format --check src/michi/presentation/signal_path_bridge.py tests/test_f11_qml_contract.py tests/test_f11_vr_r7_signal_truth_integrity.py"
+    },
+    "qmllint": {
+      "status": "PASS",
+      "command": "PySide6 qmllint -I src/michi/presentation/qml on SignalTruthPopup, MichiSignalPathView, MichiSignalNode and NowPlayingBar",
+      "facts": "exit 0; only pre-existing unqualified-access and pragma warnings"
+    },
+    "qmlformat": {
+      "status": "NOT_RUN",
+      "reason": "only a Qt 5 qmlformat 1.0 binary is installed; it is not compatible with the project's Qt 6.11 QML"
+    },
+    "qmltestrunner": {
+      "status": "NOT_RUN",
+      "reason": "only a Qt 5 qmltestrunner binary is installed; no R7 QML test project exists"
+    },
+    "kwin": {
+      "status": "NOT_RUN",
+      "reason": "the KWin MCP tools are unavailable in this session; no screenshot is claimed or fabricated"
+    },
+    "profiler_p95": {
+      "status": "NOT_RUN",
+      "reason": "Qt Quick profiler capture is not available in this headless session"
+    },
+    "full_suite": {
+      "status": "PASS",
+      "command": "python -m pytest tests/ -q",
+      "result": "6479 passed, 41 skipped, 0 failed, 19 warnings in 1931.53s (0:32:11)",
+      "log": "/tmp/opencode/vr7_full_suite2.log",
+      "note": "Initial run exposed three stale R6 source-contract assertions in tests/test_f11_signal_truth_pointer_guard.py; they were updated to the intentional R7 contracts (independent evidence microdot, capability-based configuration, 96px card / 72px artwork) before this passing run."
+    }
+  },
+  "f11_closure": {
+    "status": "ACTIVE",
+    "verdict": "NO-GO",
+    "reason": "VR-R7 improves the Signal Truth inspector but KWin visual certification, DPI scaling review, profiler evidence and F11's own closure matrix remain open"
+  },
+  "notes": [
+    "No bit-perfect, exclusive, Native DSD preserved or DoP verified end-to-end claim is introduced.",
+    "Physical DAC playback was not re-run for R7.",
+    "The popup remains modal with dim=false and consumes outside clicks."
+  ]
+}

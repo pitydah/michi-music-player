@@ -31,7 +31,9 @@ def test_signal_node_has_exclusive_mouse_owner_and_one_semantic_icon() -> None:
     assert "preventStealing: true" in node
     assert "MichiSignalStageIcon" in node
     assert "roleName: root.iconName" in node
-    assert "name: root.glyphName" in node  # independent evidence badge
+    # Evidence is an independent microdot, never a second semantic glyph.
+    assert "width: 5" in node
+    assert "color: root.stateColor" in node
     assert "height: Math.max(0, parent.height - 42)" in node
     assert "width: 32" in node
     assert "height: 32" in node
@@ -41,7 +43,9 @@ def test_signal_node_has_exclusive_mouse_owner_and_one_semantic_icon() -> None:
 def test_compact_dac_view_is_not_a_dead_navigation_surface() -> None:
     view = _qml("components/MichiSignalPathView.qml")
     assert "compact: root.compact" in view
-    assert 'configAction: root.compact ? "NONE"' in view
+    assert "configurationEnabled" in view
+    assert "configAction: root.configurationEnabled" in view
+    assert '(modelData.configAction || "NONE") : "NONE"' in view
 
 
 def test_semantic_stage_icons_have_explicit_license() -> None:
@@ -74,7 +78,8 @@ def test_nowplaying_capsule_uses_bar_integrated_material() -> None:
     assert "allowBackdropBlur: false" in bar
     assert "shadowed: false" in bar
     assert "tileSeed: 17" in bar
-    assert "Layout.preferredWidth: 66" in bar
+    assert "Layout.preferredHeight: 96" in bar
+    assert "Layout.preferredWidth: 72" in bar
     assert "root.nowPlayingRequested()" in bar
 
 

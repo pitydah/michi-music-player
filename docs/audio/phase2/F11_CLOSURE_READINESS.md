@@ -188,3 +188,21 @@ Honest limits: human screenshot review, pixel/perceptual goldens, DPI scales
 above 100 %, physical DAC re-qualification and the capability-gated Advanced
 features remain NOT_RUN. R6 does not close F11; the verdict remains
 **NO-GO / F11 ACTIVE**.
+
+## Visual Recovery R7 (2026-11-03)
+
+VR-R7 makes the Signal Truth inspector intrinsic to its five stages, with a
+bounded short-window fallback instead of a permanent scroll box. Proof wording is
+now strictly separated from the four observed evidence parts, stage certainty is
+a microdot rather than repeated checkmarks, and stage configuration is an
+independent capability-gated action. The NowPlaying card gains optical mass
+(96 px card, 72 px artwork) without changing the 154 px bar or transport.
+
+Evidence: `docs/audio/phase2/F11_VR_R7_EVIDENCE.json`, commit `879099c`.
+Verification: pointer guard + R7 + QML contract + R6 evidence `32 passed`;
+F11/QML regression `228 passed`; full suite `6479 passed, 41 skipped, 0
+failed` in 1931.53 s.
+
+Honest limits: KWin MCP was unavailable, so R7 screenshots and DPI scaling are
+NOT_RUN; qmlformat/qmltestrunner are Qt 5-only in this environment; profiler p95
+is NOT_RUN. F11 remains **NO-GO / ACTIVE**.

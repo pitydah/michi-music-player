@@ -234,3 +234,28 @@ review and exact-SHA CI.
 - Honest limits: no human screenshot sign-off, no pixel/perceptual golden, DPI
   scales above 100 % not exercised, physical DAC not re-run, and the Advanced
   body scrolls in short windows. F11 remains NO-GO/ACTIVE.
+
+## Visual Recovery R7 (2026-11-03)
+
+- `879099c` `fix(audio): make signal truth intrinsic and proof-aware`:
+  SignalTruthPopup now derives its height from five collapsed stages, keeps a
+  bounded short-window fallback through `maxPopupHeight`, and only enables the
+  Flickable when the content really exceeds its viewport. The repeated stage
+  checkmarks became a 5 px certainty microdot, per-stage observed text is
+  suppressed in favour of the global temporal badge, and each stage with a real
+  capability exposes an independent gear action. Unknown verdicts with four
+  proof parts remain `partially_verified`; only a proven verdict plus source,
+  host, transport and device can be `verified`. The NowPlaying track card is
+  96 px with 72 px artwork while the bar stays 154 px and transport is unchanged.
+- Tests: pointer guard, R7 integrity, QML contract and R6 evidence `32 passed`;
+  F11/QML, bridge, runtime, engine and golden regression `228 passed`. The
+  first full-suite run exposed three stale R6 source-contract assertions in
+  `test_f11_signal_truth_pointer_guard.py`; they were updated to the intentional
+  R7 contracts (independent evidence microdot, capability-based configuration,
+  96 px card / 72 px artwork) without weakening behaviour coverage. qmllint
+  exits 0 with only pre-existing warnings; ruff check/format clean. Full suite:
+  `6479 passed, 41 skipped, 0 failed` in 1931.53 s.
+- Honest limits: KWin MCP was unavailable in this session, so VR-R7 KWin
+  captures are NOT_RUN; qmlformat/qmltestrunner are Qt 5 binaries and were not
+  used against Qt 6 QML; DPI scaling and Qt Quick profiler p95 are NOT_RUN.
+  F11 remains **NO-GO / ACTIVE**.
