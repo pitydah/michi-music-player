@@ -840,7 +840,12 @@ Item {
     function positionTruthPopup() {
         if (!Overlay.overlay || !signalTruthPopup)
             return
-        const opener = qualityBadge.mapToItem(Overlay.overlay, 0, 0)
+        const overlayOrigin = Overlay.overlay.mapToItem(null, 0, 0)
+        const badgeScene = qualityBadge.mapToItem(null, 0, 0)
+        const opener = {
+            "x": badgeScene.x - overlayOrigin.x,
+            "y": badgeScene.y - overlayOrigin.y
+        }
         signalTruthPopup.maxPopupHeight = Math.max(260,
             opener.y - 2 * MichiSpacing.sm)
         signalTruthPopup.x = Math.max(MichiSpacing.sm, Math.min(

@@ -64,7 +64,8 @@ def test_normal_five_stage_panel_has_intrinsic_height_not_fixed_scrollbox():
         Path(__file__).parents[1]
         / "src/michi/presentation/qml/player/SignalTruthPopup.qml"
     ).read_text()
-    assert "desiredHeight: panel.implicitHeight" in popup
+    assert "desiredHeight: chromeHeight" in popup
+    assert "Math.min(stageView.implicitHeight, stageViewportLimit)" in popup
     assert "height: Math.min(safeOverlayHeight," in popup
     assert "maxPopupHeight > 0 ? maxPopupHeight : safeOverlayHeight" in popup
     assert "ScrollView {" not in popup

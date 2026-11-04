@@ -63,9 +63,14 @@ Popup {
         maxPopupHeight > 0 ? maxPopupHeight : safeOverlayHeight)
     // Header + summary card + headline + footer + spacing. The stage area is
     // the only region allowed to shrink; the footer must stay visible.
+    readonly property real chromeHeight: compactDensity ? 220 : 252
     readonly property real stageViewportLimit: Math.max(120,
-        stageAvailableHeight - 252)
-    readonly property real desiredHeight: panel.implicitHeight
+        stageAvailableHeight - chromeHeight)
+    // Deterministic content budget from the stage view's intrinsic height.
+    // Never derive popup height from the popup's own contentItem height: that
+    // closes a binding loop through the Layout height negotiation.
+    readonly property real desiredHeight: chromeHeight
+        + Math.min(stageView.implicitHeight, stageViewportLimit)
         + topPadding + bottomPadding
 
     padding: compactDensity ? MichiSpacing.lg : MichiSpacing.lg + MichiSpacing.xs
