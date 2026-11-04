@@ -202,6 +202,35 @@ def test_equalizer_controls_commit_through_the_bridge(qapp):
     assert "keyboardCommit.restart()" in slider
 
 
+def test_signal_stage_icons_use_official_tabler_geometry(qapp):
+    icon = _instantiate(QML_DIR / "components" / "MichiSignalStageIcon.qml", 24, 24)
+    try:
+        for role in (
+            "source",
+            "decode",
+            "processing",
+            "resample",
+            "channel-remap",
+            "fir",
+            "output",
+            "device",
+            "alert-triangle",
+            "headphones",
+            "device-speaker",
+        ):
+            icon.setProperty("roleName", role)
+            path_data = str(icon.property("pathData") or "")
+            assert path_data, f"missing Tabler path for {role}"
+            assert len(path_data) > 20
+        icon.setProperty("roleName", "unknown")
+        assert icon.property("pathData")
+        assert "PathSvg" in (
+            QML_DIR / "components" / "MichiSignalStageIcon.qml"
+        ).read_text(encoding="utf-8")
+    finally:
+        icon.deleteLater()
+
+
 def test_response_plot_expands_its_scale_for_large_gain(qapp):
     plot = _instantiate(QML_DIR / "components" / "MichiEqResponsePlot.qml", 440, 220)
     try:

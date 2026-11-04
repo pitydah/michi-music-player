@@ -1,0 +1,39 @@
+{
+  "schema": "michi.f11.vr.r9.kwin_evidence.v1",
+  "captured_at": "2026-11-04",
+  "environment": {
+    "compositor": "KWin 6.8.1 Wayland",
+    "display": "1920x1080",
+    "isolated_session": true,
+    "application": "Michi Music Player"
+  },
+  "surfaces": [
+    {
+      "name": "tabler_icons_flac_live_1100x700",
+      "file": "evidence/f11/2026-11-04-f11-vr-r9/f11_r9_signal_truth_tabler_icons_live_1100x700.png",
+      "sha256": "44237c28054621546d30b2550fdd019e456abe47c8ef24817baa7d0b8ce1f615",
+      "source": "FLAC 16-bit 44.1 kHz",
+      "path": "Direct, Verified path",
+      "viewport": "1100x700",
+      "scroll": false,
+      "notes": "All five stages visible; official Tabler geometry; footer inside surface; no QML binding-loop warning in the application log."
+    }
+  ],
+  "truth": {
+    "audibility": "REQUIRES_OPERATOR_CONFIRMATION",
+    "bit_perfect_claim": "NONE",
+    "physical_dac_certification": "NONE",
+    "dsp_effective_capture": "NOT_RUN",
+    "high_contrast_capture": "NOT_RUN",
+    "reduced_motion_capture": "NOT_RUN",
+    "fractional_scale_capture": "NOT_RUN",
+    "qt_quick_profiler": "NOT_RUN",
+    "independent_killcritic_review": "NOT_RUN"
+  },
+  "limitations": [
+    "Virtual isolated KWin session, not an operator audibility assessment.",
+    "Only the icon-set/live FLAC surface is newly captured in R9.",
+    "R8 evidence remains authoritative for the earlier geometry comparison.",
+    "No bit-perfect claim is made from lossless source quality."
+  ]
+}

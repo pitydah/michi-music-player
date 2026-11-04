@@ -50,12 +50,20 @@ def test_compact_dac_view_is_not_a_dead_navigation_surface() -> None:
 
 def test_semantic_stage_icons_have_explicit_license() -> None:
     icon = _qml("components/MichiSignalStageIcon.qml")
-    assert "Tabler Icons (MIT)" in icon
-    assert "Permission is hereby granted" in icon
-    for symbol in ("track", "audio-engine", "equalizer", "audio-output"):
+    assert "Tabler Icons geometry (MIT)" in icon
+    assert "MIT License" in icon
+    for symbol in (
+        "file-music",
+        "cpu",
+        "adjustments-horizontal",
+        "arrows-exchange",
+        "wave-sine",
+        "circuit-diode",
+    ):
         assert symbol in icon
-    assert "Canvas" in icon
-    assert "QtSvg" in icon  # documentation: no runtime QtSvg dependency
+    assert "PathSvg" in icon
+    assert "Canvas" not in icon
+    assert "QtSvg" not in icon
 
 
 def test_read_only_advanced_tabs_never_apply_the_quick_eq_graph() -> None:

@@ -1,0 +1,46 @@
+{
+  "adjustments-horizontal": {
+    "paths": 9,
+    "sha256": "51c876babc598cf69ad1146f0fb621919a975758df0cc7abf45052006358a353"
+  },
+  "alert-triangle": {
+    "paths": 3,
+    "sha256": "25b1f0c39f34647017df84a0cdc9e691c697737094a5956c360ab448a7fd5bef"
+  },
+  "arrows-exchange": {
+    "paths": 2,
+    "sha256": "67be2e2afc04e53c70a4b81f58b18c232edd5b6124eff81a285fcd513f857016"
+  },
+  "binary": {
+    "paths": 4,
+    "sha256": "9eae9934111ec53985c3954a3df17610d81c5f51ead48899675456e1ed9f1301"
+  },
+  "circuit-diode": {
+    "paths": 4,
+    "sha256": "eea4e4e6015172292d2d519106c72f4ef08d124b1344d5bb4d57c5117cdb2ac9"
+  },
+  "cpu": {
+    "paths": 10,
+    "sha256": "d9ecd8e0f4a140f8a0c272d3cb6d7e380c6a57f2d5e823980dc40024fa7387ac"
+  },
+  "device-speaker": {
+    "paths": 3,
+    "sha256": "858ebd7f784965383543a41a065e68057ed36baaac7f4a6b54c214dcb016e9ed"
+  },
+  "file-music": {
+    "paths": 4,
+    "sha256": "aa0221d9651fedd31262a2ad31ea0fcd4360f90b6f78ed33dd7fd2fc9305359f"
+  },
+  "headphones": {
+    "paths": 3,
+    "sha256": "3ad34acfba12316c3fd9e7930b344522e135d18089d86d798ad55198920b3f22"
+  },
+  "plug-connected": {
+    "paths": 6,
+    "sha256": "0894139c4c7995ddc73e69fe204d0fbebaed02fe27770e142cf2c5b20434d00b"
+  },
+  "wave-sine": {
+    "paths": 1,
+    "sha256": "6ba787e7fdaa706e91a800e753f69b735261fcd017f90fbf1b8cbcc82de1ec48"
+  }
+}

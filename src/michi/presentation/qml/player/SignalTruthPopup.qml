@@ -86,7 +86,8 @@ Popup {
     width: Math.max(440, Math.min(500, (Overlay.overlay
         ? Overlay.overlay.width : 500) - 24))
     height: Math.min(680, safeOverlayHeight,
-        maxPopupHeight > 0 ? maxPopupHeight : safeOverlayHeight)
+        maxPopupHeight > 0 ? maxPopupHeight : safeOverlayHeight,
+        Math.ceil(desiredHeight))
 
     enter: Transition {
         enabled: !MichiAccessibility.reducedMotion
