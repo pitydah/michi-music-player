@@ -230,6 +230,11 @@ def test_advanced_equalizer_has_the_five_named_tabs(qapp):
         assert "padBottom = 26" in plot
         assert 'qsTr("Calculated response · draft")' in plot
         assert plot.count("Calculated response") == 1
+        assert "readonly property real rangeDb" in plot
+        assert "var levels = [root.rangeDb, 0, -root.rangeDb]" in plot
+        assert "legendText: root.responseLegend()" in source
+        assert "Layout.maximumWidth: 56" in source
+        assert "Layout.alignment: Qt.AlignHCenter" in source
     finally:
         popup.deleteLater()
 

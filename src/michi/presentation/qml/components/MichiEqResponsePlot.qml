@@ -8,6 +8,20 @@ Item {
     id: root
     property var points: []
     property real sampleRate: 0
+    property string legendText: qsTr("Calculated response · draft")
+    readonly property real rangeDb: {
+        var peak = 0
+        for (var i = 0; i < points.length; ++i) {
+            var value = Math.abs(Number(points[i].db))
+            if (isFinite(value))
+                peak = Math.max(peak, value)
+        }
+        if (peak <= 18)
+            return 18
+        if (peak <= 24)
+            return 24
+        return 36
+    }
     implicitHeight: 220
     Accessible.role: Accessible.StaticText
     Accessible.name: qsTr("Calculated equalizer response, not a measurement")
@@ -33,9 +47,10 @@ Item {
                     * (width - padLeft - padRight)
             }
             function yFor(db) {
-                var clamped = Math.max(-18, Math.min(18, db))
+                var clamped = Math.max(-root.rangeDb, Math.min(root.rangeDb, db))
                 var mid = padTop + (height - padTop - padBottom) / 2
-                return mid - clamped / 18 * ((height - padTop - padBottom) / 2)
+                return mid - clamped / root.rangeDb
+                    * ((height - padTop - padBottom) / 2)
             }
 
             ctx.strokeStyle = MichiSemanticColors.borderSubtle
@@ -55,7 +70,7 @@ Item {
             ctx.font = "10px sans-serif"
             ctx.textAlign = "right"
             ctx.textBaseline = "middle"
-            var levels = [12, 0, -12]
+            var levels = [root.rangeDb, 0, -root.rangeDb]
             for (var level = 0; level < levels.length; ++level) {
                 var levelY = yFor(levels[level])
                 ctx.strokeStyle = levels[level] === 0
@@ -95,8 +110,7 @@ Item {
             ctx.fillStyle = MichiPalette.textSecondary
             ctx.textAlign = "right"
             ctx.textBaseline = "top"
-            ctx.fillText(qsTr("Calculated response · draft"),
-                width - padRight, padTop + 2)
+            ctx.fillText(root.legendText, width - padRight, padTop + 2)
         }
 
         Connections {

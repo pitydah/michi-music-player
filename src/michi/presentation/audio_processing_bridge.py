@@ -396,9 +396,12 @@ class AudioProcessingBridge(QObject):
     # ------------------------------------------------------------------
     # draft edits (presentation only)
     # ------------------------------------------------------------------
+    def _draft_editable(self) -> bool:
+        return not self._busy and self.available
+
     @Slot(int, float)
     def set_draft_band(self, index: int, gain_db: float) -> None:
-        if self._busy or index < 0 or index >= len(self._bands):
+        if not self._draft_editable() or index < 0 or index >= len(self._bands):
             return
         self._bands[index]["gainDb"] = _round_half_db(gain_db)
         self._preset_id = "custom"
@@ -407,7 +410,7 @@ class AudioProcessingBridge(QObject):
 
     @Slot(float)
     def set_draft_preamp(self, value: float) -> None:
-        if self._busy:
+        if not self._draft_editable():
             return
         try:
             numeric = float(value)
@@ -420,7 +423,7 @@ class AudioProcessingBridge(QObject):
 
     @Slot(str)
     def select_preset(self, preset_id: str) -> None:
-        if self._busy:
+        if not self._draft_editable():
             return
         preset = next(
             (
@@ -443,7 +446,7 @@ class AudioProcessingBridge(QObject):
 
     @Slot()
     def reset_draft(self) -> None:
-        if self._busy:
+        if not self._draft_editable():
             return
         self._bands = self._flat_bands()
         self._preamp_db = 0.0
@@ -464,7 +467,7 @@ class AudioProcessingBridge(QObject):
 
     @Slot(bool)
     def set_bypass_requested(self, bypassed: bool) -> None:
-        if self._busy:
+        if not self._draft_editable():
             return
         self._bypass_requested = bool(bypassed)
         self._clear_error()

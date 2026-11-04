@@ -34,6 +34,18 @@ Popup {
         return value === undefined ? fallback : value
     }
 
+    function responseLegend() {
+        if (!processingBridge)
+            return qsTr("Calculated response")
+        if (bridgeValue("effectiveState", "unknown") === "unavailable")
+            return qsTr("Calculated response · unavailable")
+        if (bridgeValue("draftDirty", false))
+            return qsTr("Calculated response · draft")
+        if (bridgeValue("effectiveState", "unknown") === "bypassed")
+            return qsTr("Calculated response · bypassed")
+        return qsTr("Calculated response · applied")
+    }
+
     function commitDraft() {
         // Draft edits stay local; this is the single commit boundary used by
         // every quick-EQ control that has a complete value to apply.
@@ -177,6 +189,7 @@ Popup {
             Layout.preferredHeight: 112
             points: root.bridgeValue("responseCurve", [])
             sampleRate: 0
+            legendText: root.responseLegend()
         }
 
         Flickable {

@@ -235,6 +235,34 @@ def test_bypass_preserves_the_curve_and_reset_never_reenables_it() -> None:
     assert bridge.enabledDraft is False
 
 
+def test_unavailable_output_never_mutates_the_draft() -> None:
+    class _Unavailable(_Processing):
+        def processing_truth(self) -> dict[str, Any]:
+            return {
+                "capability_state": "unavailable",
+                "requested_revision": 0,
+                "effective_revision": 0,
+                "effective_state": "unavailable",
+                "strategies": [],
+            }
+
+    bridge = AudioProcessingBridge(
+        _Unavailable(),
+        signal_provider=_signal,
+        async_submit=lambda work, completed: completed(work(), None),
+    )
+    assert bridge.available is False
+
+    bridge.set_draft_band(0, 6.0)
+    bridge.set_draft_preamp(-3.0)
+    bridge.set_bypass_requested(True)
+
+    assert all(band["gainDb"] == 0.0 for band in bridge.bands)
+    assert bridge.preampDb == 0.0
+    assert bridge.enabledDraft is True
+    assert bridge.draftDirty is False
+
+
 def test_incomplete_capability_strategies_disable_the_controls() -> None:
     class _NoBiquad(_Processing):
         def processing_truth(self) -> dict[str, Any]:

@@ -49,6 +49,18 @@ Popup {
         : workspaceState === "applying" || workspaceState === "validating"
             ? "active" : "neutral"
 
+    function responseLegend() {
+        if (!processingBridge)
+            return qsTr("Calculated response")
+        if (bridgeValue("effectiveState", "unknown") === "unavailable")
+            return qsTr("Calculated response · unavailable")
+        if (bridgeValue("draftDirty", false))
+            return qsTr("Calculated response · draft")
+        if (bridgeValue("effectiveState", "unknown") === "bypassed")
+            return qsTr("Calculated response · bypassed")
+        return qsTr("Calculated response · applied")
+    }
+
     function bridgeValue(name, fallback) {
         if (!processingBridge)
             return fallback
@@ -188,9 +200,10 @@ Popup {
                             Math.max(180, root.height * 0.32))
                         points: root.bridgeValue("responseCurve", [])
                         sampleRate: 0
+                        legendText: root.responseLegend()
                     }
                     RowLayout {
-                        Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignHCenter
                         spacing: MichiSpacing.xs
                         Item {
                             Layout.preferredWidth: 40
@@ -223,8 +236,10 @@ Popup {
                                 required property var modelData
                                 required property int index
                                 objectName: "advancedGraphicBand_" + index
-                                Layout.fillWidth: true
-                                Layout.minimumWidth: 34
+                                Layout.fillWidth: false
+                                Layout.minimumWidth: 48
+                                Layout.preferredWidth: 56
+                                Layout.maximumWidth: 56
                                 Layout.preferredHeight: 180
                                 bandLabel: modelData.label
                                 gainDb: modelData.gainDb
@@ -265,6 +280,7 @@ Popup {
                             Math.max(220, root.height * 0.30))
                         points: root.bridgeValue("responseCurve", [])
                         sampleRate: 0
+                        legendText: root.responseLegend()
                     }
                     RowLayout {
                         Layout.fillWidth: true
