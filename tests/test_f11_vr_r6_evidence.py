@@ -55,7 +55,7 @@ def test_signal_truth_uses_typed_badge_and_measured_overlay_geometry() -> None:
     assert 'text: qsTr("Close")' not in source
     assert "parent: Overlay.overlay" in now_playing
     assert "function positionTruthPopup()" in now_playing
-    assert "qualityBadge.mapToItem(Overlay.overlay, 0, 0)" in now_playing
+    assert "qualityBadge.mapToItem(null, 0, 0)" in now_playing
     assert "sourceQualityClass" in now_playing
     assert "qualityClass" in badge
     assert 'qualityClass === "pcm_hires"' in badge
