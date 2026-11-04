@@ -200,9 +200,7 @@ def test_equalizer_controls_commit_through_the_bridge(qapp):
 
 
 def test_response_plot_expands_its_scale_for_large_gain(qapp):
-    plot = _instantiate(
-        QML_DIR / "components" / "MichiEqResponsePlot.qml", 440, 220
-    )
+    plot = _instantiate(QML_DIR / "components" / "MichiEqResponsePlot.qml", 440, 220)
     try:
         plot.setProperty("points", [{"hz": 20, "db": 0.0}, {"hz": 1000, "db": 30.0}])
         assert plot.property("rangeDb") == 36.0
