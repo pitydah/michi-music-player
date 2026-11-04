@@ -190,6 +190,9 @@ def test_equalizer_popup_compiles_and_is_honest_about_its_contract(qapp):
 
 def test_equalizer_controls_commit_through_the_bridge(qapp):
     source = (QML_DIR / "player" / "EqualizerPopup.qml").read_text(encoding="utf-8")
+    assert "height: Math.min(implicitHeight" in source
+    now_playing = (QML_DIR / "player" / "NowPlayingBar.qml").read_text(encoding="utf-8")
+    assert "settingsButton.mapToItem(Overlay.overlay, 0, 0)" in now_playing
     assert "function commitDraft()" in source
     assert "processingBridge.apply_draft_async()" in source
     assert source.count("root.commitDraft()") >= 5

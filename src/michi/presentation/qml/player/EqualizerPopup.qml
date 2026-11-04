@@ -71,6 +71,8 @@ Popup {
     // overlay is the only valid width authority for a focused popup.
     width: Math.max(420, Math.min(440, (Overlay.overlay
         ? Overlay.overlay.width : 480) - 24))
+    height: Math.min(implicitHeight, Math.max(320, (Overlay.overlay
+        ? Overlay.overlay.height : 700) - 24))
     enter: Transition {
         enabled: !MichiAccessibility.reducedMotion
         NumberAnimation {
@@ -195,7 +197,8 @@ Popup {
         Flickable {
             id: railScroll
             Layout.fillWidth: true
-            Layout.preferredHeight: 194
+            Layout.preferredHeight: Math.min(194, Math.max(120,
+                (Overlay.overlay ? Overlay.overlay.height : 700) - 360))
             contentWidth: width
             contentHeight: railRow.implicitHeight
             clip: true

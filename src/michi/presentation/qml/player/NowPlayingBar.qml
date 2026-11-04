@@ -571,9 +571,15 @@ Item {
 
             EqualizerPopup {
                 id: equalizerPopup
-                parent: settingsButton
-                x: settingsButton.width - width
-                y: -height - MichiSpacing.md
+                parent: Overlay.overlay
+                x: Math.max(MichiSpacing.sm, Math.min(
+                    Overlay.overlay.width - width - MichiSpacing.sm,
+                    settingsButton.mapToItem(Overlay.overlay, 0, 0).x
+                        + settingsButton.width - width))
+                y: Math.max(MichiSpacing.sm, Math.min(
+                    Overlay.overlay.height - height - MichiSpacing.sm,
+                    settingsButton.mapToItem(Overlay.overlay, 0, 0).y
+                        - height - MichiSpacing.md))
                 processingBridge: root.processingBridge
                 focusReturnTarget: settingsButton
             }
