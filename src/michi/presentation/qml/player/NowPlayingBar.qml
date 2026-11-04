@@ -134,7 +134,8 @@ Item {
             Layout.preferredWidth: root.narrow ? 88 : root.compact ? 252 : 326
             Layout.minimumWidth: root.narrow ? 76 : 204
             Layout.maximumWidth: 334
-            Layout.preferredHeight: 88
+            // +8px of optical mass, still inside the existing 154px bar.
+            Layout.preferredHeight: 96
             Layout.alignment: Qt.AlignVCenter
             // Embedded smoked-glass sub-surface, not a raised graphite card.
             // Reuse the player backplane / grain without costly recursive blur.
@@ -194,8 +195,8 @@ Item {
 
                 Artwork {
                     objectName: "trackArtwork"
-                    Layout.preferredWidth: 66
-                    Layout.preferredHeight: 66
+                    Layout.preferredWidth: 72
+                    Layout.preferredHeight: 72
                     Layout.alignment: Qt.AlignVCenter
                     radius: 10
                     sourcePath: root.artworkPath
@@ -780,6 +781,9 @@ Item {
                 parent: Overlay.overlay
                 signalPathBridge: root.signalPathBridge
                 focusReturnTarget: qualityBadge
+                // Re-anchor whenever an expansion or stage count changes
+                // the height; keep the inspector attached to the opener.
+                onHeightChanged: if (opened) Qt.callLater(root.positionTruthPopup)
                 onConfigurationAction: {
                     root.handleSignalTruthConfiguration(action)
                 }
@@ -830,6 +834,8 @@ Item {
         if (!Overlay.overlay || !signalTruthPopup)
             return
         const opener = qualityBadge.mapToItem(Overlay.overlay, 0, 0)
+        signalTruthPopup.maxPopupHeight = Math.max(260,
+            opener.y - 2 * MichiSpacing.sm)
         signalTruthPopup.x = Math.max(MichiSpacing.sm, Math.min(
             Overlay.overlay.width - signalTruthPopup.width - MichiSpacing.sm,
             opener.x + qualityBadge.width - signalTruthPopup.width))

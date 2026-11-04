@@ -115,9 +115,15 @@ Item {
                 width: 32
                 height: 32
                 radius: 10
-                color: MichiPalette.smoke
+                color: root.expanded ? MichiSemanticColors.controlSurfaceStrong
+                    : MichiPalette.smoke
                 border.width: 1
-                border.color: MichiSemanticColors.borderSubtle
+                border.color: root.expanded
+                    ? MichiSemanticColors.auroraCyanBorder : MichiSemanticColors.borderSubtle
+                Behavior on color {
+                    enabled: !MichiAccessibility.reducedMotion
+                    ColorAnimation { duration: MichiMotion.micro }
+                }
                 MichiSignalStageIcon {
                     anchors.centerIn: parent
                     width: 20
@@ -126,22 +132,22 @@ Item {
                     iconColor: MichiPalette.textPrimary
                 }
             }
-            // Evidence is NOT the identity icon. It is a separate badge.
+            // Evidence is a discrete microdot, NOT a repeated checkmark icon.
             Rectangle {
-                x: 26
+                x: 27
                 y: 34
-                width: 15
-                height: 15
-                radius: 7.5
-                color: MichiPalette.smoke
+                width: 13
+                height: 13
+                radius: width / 2
+                color: MichiPalette.obsidianRaised
                 border.width: 1
                 border.color: root.stateColor
-                MichiIcon {
+                Rectangle {
                     anchors.centerIn: parent
-                    name: root.glyphName
-                    width: 9
-                    height: 9
-                    iconColor: root.stateColor
+                    width: 5
+                    height: 5
+                    radius: width / 2
+                    color: root.stateColor
                 }
             }
         }
@@ -164,9 +170,22 @@ Item {
                 }
                 Item { Layout.fillWidth: true }
                 MichiText {
+                    // The global route status already communicates ordinary
+                    // observations; reserve per-stage text for useful exceptions.
+                    visible: root.stageState !== "observed"
+                        && root.stageState !== "historical"
                     text: root.stateText
                     role: "micro"
                     color: root.stateColor
+                }
+                MichiIconButton {
+                    // Roon-like per-stage settings, explicitly invoked by user.
+                    visible: root.configAction !== "NONE"
+                    iconName: "settings"
+                    accessibleName: qsTr("Configure %1").arg(root.title)
+                    implicitWidth: MichiMetrics.controlSmall
+                    implicitHeight: MichiMetrics.controlSmall
+                    onClicked: root.configurationRequested(root.configAction)
                 }
                 MichiIconButton {
                     visible: root.expandable

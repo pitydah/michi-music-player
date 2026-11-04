@@ -128,7 +128,16 @@ def _path_proof_state(
     if verdict_state == "contradicted" or tone == "error":
         return "contradicted"
     expected = {"Source", "host", "transport", "device"}
-    if expected.issubset(set(proof_parts)):
+    # Having four IDs/formats is not proof of a verified path if the canonical
+    # verdict remains unknown. This prevents "Verified path / Not verified".
+    verified_verdict = verdict_state in {
+        "direct",
+        "direct_container_adapted",
+        "resampled",
+        "remixed",
+        "dsp",
+    }
+    if verified_verdict and expected.issubset(set(proof_parts)):
         return "verified"
     if proof_parts:
         return "partially_verified"
@@ -659,9 +668,9 @@ class SignalPathBridge(QObject):
         )
         output_rows: list[tuple[str, str]] = []
         if requested:
+            # Display the negotiated/observed format as the concise headline;
+            # keep the complete requested vs actual tuple in expanded evidence.
             output_rows.append(("Requested", _pcm_label(requested)))
-            if output_observed and requested != output_observed:
-                output_format = f"{_pcm_label(requested)} → {output_format}"
         if alsa is not None:
             output_rows.append(("Negotiated", _pcm_label(alsa)))
         if plan.get("sink_factory"):

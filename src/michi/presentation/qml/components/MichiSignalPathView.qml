@@ -9,6 +9,9 @@ ColumnLayout {
     property var stages: []
     property string expandedStageId: ""
     property bool compact: false
+    // DAC diagnostics stays read-only, while short Signal Truth windows
+    // keep their genuine configuration actions.
+    property bool configurationEnabled: !compact
     spacing: 0
     signal configurationRequested(string action)
 
@@ -49,9 +52,9 @@ ColumnLayout {
             summary: modelData.summary || ""
             detail: modelData.detail || ""
             detailRows: modelData.detailRows || []
-            // DAC compact inspector has no navigation callback; never render a
-            // dead configuration button in that variant.
-            configAction: root.compact ? "NONE" : (modelData.configAction || "NONE")
+            // Navigation is a capability, not a side effect of density.
+            configAction: root.configurationEnabled
+                ? (modelData.configAction || "NONE") : "NONE"
             stageState: modelData.state || "unknown"
             onToggleRequested: {
                 root.expandedStageId = root.expandedStageId === modelData.id

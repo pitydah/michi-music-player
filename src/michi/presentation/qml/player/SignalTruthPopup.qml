@@ -50,6 +50,19 @@ Popup {
     readonly property string expandedKey: signalPathBridge
         ? "stage:" + signalPathBridge.generation : "stage:0"
     property string expandedStageId: ""
+    // The opener injects the space that actually exists above the badge. It
+    // bounds the intrinsic height in short windows so the fixed footer and the
+    // 8 px anchor gap can never overlap the NowPlaying bar.
+    property real maxPopupHeight: 0
+    // Intrinsic, content-led geometry. A five-stage path must be fully legible
+    // without scrolling. Compact only when the actual viewport is short.
+    readonly property real safeOverlayHeight: Math.max(0,
+        (Overlay.overlay ? Overlay.overlay.height : 768) - 2 * MichiSpacing.md)
+    readonly property bool compactDensity: safeOverlayHeight < 680
+    readonly property real stageViewportLimit: Math.max(160,
+        safeOverlayHeight - (compactDensity ? 198 : 218))
+    readonly property real desiredHeight: panel.implicitHeight
+        + topPadding + bottomPadding
 
     padding: MichiSpacing.lg
     // P0 KX11-16: modal overlay absorbs pointer presses BEFORE the library's
@@ -59,15 +72,13 @@ Popup {
     dim: false
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-    // Position is still anchored to the quality capsule, but size belongs to
-    // the window overlay, never the 34px opener.
-    width: Math.max(320, Math.min(480, (Overlay.overlay
-        ? Overlay.overlay.width : 480) - 24))
-    // Keep the fixed header and footer inside the window even when the quality
-    // capsule sits close to the bottom edge. The opener positions this popup
-    // inside the overlay and the stage body scrolls inside the remaining height.
-    height: Math.min(520, Math.max(0, (Overlay.overlay
-        ? Overlay.overlay.height : 584) * 0.78))
+    // The stage list determines height: 5 rows ~600px, not a fixed 520px.
+    // The overlay bounds are a safety limit, NOT the preferred size.
+    width: Math.max(320, Math.min(500, (Overlay.overlay
+        ? Overlay.overlay.width : 500) - 24))
+    height: Math.min(safeOverlayHeight,
+        maxPopupHeight > 0 ? maxPopupHeight : safeOverlayHeight,
+        Math.ceil(desiredHeight))
 
     enter: Transition {
         enabled: !MichiAccessibility.reducedMotion
@@ -103,6 +114,7 @@ Popup {
     onClosed: if (focusReturnTarget) focusReturnTarget.forceActiveFocus()
 
     contentItem: ColumnLayout {
+        id: panel
         spacing: MichiSpacing.md
 
         MichiPopupHeader {
@@ -163,18 +175,28 @@ Popup {
             }
         }
 
-        ScrollView {
-            id: stagesScroll
-            objectName: "signalTruthStagesScroll"
+        // No persistent ScrollView: the popup grows with the real stage count
+        // and disclosure height. Flicking activates ONLY as an emergency
+        // fallback when a small viewport cannot physically hold all evidence.
+        Flickable {
+            id: stagesViewport
+            objectName: "signalTruthStagesViewport"
             Layout.fillWidth: true
-            Layout.fillHeight: true
-            contentWidth: availableWidth
-            clip: true
-            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+            Layout.preferredHeight: Math.min(stageView.implicitHeight,
+                root.stageViewportLimit)
+            contentWidth: width
+            contentHeight: stageView.implicitHeight
+            boundsBehavior: Flickable.StopAtBounds
+            interactive: contentHeight > height + 1
+            clip: interactive
+            Accessible.name: qsTr("Signal stages; full path is visible unless the window is too short")
 
             MichiSignalPathView {
                 id: stageView
-                width: stagesScroll.availableWidth
+                width: stagesViewport.width
+                compact: root.compactDensity
+                // Compact density must not silently remove configuration tools.
+                configurationEnabled: true
                 stages: root.stages
                 expandedStageId: root.expandedStageId
                 onConfigurationRequested: action => {

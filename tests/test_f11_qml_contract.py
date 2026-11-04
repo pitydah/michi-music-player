@@ -249,12 +249,47 @@ def test_signal_truth_popup_is_measured_against_the_quality_badge(qapp, width, h
         import "player"
         ApplicationWindow {
             visible: true
+            QtObject {
+                id: fakeSignalPath
+                property var stages: [
+                    { id: "source", title: "Source", summary: "WAVE",
+                      detail: "PCM - 16-bit - 44.1 kHz", detailRows: [],
+                      configAction: "NONE", state: "observed" },
+                    { id: "decode", title: "Decode",
+                      summary: "S16LE - 16-bit - 44.1 kHz",
+                      detail: "Runtime decoder evidence", detailRows: [],
+                      configAction: "OPEN_ENGINE", state: "observed" },
+                    { id: "processing", title: "Processing", summary: "Bypassed",
+                      detail: "No processing graph installed", detailRows: [],
+                      configAction: "OPEN_PROCESSING", state: "bypassed" },
+                    { id: "output", title: "Output", summary: "S32_LE - 44.1 kHz",
+                      detail: "Container adapted", detailRows: [],
+                      configAction: "OPEN_OUTPUT", state: "observed" },
+                    { id: "device", title: "DAC / Device", summary: "SMSL USB AUDIO",
+                      detail: "usb:152a:85dd", detailRows: [],
+                      configAction: "OPEN_DEVICE_SETUP", state: "observed" }
+                ]
+                property string headline: "Direct path"
+                property string proofLevel: "Source - host - transport"
+                property string statusLabel: "Active"
+                property string status: "ACTIVE"
+                property string pathProofState: "partially_verified"
+                property string pathProofLabel: "Partially verified"
+                property string sourceFormatLabel: "WAVE"
+                property string sourceRateDepthLabel: "16-bit - 44.1 kHz"
+                property string sourceQualityClass: "pcm_standard"
+                property string indicatorState: "observed"
+                property string indicatorTooltip: "Signal Truth: path observed"
+                property int generation: 7
+                function request_configuration(action) {}
+            }
             NowPlayingBar {
                 objectName: "barUnderTest"
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
                 height: 154
+                signalPathBridge: fakeSignalPath
             }
         }
         """,
@@ -281,6 +316,7 @@ def test_signal_truth_popup_is_measured_against_the_quality_badge(qapp, width, h
         QMetaObject.invokeMethod(popup, "open")
         QTest.qWait(120)
         assert popup.property("visible") is True
+        viewport = _named(popup, "signalTruthStagesViewport")
         popup_width = float(popup.property("width"))
         popup_height = float(popup.property("height"))
         popup_x = float(popup.property("x"))
@@ -298,8 +334,18 @@ def test_signal_truth_popup_is_measured_against_the_quality_badge(qapp, width, h
         gap = badge_y - (popup_y + popup_height)
         assert 8.0 <= gap <= 12.0
         assert 420.0 <= popup_width <= 520.0
-        assert 420.0 <= popup_height <= 520.0
+        if height >= 768:
+            assert 560.0 <= popup_height <= 680.0
+        else:
+            assert 420.0 <= popup_height <= 560.0
         assert badge_height == pytest.approx(34.0)
+        content_height = float(viewport.property("contentHeight"))
+        viewport_height = float(viewport.property("height"))
+        assert viewport.property("interactive") is (
+            content_height > viewport_height + 1
+        )
+        if height >= 768:
+            assert viewport.property("interactive") is False
         QMetaObject.invokeMethod(popup, "close")
         QTest.qWait(300)
         assert popup.property("visible") is False
@@ -329,7 +375,9 @@ def test_signal_truth_popup_never_claims_unproven_truth(qapp):
         assert "MichiSignalPathView" in source
         assert "stages: root.stages" in source
         assert "expandedStageId" in source
-        assert "signalTruthStagesScroll" in source
+        assert "signalTruthStagesViewport" in source
+        assert "desiredHeight" in source
+        assert "interactive: contentHeight > height + 1" in source
         assert "MichiQualityDot" in source
         assert "sourceLine" in source
         assert "proofLabel" in source
@@ -337,7 +385,7 @@ def test_signal_truth_popup_never_claims_unproven_truth(qapp):
         assert "SIGNAL TRUTH" in source
         assert "LAST PLAYBACK" in source
         assert 'text: qsTr("Close")' not in source
-        assert "Overlay.overlay.height : 584" in source
+        assert "Overlay.overlay.height : 768" in source
         now_playing = (QML_DIR / "player" / "NowPlayingBar.qml").read_text(
             encoding="utf-8"
         )
