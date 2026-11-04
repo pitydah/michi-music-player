@@ -194,17 +194,29 @@ Popup {
                             }
                         }
                     }
-                    MichiEqResponsePlot {
+                    Item {
                         Layout.fillWidth: true
                         Layout.preferredHeight: Math.min(240,
                             Math.max(180, root.height * 0.32))
-                        points: root.bridgeValue("responseCurve", [])
-                        sampleRate: 0
-                        legendText: root.responseLegend()
+                        MichiEqResponsePlot {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: 40 + 10 * 56 + 9 * MichiSpacing.xs
+                            height: parent.height
+                            points: root.bridgeValue("responseCurve", [])
+                            sampleRate: 0
+                            legendText: root.responseLegend()
+                        }
                     }
-                    RowLayout {
-                        Layout.alignment: Qt.AlignHCenter
-                        spacing: MichiSpacing.xs
+                    Item {
+                        objectName: "graphicRailsHost"
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 180
+                        RowLayout {
+                            objectName: "graphicRailsRow"
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: 40 + 10 * 56 + 9 * MichiSpacing.xs
+                            height: parent.height
+                            spacing: MichiSpacing.xs
                         Item {
                             Layout.preferredWidth: 40
                             Layout.fillHeight: true
@@ -251,6 +263,7 @@ Popup {
                                         root.processingBridge.set_draft_band(index, gain)
                                 }
                             }
+                        }
                         }
                     }
                 }

@@ -247,7 +247,8 @@ def test_advanced_equalizer_has_the_five_named_tabs(qapp):
         assert "var levels = [root.rangeDb, 0, -root.rangeDb]" in plot
         assert "legendText: root.responseLegend()" in source
         assert "Layout.maximumWidth: 56" in source
-        assert "Layout.alignment: Qt.AlignHCenter" in source
+        assert 'objectName: "graphicRailsHost"' in source
+        assert "anchors.horizontalCenter: parent.horizontalCenter" in source
     finally:
         popup.deleteLater()
 
