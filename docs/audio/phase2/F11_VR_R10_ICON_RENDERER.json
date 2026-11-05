@@ -1,0 +1,47 @@
+{
+  "schema": "michi.f11.vr.r10.icon_renderer.v1",
+  "captured_at": "2026-11-04",
+  "root_cause": {
+    "primary": "The inherited stage icon rendered 24x24 Tabler paths through a manual uniform Scale into 20x20 logical pixels and relied on the default Shape renderer.",
+    "secondary": "PySide6's bundled Qt 6.11.1 does not ship the QtQuick.VectorImage QML module; the system Qt installation does, but the application process uses the PySide6 module set.",
+    "result": "GeometryRenderer tessellation plus non-integer stroke scaling produced soft/uneven small glyphs."
+  },
+  "solution": {
+    "renderer": "QtQuick.Shapes Shape.CurveRenderer",
+    "icon_size": 24,
+    "grid": 24,
+    "stroke_width": 2.0,
+    "manual_scale": false,
+    "vector_image": "UNAVAILABLE_IN_PYSIDE6_RUNTIME",
+    "assets": "src/michi/resources/icons/tabler/"
+  },
+  "captures": [
+    {
+      "name": "native_crop",
+      "file": "evidence/f11/2026-11-04-f11-vr-r10/f11_r10_signal_truth_icons_native_crop_510x570.png",
+      "sha256": "cca198a7beccce4afae0c897be18194b3f818355add92d4033eb859516003239",
+      "logical_region": "510x570",
+      "notes": "Native-resolution KWin crop, not downscaled; all five stage glyphs visible."
+    },
+    {
+      "name": "full_popup",
+      "file": "evidence/f11/2026-11-04-f11-vr-r10/f11_r10_signal_truth_icons_live_1100x700.png",
+      "sha256": "88e3df846f09adfd203856c7bcb1b02ab5b5d9a6d25e2303ab2deee502fe8fe3",
+      "logical_window": "1100x700",
+      "notes": "Full scene reference for placement and NowPlayingBar interaction."
+    }
+  ],
+  "truth": {
+    "icon_visual_certification": "PASS_NATIVE_CROP",
+    "vector_image_runtime": "NOT_AVAILABLE",
+    "dpr_1_25_1_5_2_capture": "NOT_RUN",
+    "icon_sheet_all_roles": "NOT_RUN",
+    "qt_quick_profiler": "NOT_RUN",
+    "independent_killcritic_review": "NOT_RUN"
+  },
+  "limitations": [
+    "Native crop reviewed at logical 1.0 scale; fractional DPR captures remain NOT_RUN.",
+    "The eleven-role icon sheet and profiler measurement remain pending.",
+    "No playback, DAC, DSP or SignalTruthRecorder contract was changed."
+  ]
+}

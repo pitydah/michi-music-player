@@ -224,9 +224,16 @@ def test_signal_stage_icons_use_official_tabler_geometry(qapp):
             assert len(path_data) > 20
         icon.setProperty("roleName", "unknown")
         assert icon.property("pathData")
-        assert "PathSvg" in (
-            QML_DIR / "components" / "MichiSignalStageIcon.qml"
-        ).read_text(encoding="utf-8")
+        icon_source = (QML_DIR / "components" / "MichiSignalStageIcon.qml").read_text(
+            encoding="utf-8"
+        )
+        assert "PathSvg" in icon_source
+        assert "preferredRendererType: Shape.CurveRenderer" in icon_source
+        assert "transform: Scale" not in icon_source
+        node_source = (QML_DIR / "components" / "MichiSignalNode.qml").read_text(
+            encoding="utf-8"
+        )
+        assert "width: 24" in node_source
     finally:
         icon.deleteLater()
 

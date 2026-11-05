@@ -126,8 +126,8 @@ Item {
                 }
                 MichiSignalStageIcon {
                     anchors.centerIn: parent
-                    width: 20
-                    height: 20
+                    width: 24
+                    height: 24
                     roleName: root.iconName
                     iconColor: MichiPalette.textPrimary
                 }

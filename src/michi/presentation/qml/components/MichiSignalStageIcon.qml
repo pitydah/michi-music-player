@@ -13,8 +13,8 @@ Item {
     id: root
     property string roleName: "track"
     property color iconColor: "#ECEEF3"
-    implicitWidth: 20
-    implicitHeight: 20
+    implicitWidth: 24
+    implicitHeight: 24
     Accessible.role: Accessible.Graphic
     Accessible.name: root.roleName
 
@@ -64,15 +64,14 @@ Item {
     readonly property string resolvedRole: aliases[roleName] || "device-speaker"
     readonly property string pathData: paths[resolvedRole] || paths["device-speaker"]
 
+    readonly property bool curveRendererActive:
+        shape.rendererType === Shape.CurveRenderer
+
     Shape {
+        id: shape
         anchors.fill: parent
         antialiasing: true
-        transform: Scale {
-            origin.x: 0
-            origin.y: 0
-            xScale: root.width / 24
-            yScale: root.height / 24
-        }
+        preferredRendererType: Shape.CurveRenderer
         ShapePath {
             strokeColor: root.iconColor
             fillColor: "transparent"
