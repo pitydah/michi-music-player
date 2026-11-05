@@ -29,6 +29,7 @@ ColumnLayout {
         delegate: MichiSignalNode {
             required property var modelData
             required property int index
+            objectName: "signalStage_" + modelData.id
             Layout.fillWidth: true
             stageIndex: index
             stageCount: root.stages.length
@@ -40,14 +41,14 @@ ColumnLayout {
             expandable: modelData.expandable !== undefined
                 ? modelData.expandable
                 : (modelData.detail || "").length > 0
-            iconName: modelData.id === "source" ? "track"
-                : modelData.id === "decode" ? "audio-engine"
-                : modelData.id === "processing" ? "equalizer"
-                : modelData.id === "resample" ? "sliders"
-                : modelData.id === "channel-remap" ? "audio-output"
-                : modelData.id === "fir" ? "equalizer"
-                : modelData.id === "output" ? "audio-output"
-                : "device"
+            iconName: modelData.id === "source" ? "file-music"
+                : modelData.id === "decode" ? "cpu"
+                : modelData.id === "processing" ? "adjustments-horizontal"
+                : modelData.id === "resample" ? "arrows-exchange"
+                : modelData.id === "channel-remap" ? "arrows-exchange"
+                : modelData.id === "fir" ? "adjustments-horizontal"
+                : modelData.id === "output" ? "wave-sine"
+                : "circuit-diode"
             title: modelData.title || ""
             summary: modelData.summary || ""
             detail: modelData.detail || ""

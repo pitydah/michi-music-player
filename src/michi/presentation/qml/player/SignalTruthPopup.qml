@@ -122,6 +122,25 @@ Popup {
         Qt.callLater(stageView.focusFirstStage)
     }
     onClosed: if (focusReturnTarget) focusReturnTarget.forceActiveFocus()
+    onExpandedStageIdChanged: {
+        if (expandedStageId !== "")
+            Qt.callLater(function () {
+                root.revealStage(expandedStageId)
+            })
+    }
+
+    function revealStage(stageId) {
+        for (let index = 0; index < stageView.children.length; index += 1) {
+            const child = stageView.children[index]
+            if (child.objectName === "signalStage_" + stageId) {
+                const limit = Math.max(0,
+                    stageView.implicitHeight - stagesViewport.height)
+                stagesViewport.contentY = Math.max(0,
+                    Math.min(child.y - MichiSpacing.sm, limit))
+                return
+            }
+        }
+    }
 
     contentItem: ColumnLayout {
         id: panel

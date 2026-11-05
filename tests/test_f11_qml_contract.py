@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import sys
@@ -234,6 +235,33 @@ def test_signal_stage_icons_use_official_tabler_geometry(qapp):
             encoding="utf-8"
         )
         assert "width: 24" in node_source
+        view_source = (QML_DIR / "components" / "MichiSignalPathView.qml").read_text(
+            encoding="utf-8"
+        )
+        assert 'channel-remap" ? "arrows-exchange' in view_source
+        assert 'output" ? "wave-sine' in view_source
+        assert ': "circuit-diode"' in view_source
+        icon_dir = QML_DIR.parents[1] / "resources" / "icons" / "tabler"
+        sources = json.loads((icon_dir / "SOURCES.json").read_text())
+        assert len(sources) == 11
+        for name in (
+            "file-music",
+            "cpu",
+            "binary",
+            "wave-sine",
+            "arrows-exchange",
+            "adjustments-horizontal",
+            "circuit-diode",
+            "plug-connected",
+            "device-speaker",
+            "headphones",
+            "alert-triangle",
+        ):
+            svg = (icon_dir / f"{name}.svg").read_text(encoding="utf-8")
+            path = re.search(r'<path\s+d="([^"]+)"', svg)
+            assert path is not None
+            assert path.group(1) in icon_source
+            assert sources[name]["sha256"]
     finally:
         icon.deleteLater()
 
@@ -409,6 +437,10 @@ def test_signal_truth_popup_is_measured_against_the_quality_badge(qapp, width, h
         )
         if height >= 768:
             assert viewport.property("interactive") is False
+        else:
+            popup.setProperty("expandedStageId", "device")
+            QTest.qWait(100)
+            assert float(viewport.property("contentY")) > 0.0
         QMetaObject.invokeMethod(popup, "close")
         QTest.qWait(300)
         assert popup.property("visible") is False
