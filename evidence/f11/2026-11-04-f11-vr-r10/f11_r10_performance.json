@@ -1,0 +1,29 @@
+{
+  "schema": "michi.f11.vr.r10.performance.v1",
+  "captured_at": "2026-11-04",
+  "environment": {
+    "platform": "KWin Wayland",
+    "display": "1920x1080",
+    "samples": 20,
+    "harness": "real QML NowPlayingBar + SignalTruthPopup, Python wall-clock and Qt event loop",
+    "reduced_motion": false
+  },
+  "measurements": {
+    "open_call_ms": {"p50": 0.172825, "p95": 0.278594},
+    "open_to_opened_ms": {"p50": 216.108255, "p95": 216.525144},
+    "expand_layout_ms": {"p50": 16.772191, "p95": 800.985330, "stable": false}
+  },
+  "truth": {
+    "qt_quick_profiler": "NOT_RUN",
+    "qt_quick_profiler_reason": "the PySide6 runtime is not built with the QML debug service; qmlprofiler ignored -qmljsdebugger and the trace was damaged",
+    "open_dispatch": "PASS",
+    "open_transition_under_200ms": "FAIL",
+    "expand_layout": "INCONCLUSIVE"
+  },
+  "notes": [
+    "open_call_ms measures only the QML promotion dispatch on the owner thread and is effectively instant.",
+    "open_to_opened_ms includes the 200 ms fade-in token plus frame delivery; it is 16 ms above the 200 ms target.",
+    "The expansion harness alternated between sub-2 ms and 800 ms timeout samples because the reset of expandedStageId was not always observed before the next sample. The expansion p95 is therefore not certified.",
+    "No p95 value is inferred or invented; the raw sample list is retained in the KWin app log."
+  ]
+}

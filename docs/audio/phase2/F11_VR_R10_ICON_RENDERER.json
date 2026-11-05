@@ -104,7 +104,13 @@
     ],
     "dsp_effective_capture": "PASS",
     "high_contrast_capture": "PASS",
-    "reduced_motion_capture": "PASS"
+    "reduced_motion_capture": "PASS",
+    "performance_harness": "evidence/f11/2026-11-04-f11-vr-r10/f11_r10_performance.json",
+    "performance_harness_sha256": "339f9f4f2a2daa5cdd44244f67074279ba2bb3cbc56ff27ad1e5607aeefb61c6",
+    "open_dispatch_p95_ms": 0.278594,
+    "open_to_opened_p95_ms": 216.525144,
+    "performance_raw_log": "evidence/f11/2026-11-04-f11-vr-r10/f11_r10_performance_kwin.txt",
+    "performance_raw_log_sha256": "4b9049391b004022364949b315cd2fb03a4f2016abd9ce91f98d7f96c49c8a43"
   },
   "limitations": [
     "Native crop reviewed at logical 1.0 scale; the 11-role sheet was captured at DPR 1.0, 1.25, 1.5 and 2.0 with CurveRenderer active.",
