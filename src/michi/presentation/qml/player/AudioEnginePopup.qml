@@ -124,16 +124,8 @@ Popup {
                 property bool isActive: row.modelData.id === root.activeEngineId
                 property bool isSelected: row.modelData.id === root.selectedEngineId
                 property bool isSwitching: row.modelData.switching
-                readonly property string routeIcon: {
-                    var identity = String(row.modelData.id || "") + " "
-                        + String(row.modelData.displayName || "")
-                    identity = identity.toLowerCase()
-                    if (identity.indexOf("gstream") >= 0 || identity.indexOf("gst") >= 0)
-                        return "gstreamer"
-                    if (identity.indexOf("mpd") >= 0)
-                        return "mpd"
-                    return "qt"
-                }
+                readonly property string routeIcon:
+                    row.modelData.iconType || "engine"
 
                 function statusLabel() {
                     if (row.isSwitching)
@@ -204,8 +196,8 @@ Popup {
                             : MichiSemanticColors.borderSubtle
                         MichiAudioRouteIcon {
                             anchors.centerIn: parent
-                            width: 20
-                            height: 20
+                            width: 24
+                            height: 24
                             roleName: row.routeIcon
                             iconColor: row.isActive ? MichiPalette.auroraCyan
                                 : row.modelData.canActivate

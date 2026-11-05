@@ -194,9 +194,13 @@ remain real bridge actions and never change policy automatically. Selected and
 active are intentionally distinct; a selected destination is not painted as
 Playing until the output authority confirms it.
 
-New Canvas icons: `engine-qt`, `engine-gstreamer`, `engine-mpd`, `dac`,
-`audio-jack`, `optical`, `display-audio`, `stream-cat`. Icon type comes from the
-bridge, never from display-name heuristics.
+Route icons are official Tabler SVG geometry rendered through
+`MichiAudioRouteIcon`, a facade over `MichiSignalStageIcon`, at a 24 px integer
+grid with `Shape.CurveRenderer` and no manual scale. The family covers
+`engine-qt`, `engine-gstreamer`, `engine-mpd`, `audio-engine`, `dac`,
+`audio-jack`, `display-audio`, `audio-output`, `system`, `display`, `usb`,
+`internal` and `generic`. Icon type comes from the bridge (`iconType`), never
+from display-name heuristics; unknown types fall back to `help`.
 
 ## 9. Accessibility and responsive behavior
 

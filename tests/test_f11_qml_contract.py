@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -243,7 +244,7 @@ def test_signal_stage_icons_use_official_tabler_geometry(qapp):
         assert ': "circuit-diode"' in view_source
         icon_dir = QML_DIR.parents[1] / "resources" / "icons" / "tabler"
         sources = json.loads((icon_dir / "SOURCES.json").read_text())
-        assert len(sources) == 11
+        assert len(sources) == 16
         for name in (
             "file-music",
             "cpu",
@@ -256,12 +257,21 @@ def test_signal_stage_icons_use_official_tabler_geometry(qapp):
             "device-speaker",
             "headphones",
             "alert-triangle",
+            "device-desktop",
+            "device-tv",
+            "help",
+            "server",
+            "usb",
         ):
-            svg = (icon_dir / f"{name}.svg").read_text(encoding="utf-8")
+            svg_path = icon_dir / f"{name}.svg"
+            svg = svg_path.read_text(encoding="utf-8")
             path = re.search(r'<path\s+d="([^"]+)"', svg)
             assert path is not None
             assert path.group(1) in icon_source
-            assert sources[name]["sha256"]
+            assert (
+                sources[name]["sha256"]
+                == hashlib.sha256(svg_path.read_bytes()).hexdigest()
+            )
     finally:
         icon.deleteLater()
 

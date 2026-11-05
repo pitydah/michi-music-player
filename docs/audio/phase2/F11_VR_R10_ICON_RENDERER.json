@@ -83,6 +83,140 @@
       "notes": "High contrast and Reduce motion switches both visibly enabled; popup captured without a fade transition."
     }
   ],
+  "route_icons": {
+    "families": {
+      "engine": [
+        "engine-qt",
+        "engine-gstreamer",
+        "engine-mpd",
+        "audio-engine"
+      ],
+      "output": [
+        "display-audio",
+        "dac",
+        "audio-jack",
+        "audio-output"
+      ],
+      "shared": [
+        "system",
+        "generic",
+        "usb",
+        "internal",
+        "display",
+        "unknown"
+      ]
+    },
+    "facade": "src/michi/presentation/qml/components/MichiAudioRouteIcon.qml",
+    "implementation": "src/michi/presentation/qml/components/MichiSignalStageIcon.qml",
+    "geometry": {
+      "icon_size": 24,
+      "grid": 24,
+      "stroke_width": 2.0,
+      "manual_scale": false
+    },
+    "call_sites": {
+      "engine_popup_row": "24 px inside the 32 px row icon box",
+      "output_popup_row": "24 px inside the 32 px row icon box",
+      "popup_header": "24 px (MichiMetrics.iconLarge)"
+    },
+    "assets": {
+      "adjustments-horizontal": {
+        "sha256": "51c876babc598cf69ad1146f0fb621919a975758df0cc7abf45052006358a353",
+        "paths": 9
+      },
+      "alert-triangle": {
+        "sha256": "25b1f0c39f34647017df84a0cdc9e691c697737094a5956c360ab448a7fd5bef",
+        "paths": 3
+      },
+      "arrows-exchange": {
+        "sha256": "67be2e2afc04e53c70a4b81f58b18c232edd5b6124eff81a285fcd513f857016",
+        "paths": 2
+      },
+      "binary": {
+        "sha256": "9eae9934111ec53985c3954a3df17610d81c5f51ead48899675456e1ed9f1301",
+        "paths": 4
+      },
+      "circuit-diode": {
+        "sha256": "eea4e4e6015172292d2d519106c72f4ef08d124b1344d5bb4d57c5117cdb2ac9",
+        "paths": 4
+      },
+      "cpu": {
+        "sha256": "d9ecd8e0f4a140f8a0c272d3cb6d7e380c6a57f2d5e823980dc40024fa7387ac",
+        "paths": 10
+      },
+      "device-desktop": {
+        "sha256": "2fdd2150904a844185250f26453a02f31ee9d77a1f936a1df9c2ecd77cfc788d",
+        "paths": 4
+      },
+      "device-speaker": {
+        "sha256": "858ebd7f784965383543a41a065e68057ed36baaac7f4a6b54c214dcb016e9ed",
+        "paths": 3
+      },
+      "device-tv": {
+        "sha256": "e0bd48b49471d717666a473295a524493c1622c5746e357192a46f830548e6ee",
+        "paths": 2
+      },
+      "file-music": {
+        "sha256": "aa0221d9651fedd31262a2ad31ea0fcd4360f90b6f78ed33dd7fd2fc9305359f",
+        "paths": 4
+      },
+      "headphones": {
+        "sha256": "3ad34acfba12316c3fd9e7930b344522e135d18089d86d798ad55198920b3f22",
+        "paths": 3
+      },
+      "help": {
+        "sha256": "d17d4bd218a0090cfb7d59c90693fcd5f2c5dd12a3fc4370c353315afa204392",
+        "paths": 3
+      },
+      "plug-connected": {
+        "sha256": "0894139c4c7995ddc73e69fe204d0fbebaed02fe27770e142cf2c5b20434d00b",
+        "paths": 6
+      },
+      "server": {
+        "sha256": "6c4aa71ca6fd11a738abf7972ad893f808e2e25d6181b5b329784050f95490d2",
+        "paths": 4
+      },
+      "usb": {
+        "sha256": "530e5bca19f9050586cf6d504cdc0fc4c2495ac1d2c8fa303b1d141fd8d2db71",
+        "paths": 7
+      },
+      "wave-sine": {
+        "sha256": "6ba787e7fdaa706e91a800e753f69b735261fcd017f90fbf1b8cbcc82de1ec48",
+        "paths": 1
+      }
+    },
+    "captures": [
+      {
+        "name": "route_icon_sheet_100",
+        "file": "evidence/f11/2026-11-04-f11-vr-r10/f11_r10_route_icon_sheet_100.png",
+        "sha256": "207483c16711ed9f2a2c6e39907a7b8a22a33c538a57efff09fbb75d06cf6248",
+        "logical_window": "640x500",
+        "output_pixels": "640x500",
+        "device_pixel_ratio": "1.0",
+        "roles": 16,
+        "notes": "Every engine, output and shared iconType routed by the bridges plus the source/processing/error stage roles, at 24 logical px."
+      },
+      {
+        "name": "route_icon_sheet_200",
+        "file": "evidence/f11/2026-11-04-f11-vr-r10/f11_r10_route_icon_sheet_200.png",
+        "sha256": "8a2ed8acb714fd8a7acc6e2cc2a6878a05a3d34a0c4b180c7e658734eeb402d3",
+        "logical_window": "640x500",
+        "output_pixels": "1280x1000",
+        "device_pixel_ratio": "2.0",
+        "roles": 16,
+        "notes": "Same logical layout rendered with QT_SCALE_FACTOR=2; grabWindow returns physical pixels and the PNG carries no DPR metadata."
+      }
+    ],
+    "sheet_harness": "Offscreen QQuickWindow.grabWindow() over the productive MichiAudioRouteIcon; window logical size 640x500; QT_SCALE_FACTOR selects 1x/2x.",
+    "truth": {
+      "qml_contract": "PASS",
+      "bridge_icon_type_coverage": "PASS",
+      "curve_renderer_active": "PASS",
+      "offscreen_capture_1x_2x": "PASS",
+      "kwin_live_route_icons": "NOT_RUN",
+      "qt_quick_profiler": "NOT_RUN"
+    }
+  },
   "truth": {
     "icon_visual_certification": "PASS_NATIVE_CROP",
     "vector_image_runtime": "NOT_AVAILABLE",

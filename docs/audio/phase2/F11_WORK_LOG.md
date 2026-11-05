@@ -259,3 +259,64 @@ review and exact-SHA CI.
   captures are NOT_RUN; qmlformat/qmltestrunner are Qt 5 binaries and were not
   used against Qt 6 QML; DPI scaling and Qt Quick profiler p95 are NOT_RUN.
   F11 remains **NO-GO / ACTIVE**.
+
+## Visual Recovery R8–R10 (2026-11-04)
+
+R8 captured the compact KWin signal-truth surface (`aa19fe3`..`b1770fa`,
+`docs/audio/phase2/F11_VR_R8_KWIN_EVIDENCE.json`) and R9 replaced the inherited
+stage glyphs with official Tabler geometry (`4148709`, `9ed74c8`,
+`docs/audio/phase2/F11_VR_R9_KWIN_EVIDENCE.json`). R10 then fixed glyph
+sharpness: the 24×24 paths were being squeezed through a manual uniform `Scale`
+into 20 px and tessellated by the default Shape renderer, so `ad7ea5d` moved
+`MichiSignalNode` to `Shape.CurveRenderer` at the native 24 px grid with a
+2.0 stroke and no manual scale. `0949445` certified the renderer in a live KWin
+session; the PySide6 6.11.1 runtime does not ship `QtQuick.VectorImage`, which
+is recorded as an honest limitation rather than emulated. `12e1c95` certified
+scaling and source disclosure, `2d4751d` restored expanded-stage scrolling and
+source identity, and `4c0c4e7` moved stage colors into the theme.
+
+This cut completes the route-icon side of R10:
+
+- `MichiAudioRouteIcon` is now a facade over `MichiSignalStageIcon`; the Canvas
+  implementation is gone and both popups consume `row.modelData.iconType` from
+  the bridges. The engine bridge emits `engine-qt`, `engine-gstreamer`,
+  `engine-mpd` and `audio-engine`; the output bridge emits `display-audio`,
+  `dac`, `audio-jack` and `audio-output`. Shared/system rows resolve to
+  `system`, and unknown roles fall back to `help` instead of a speaker glyph.
+  Aliases also cover the legacy `qt`, `gstreamer`, `mpd`, `stream-cat`,
+  `display`, `internal`, `usb` and `generic` vocabulary. QML still never infers
+  an icon from a display name.
+- All call sites render at 24 logical px: both popup rows inside their 32 px
+  icon box and `MichiPopupHeader` via `MichiMetrics.iconLarge`. This removes the
+  overflow/clipping produced by drawing 24-grid paths into 20 px without
+  scaling.
+- Both Enter activation handlers are restored on the popup rows. The native
+  `Button` path does not deliver Return in this runtime; removing
+  `Keys.onReturnPressed`/`Keys.onEnterPressed` made
+  `test_ui90r1_12_enter_really_activates_focused_row` send zero shared
+  requests, while the pre-change HEAD passed both Enter tests. Return and Enter
+  remain distinct keys and both routes stay covered.
+- The unused `chart-line` asset was removed; the family is now 16 official
+  Tabler assets, each checked against its inline path data and its real file
+  SHA-256. `SOURCES.json` records the 16 hashes.
+- The "Audio Output Settings" footer button no longer sets `selected: true`;
+  the settings entry is an action, not a permanently selected destination.
+- Evidence: `f11_r10_route_icon_sheet_100.png` (640×500, DPR 1.0) and
+  `f11_r10_route_icon_sheet_200.png` (1280×1000 physical for the same 640×500
+  logical layout, `QT_SCALE_FACTOR=2`) show all 16 engine, output, shared and
+  stage roles at 24 px. SHA-256:
+  `207483c16711ed9f2a2c6e39907a7b8a22a33c538a57efff09fbb75d06cf6248` and
+  `8a2ed8acb714fd8a7acc6e2cc2a6878a05a3d34a0c4b180c7e658734eeb402d3`.
+  Both are referenced from the new `route_icons` block in
+  `docs/audio/phase2/F11_VR_R10_ICON_RENDERER.json`, together with the bridge
+  taxonomy, call-site geometry and the 16 asset hashes.
+- Tests: QML contract, pointer guard and output-popup contract `93 passed`;
+  F11 bridge/integrity/evidence batch `50 passed`. The new
+  `test_route_icons_cover_every_bridge_icon_type` pins every bridge-emitted
+  `iconType`, and the QML contract test now verifies all 16 assets against
+  `SOURCES.json`.
+- Honest limits: the route-icon sheets are offscreen `QQuickWindow.grabWindow()`
+  captures of the productive component, not live KWin/Wayland captures; the
+  2× run is a `QT_SCALE_FACTOR=2` render whose PNG carries no DPR metadata.
+  Live KWin route-icon captures remain NOT_RUN, as does the Qt Quick profiler.
+  F11 remains **NO-GO / ACTIVE**.

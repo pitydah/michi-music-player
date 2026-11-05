@@ -631,6 +631,7 @@ def test_ui90_38_popup_declares_enter_activation() -> None:
     source = _source("player/AudioOutputPopup.qml")
     assert "Keys.onReturnPressed: row.clicked()" in source
     assert "Keys.onEnterPressed: row.clicked()" in source
+    assert "focusPolicy" in source
 
 
 def test_ui90_39_popup_escape_close_policy_is_explicit() -> None:

@@ -4,9 +4,11 @@ This is a source contract only. A real QTest/KWin pointer E2E test is a
 separate closure gate; no screenshot or source test proves event delivery.
 """
 
+import re
 from pathlib import Path
 
-QML = Path(__file__).resolve().parents[1] / "src/michi/presentation/qml"
+ROOT = Path(__file__).resolve().parents[1]
+QML = ROOT / "src/michi/presentation/qml"
 
 
 def _qml(path: str) -> str:
@@ -114,13 +116,47 @@ def test_audio_route_action_contracts_are_preserved() -> None:
     assert "root.settingsRequested()" in output
 
 
-def test_audio_icon_draws_without_html_canvas_roundrect() -> None:
+def test_audio_icons_use_official_tabler_svg() -> None:
     icons = _qml("components/MichiAudioRouteIcon.qml")
+    stage_icon = _qml("components/MichiSignalStageIcon.qml")
     surface = _qml("components/MichiRouteSelectionSkin.qml")
     header = _qml("components/MichiPopupHeader.qml")
-    assert "ctx.roundRect" not in icons
-    assert "ctx.quadraticCurveTo" in icons
+    assert "Canvas {" not in icons
+    assert "MichiSignalStageIcon" in icons
+    assert "PathSvg" in stage_icon
+    assert "preferredRendererType: Shape.CurveRenderer" in stage_icon
     for role in ("engine", "gstreamer", "mpd", "system", "display", "usb", "internal"):
-        assert role in icons
+        assert role in stage_icon
     assert "readonly property" not in surface or "active" in surface
     assert "routeIconName" in header
+
+
+def test_route_icons_cover_every_bridge_icon_type() -> None:
+    stage_icon = _qml("components/MichiSignalStageIcon.qml")
+    bridge_sources = (
+        (ROOT / "src/michi/presentation/audio_engine_bridge.py").read_text(
+            encoding="utf-8"
+        ),
+        (ROOT / "src/michi/presentation/audio_output_bridge.py").read_text(
+            encoding="utf-8"
+        ),
+    )
+    # The bridges are the authority for iconType; QML must never sniff names.
+    emitted = set()
+    for source in bridge_sources:
+        emitted.update(re.findall(r'"((?:engine-[a-z-]+|audio-engine))"', source))
+        emitted.update(
+            re.findall(r'"((?:display-audio|audio-jack|audio-output|dac))"', source)
+        )
+    assert emitted == {
+        "engine-qt",
+        "engine-gstreamer",
+        "engine-mpd",
+        "audio-engine",
+        "display-audio",
+        "dac",
+        "audio-jack",
+        "audio-output",
+    }
+    for role in sorted(emitted) + ["system", "generic", "internal", "display"]:
+        assert f'"{role}":' in stage_icon, f"missing route icon alias: {role}"

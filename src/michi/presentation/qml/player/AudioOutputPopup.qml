@@ -195,20 +195,9 @@ Popup {
                     ? (row.modelData.stableDeviceId === "__display_audio__"
                         ? qsTr("Toggle display audio outputs") : qsTr("Output category"))
                     : (row.modelData.quickSubtitle || row.modelData.transportLabel || "")
-                readonly property string routeIcon: {
-                    var identity = (String(row.modelData.iconType || "") + " "
-                        + String(row.modelData.transportLabel || "") + " "
-                        + String(row.modelData.displayName || "")).toLowerCase()
-                    if (row.modelData.isShared || identity.indexOf("system") >= 0)
-                        return "system"
-                    if (identity.indexOf("display") >= 0 || identity.indexOf("hdmi") >= 0)
-                        return "display"
-                    if (identity.indexOf("usb") >= 0 || identity.indexOf("external") >= 0)
-                        return "usb"
-                    if (identity.indexOf("built") >= 0 || identity.indexOf("integrated") >= 0)
-                        return "internal"
-                    return "dac"
-                }
+                readonly property string routeIcon:
+                    row.modelData.iconType
+                    || (row.modelData.isShared ? "system" : "generic")
 
                 contentItem: RowLayout {
                     spacing: MichiSpacing.md
@@ -242,8 +231,8 @@ Popup {
                             : MichiSemanticColors.borderSubtle
                         MichiAudioRouteIcon {
                             anchors.centerIn: parent
-                            width: 20
-                            height: 20
+                            width: 24
+                            height: 24
                             roleName: row.routeIcon
                             iconColor: row.modelData.active ? MichiPalette.auroraCyan
                                 : row.modelData.available
@@ -334,7 +323,6 @@ Popup {
             text: qsTr("Audio Output Settings")
             iconName: "settings"
             variant: "secondary"
-            selected: true
             accessibleName: qsTr("Open detailed audio output settings")
             onClicked: root.settingsRequested()
         }

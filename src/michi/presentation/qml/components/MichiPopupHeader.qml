@@ -33,8 +33,8 @@ ColumnLayout {
         MichiAudioRouteIcon {
             visible: root.routeIconName !== ""
             roleName: root.routeIconName
-            Layout.preferredWidth: MichiMetrics.iconMedium
-            Layout.preferredHeight: MichiMetrics.iconMedium
+            Layout.preferredWidth: MichiMetrics.iconLarge
+            Layout.preferredHeight: MichiMetrics.iconLarge
             iconColor: MichiPalette.auroraCyan
         }
 

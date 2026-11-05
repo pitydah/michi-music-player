@@ -22,8 +22,9 @@ or F14 claim is made.
 - Surgical NowPlaying slot migration preserving 154 px, track card, artwork
   and centered transport.
 - Visual exclusivity across EQ, Advanced, Engine, Output and Truth.
-- New Canvas icon taxonomy for engines, DAC, jack, optical, display audio and
-  stream-cat.
+- Official Tabler SVG route-icon family at 24 px with `Shape.CurveRenderer`
+  and no manual scale for engines, DAC, jack, display audio, USB/internal and
+  shared output.
 
 ## Evidence
 

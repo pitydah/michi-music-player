@@ -23,9 +23,17 @@
     "paths": 10,
     "sha256": "d9ecd8e0f4a140f8a0c272d3cb6d7e380c6a57f2d5e823980dc40024fa7387ac"
   },
+  "device-desktop": {
+    "paths": 4,
+    "sha256": "2fdd2150904a844185250f26453a02f31ee9d77a1f936a1df9c2ecd77cfc788d"
+  },
   "device-speaker": {
     "paths": 3,
     "sha256": "858ebd7f784965383543a41a065e68057ed36baaac7f4a6b54c214dcb016e9ed"
+  },
+  "device-tv": {
+    "paths": 2,
+    "sha256": "e0bd48b49471d717666a473295a524493c1622c5746e357192a46f830548e6ee"
   },
   "file-music": {
     "paths": 4,
@@ -35,9 +43,21 @@
     "paths": 3,
     "sha256": "3ad34acfba12316c3fd9e7930b344522e135d18089d86d798ad55198920b3f22"
   },
+  "help": {
+    "paths": 3,
+    "sha256": "d17d4bd218a0090cfb7d59c90693fcd5f2c5dd12a3fc4370c353315afa204392"
+  },
   "plug-connected": {
     "paths": 6,
     "sha256": "0894139c4c7995ddc73e69fe204d0fbebaed02fe27770e142cf2c5b20434d00b"
+  },
+  "server": {
+    "paths": 4,
+    "sha256": "6c4aa71ca6fd11a738abf7972ad893f808e2e25d6181b5b329784050f95490d2"
+  },
+  "usb": {
+    "paths": 7,
+    "sha256": "530e5bca19f9050586cf6d504cdc0fc4c2495ac1d2c8fa303b1d141fd8d2db71"
   },
   "wave-sine": {
     "paths": 1,
