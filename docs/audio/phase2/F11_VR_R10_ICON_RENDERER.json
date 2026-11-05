@@ -37,7 +37,10 @@
     "dpr_1_25_1_5_2_capture": "NOT_RUN",
     "icon_sheet_all_roles": "NOT_RUN",
     "qt_quick_profiler": "NOT_RUN",
-    "independent_killcritic_review": "NOT_RUN"
+    "independent_killcritic_review": "NOT_RUN",
+    "curve_renderer_active_in_kwin_wayland": "PASS",
+    "renderer_log": "evidence/f11/2026-11-04-f11-vr-r10/f11_r10_renderer_log.txt",
+    "renderer_log_sha256": "dcc6a356364388225ef5a49a5c7c4170a65ea3c3017b078dd93eefb48d3417dd"
   },
   "limitations": [
     "Native crop reviewed at logical 1.0 scale; fractional DPR captures remain NOT_RUN.",
