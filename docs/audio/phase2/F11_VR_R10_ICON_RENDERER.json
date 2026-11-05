@@ -29,22 +29,58 @@
       "sha256": "88e3df846f09adfd203856c7bcb1b02ab5b5d9a6d25e2303ab2deee502fe8fe3",
       "logical_window": "1100x700",
       "notes": "Full scene reference for placement and NowPlayingBar interaction."
+    },
+    {
+      "name": "tabler_sheet_100",
+      "file": "evidence/f11/2026-11-04-f11-vr-r10/f11_r10_tabler_sheet_100.png",
+      "sha256": "9a3ab92e48cc0701f504651cd69f2f28c5c65cab153ad1fd0781a28383ba2daf",
+      "logical_window": "460x500",
+      "device_pixel_ratio": "1.0",
+      "notes": "All 11 Tabler roles at 20/22/24 logical px; CurveRenderer active; native QML grab at the requested DPR."
+    },
+    {
+      "name": "tabler_sheet_125",
+      "file": "evidence/f11/2026-11-04-f11-vr-r10/f11_r10_tabler_sheet_125.png",
+      "sha256": "03f51c89eff57e9e0416fd59c8d7d8c811d7e38a81dc51c3d98d21f832340d89",
+      "logical_window": "460x500",
+      "device_pixel_ratio": "1.25",
+      "notes": "All 11 Tabler roles at 20/22/24 logical px; CurveRenderer active; native QML grab at the requested DPR."
+    },
+    {
+      "name": "tabler_sheet_150",
+      "file": "evidence/f11/2026-11-04-f11-vr-r10/f11_r10_tabler_sheet_150.png",
+      "sha256": "4b9300cd3365bda16f95261674165c52692544e30fe0dd7318c903bd239d0074",
+      "logical_window": "460x500",
+      "device_pixel_ratio": "1.5",
+      "notes": "All 11 Tabler roles at 20/22/24 logical px; CurveRenderer active; native QML grab at the requested DPR."
+    },
+    {
+      "name": "tabler_sheet_200",
+      "file": "evidence/f11/2026-11-04-f11-vr-r10/f11_r10_tabler_sheet_200.png",
+      "sha256": "cc0a853741927ceea626fa872fb0b298cf90ee418f5a0b8cf1a0f76a29df96a4",
+      "logical_window": "460x500",
+      "device_pixel_ratio": "2.0",
+      "notes": "All 11 Tabler roles at 20/22/24 logical px; CurveRenderer active; native QML grab at the requested DPR."
     }
   ],
   "truth": {
     "icon_visual_certification": "PASS_NATIVE_CROP",
     "vector_image_runtime": "NOT_AVAILABLE",
-    "dpr_1_25_1_5_2_capture": "NOT_RUN",
-    "icon_sheet_all_roles": "NOT_RUN",
+    "dpr_1_25_1_5_2_capture": "PASS",
+    "icon_sheet_all_roles": "PASS",
     "qt_quick_profiler": "NOT_RUN",
     "independent_killcritic_review": "NOT_RUN",
     "curve_renderer_active_in_kwin_wayland": "PASS",
     "renderer_log": "evidence/f11/2026-11-04-f11-vr-r10/f11_r10_renderer_log.txt",
-    "renderer_log_sha256": "dcc6a356364388225ef5a49a5c7c4170a65ea3c3017b078dd93eefb48d3417dd"
+    "renderer_log_sha256": "dcc6a356364388225ef5a49a5c7c4170a65ea3c3017b078dd93eefb48d3417dd",
+    "dpr_renderer_log": "evidence/f11/2026-11-04-f11-vr-r10/f11_r10_dpr_renderer_log.txt",
+    "dpr_renderer_log_sha256": "d7ea846bd3b11c498b2e6bd79546996b3a07fe933264d55c2d9ec2fa299a5d16",
+    "profiler_attempt_log": "evidence/f11/2026-11-04-f11-vr-r10/f11_r10_profiler_attempt.txt",
+    "profiler_attempt_log_sha256": "c953b81e6dba9471963176c2c528dfc95e66bf50d4fd380796c5bdb41ecdbe2d"
   },
   "limitations": [
-    "Native crop reviewed at logical 1.0 scale; fractional DPR captures remain NOT_RUN.",
-    "The eleven-role icon sheet and profiler measurement remain pending.",
+    "Native crop reviewed at logical 1.0 scale; the 11-role sheet was captured at DPR 1.0, 1.25, 1.5 and 2.0 with CurveRenderer active.",
+    "Qt Quick Profiler measurement and independent KILLCRITIC review remain NOT_RUN.",
     "No playback, DAC, DSP or SignalTruthRecorder contract was changed."
   ]
 }

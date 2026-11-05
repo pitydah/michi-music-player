@@ -456,6 +456,20 @@ def test_unverified_dsp_never_verifies_the_whole_path() -> None:
     assert bridge.stages[2]["state"] == "unknown"
 
 
+def test_source_discloses_the_track_name_and_decode_explains_the_engine_input() -> None:
+    snapshot = _snapshot()
+    bridge = SignalPathBridge(
+        _recorder_with_active(snapshot),
+        _Output(),
+        _Processing(),
+        playback_path_provider=lambda: "/music/Album/track_01.flac",
+    )
+
+    source = bridge.stages[0]
+    assert ["File", "track_01.flac"] in source["detailRows"]
+    assert "engine input" in bridge.stages[1]["detail"]
+
+
 def test_device_stage_prefers_route_name_over_raw_usb_identity() -> None:
     class _NamedOutput(_Output):
         devices = [

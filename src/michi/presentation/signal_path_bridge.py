@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
@@ -536,6 +537,8 @@ class SignalPathBridge(QObject):
         nominal = source.get("nominal_pcm")
         source_detail = rate_depth_label if source else "Nominal format unknown"
         source_rows: list[tuple[str, str]] = []
+        if path:
+            source_rows.append(("File", Path(path).name))
         if source_container:
             source_rows.append(("Container", source_container))
         if source_codec:
@@ -721,7 +724,11 @@ class SignalPathBridge(QObject):
                 "decode",
                 "Decode",
                 _pcm_label(decoded),
-                detail="Runtime decoder evidence" if decoded else "Not observed",
+                detail=(
+                    "Decoded PCM is the engine input for this run"
+                    if decoded
+                    else "Not observed"
+                ),
                 config_action=decode_action,
                 state=decode_state,
                 detail_rows=tuple(decode_rows),

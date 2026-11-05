@@ -1,0 +1,5 @@
+Command: qmlprofiler -o /tmp/opencode/icon_sheet.qtd /tmp/opencode/icon_sheet_exec
+Result: QML Debugger: Ignoring "-qmljsdebugger=..." Debugging has not been enabled.
+Result: Error: Process exited while recording, last trace is damaged!
+Reason: the PySide6 Qt runtime used by the application was not built with the QML debug service enabled, so Qt Quick Profiler cannot attach.
+Status: NOT_RUN.
