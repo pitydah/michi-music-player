@@ -61,6 +61,26 @@
       "logical_window": "460x500",
       "device_pixel_ratio": "2.0",
       "notes": "All 11 Tabler roles at 20/22/24 logical px; CurveRenderer active; native QML grab at the requested DPR."
+    },
+    {
+      "name": "dsp_effective_1100x700",
+      "file": "evidence/f11/2026-11-04-f11-vr-r10/f11_r10_signal_truth_dsp_effective_1100x700.png",
+      "sha256": "adbed7e88dd29fbf5d1f0a3ebbd34d3377a64e71a097f182ebd5b0e43a6188ee",
+      "source": "FLAC 16-bit 44.1 kHz",
+      "path": "Direct, Processing active, DSP active, Verified path",
+      "viewport": "1100x700",
+      "scroll": false,
+      "notes": "Live DSP effective; Processing stage transformed; no false inactive state."
+    },
+    {
+      "name": "high_contrast_reduced_motion_1100x700",
+      "file": "evidence/f11/2026-11-04-f11-vr-r10/f11_r10_signal_truth_high_contrast_reduced_motion_1100x700.png",
+      "sha256": "38964fec6843878c9b178fc15ddec20086169ff86c1ebcfa69b3aaab1364b17a",
+      "source": "FLAC 16-bit 44.1 kHz",
+      "path": "Last playback",
+      "viewport": "1100x700",
+      "scroll": false,
+      "notes": "High contrast and Reduce motion switches both visibly enabled; popup captured without a fade transition."
     }
   ],
   "truth": {
@@ -81,7 +101,10 @@
       "channel-remap/resample now use arrows-exchange; output uses wave-sine",
       "Tabler asset provenance is checked against the inline path data",
       "expanded stages scroll into view in compact viewports"
-    ]
+    ],
+    "dsp_effective_capture": "PASS",
+    "high_contrast_capture": "PASS",
+    "reduced_motion_capture": "PASS"
   },
   "limitations": [
     "Native crop reviewed at logical 1.0 scale; the 11-role sheet was captured at DPR 1.0, 1.25, 1.5 and 2.0 with CurveRenderer active.",
