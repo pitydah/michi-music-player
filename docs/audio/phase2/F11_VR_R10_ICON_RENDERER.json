@@ -69,14 +69,19 @@
     "dpr_1_25_1_5_2_capture": "PASS",
     "icon_sheet_all_roles": "PASS",
     "qt_quick_profiler": "NOT_RUN",
-    "independent_killcritic_review": "NOT_RUN",
+    "independent_killcritic_review": "PASS_WITH_FINDINGS",
     "curve_renderer_active_in_kwin_wayland": "PASS",
     "renderer_log": "evidence/f11/2026-11-04-f11-vr-r10/f11_r10_renderer_log.txt",
     "renderer_log_sha256": "dcc6a356364388225ef5a49a5c7c4170a65ea3c3017b078dd93eefb48d3417dd",
     "dpr_renderer_log": "evidence/f11/2026-11-04-f11-vr-r10/f11_r10_dpr_renderer_log.txt",
     "dpr_renderer_log_sha256": "d7ea846bd3b11c498b2e6bd79546996b3a07fe933264d55c2d9ec2fa299a5d16",
     "profiler_attempt_log": "evidence/f11/2026-11-04-f11-vr-r10/f11_r10_profiler_attempt.txt",
-    "profiler_attempt_log_sha256": "c953b81e6dba9471963176c2c528dfc95e66bf50d4fd380796c5bdb41ecdbe2d"
+    "profiler_attempt_log_sha256": "c953b81e6dba9471963176c2c528dfc95e66bf50d4fd380796c5bdb41ecdbe2d",
+    "review_findings_addressed": [
+      "channel-remap/resample now use arrows-exchange; output uses wave-sine",
+      "Tabler asset provenance is checked against the inline path data",
+      "expanded stages scroll into view in compact viewports"
+    ]
   },
   "limitations": [
     "Native crop reviewed at logical 1.0 scale; the 11-role sheet was captured at DPR 1.0, 1.25, 1.5 and 2.0 with CurveRenderer active.",
