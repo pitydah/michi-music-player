@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
+import "../theme"
 
 /*
  * Michi Signal Truth stage glyphs. Official Tabler Icons geometry (MIT).
@@ -12,7 +13,7 @@ import QtQuick.Shapes
 Item {
     id: root
     property string roleName: "track"
-    property color iconColor: "#ECEEF3"
+    property color iconColor: MichiPalette.textPrimary
     implicitWidth: 24
     implicitHeight: 24
     Accessible.role: Accessible.Graphic
