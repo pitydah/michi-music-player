@@ -93,7 +93,9 @@ def test_capture_revision_advances_for_observation_and_event_streams() -> None:
     recorder.begin_candidate(_plan(1))
     revisions.append(recorder.read_capture_state().revision)
     assert recorder.observe(
-        SourceFileFactsEvidence(_identity(1), "flac", "flac", PcmTuple(96000, "S32_LE", 2, 24))
+        SourceFileFactsEvidence(
+            _identity(1), "flac", "flac", PcmTuple(96000, "S32_LE", 2, 24)
+        )
     )
     revisions.append(recorder.read_capture_state().revision)
     recorder.record_processing_event(
@@ -112,7 +114,7 @@ def test_capture_revision_advances_for_observation_and_event_streams() -> None:
     )
     captured = recorder.read_capture_state()
     revisions.append(captured.revision)
-    assert all(left < right for left, right in zip(revisions, revisions[1:]))
+    assert all(left < right for left, right in zip(revisions, revisions[1:], strict=False))
     assert len(captured.processing_events) == 1
     assert len(captured.output_family_events) == 1
     assert captured.candidate.source_file_facts is not None
