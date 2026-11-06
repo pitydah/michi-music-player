@@ -990,8 +990,7 @@ class SignalTruthRecorder:
                 ):
                     previous = self._candidate
                 elif (
-                    self._active is not None
-                    and event.identity == self._active.identity
+                    self._active is not None and event.identity == self._active.identity
                 ):
                     previous = self._active
                 else:
