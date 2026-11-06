@@ -22,16 +22,22 @@ jobs:
           python-version: "3.11"
       - name: Install project test dependencies
         run: python -m pip install -e ".[test]"
-      - name: Run deterministic candidate/active interleaving tests
+      - name: Run lifecycle and preexisting Signal Truth regression suite
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
           set -euo pipefail
           python -m pytest \
             tests/audio_phase2/test_signal_truth_lifecycle_interleavings.py \
+            tests/audio_phase2/test_signal_truth_concurrency.py \
+            tests/dac/test_v35_070_signal_truth.py \
             -v --tb=short
-      - name: Check source and test style
+      - name: Check recorder and regression-test style
         run: |
           set -euo pipefail
-          ruff check tests/audio_phase2/test_signal_truth_lifecycle_interleavings.py
-          ruff format --check tests/audio_phase2/test_signal_truth_lifecycle_interleavings.py
+          ruff check \
+            src/michi/domain/signal_truth.py \
+            tests/audio_phase2/test_signal_truth_lifecycle_interleavings.py
+          ruff format --check \
+            src/michi/domain/signal_truth.py \
+            tests/audio_phase2/test_signal_truth_lifecycle_interleavings.py
