@@ -510,6 +510,8 @@ def test_configuration_action_is_an_intent_only() -> None:
     bridge.request_configuration("INVALID")
 
     assert seen == ["OPEN_PROCESSING"]
+
+
 # A11 Qt-thread negative tests. The legacy module import above is untouched;
 # new public identifiers are deliberately Michi-owned for the future rename.
 class _TruthOwnerWitness(QObject):
