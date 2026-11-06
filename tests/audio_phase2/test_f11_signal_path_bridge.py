@@ -4,7 +4,11 @@
 
 from __future__ import annotations
 
+import threading
+import time
 from dataclasses import replace
+
+from PySide6.QtCore import QCoreApplication, QObject, Slot
 
 from michi.domain.audio_evidence import PcmTuple
 from michi.domain.signal_truth import (
@@ -130,6 +134,7 @@ def test_historical_snapshot_is_never_presented_as_active() -> None:
     recorder = SignalTruthRecorder()
     snapshot = _snapshot()
     recorder._last = snapshot
+    recorder._last_committed = snapshot
     bridge = SignalPathBridge(recorder, _Output(), _Processing())
 
     assert bridge.status == "HISTORICAL"
@@ -225,11 +230,17 @@ def test_matching_processing_receipt_is_the_only_dsp_claim() -> None:
         }
         bands = [{"gainDb": 6.0}, {"gainDb": 0.0}]
 
-    bridge = SignalPathBridge(
-        _recorder_with_active(_snapshot()),
-        _Output(),
-        _Matched(),
+    recorder = _recorder_with_active(_snapshot())
+    recorder.record_processing_event(
+        ProcessingTruthEvent(
+            state=ProcessingTruthState.EFFECTIVE,
+            processing_generation=7,
+            plan_id="plan:f11",
+            pipeline_generation=1,
+            readback_proven=True,
+        )
     )
+    bridge = SignalPathBridge(recorder, _Output(), _Matched())
 
     processing = next(stage for stage in bridge.stages if stage["id"] == "processing")
     assert processing["state"] == "transformed"
@@ -493,6 +504,7 @@ def test_device_stage_prefers_route_name_over_raw_usb_identity() -> None:
 def _recorder_with_last(snapshot: SignalTruthSnapshot) -> SignalTruthRecorder:
     recorder = SignalTruthRecorder()
     recorder._last = snapshot
+    recorder._last_committed = snapshot
     return recorder
 
 
@@ -506,3 +518,342 @@ def test_configuration_action_is_an_intent_only() -> None:
     bridge.request_configuration("INVALID")
 
     assert seen == ["OPEN_PROCESSING"]
+
+
+# A11 Qt-thread negative tests. The legacy module import above is untouched;
+# new public identifiers are deliberately Michi-owned for the future rename.
+class _TruthOwnerWitness(QObject):
+    def __init__(self) -> None:
+        super().__init__()
+        self.delivery_threads: list[int] = []
+
+    @Slot()
+    def on_update(self) -> None:
+        self.delivery_threads.append(threading.get_ident())
+
+
+def _pump_truth_owner(app: QCoreApplication, predicate, timeout: float = 5.0) -> bool:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        app.processEvents()
+        if predicate():
+            return True
+        time.sleep(0.002)
+    return predicate()
+
+
+def _emit_truth_updates(recorder: SignalTruthRecorder, count: int = 1) -> None:
+    for index in range(count):
+        recorder.record_processing_event(
+            ProcessingTruthEvent(
+                state=ProcessingTruthState.REQUESTED,
+                processing_generation=index + 1,
+            )
+        )
+
+
+def test_truth_worker_event_only_projects_on_qt_owner() -> None:
+    app = QCoreApplication.instance() or QCoreApplication([])
+    owner = threading.get_ident()
+    recorder = SignalTruthRecorder()
+    projection_threads: list[int] = []
+    bridge = SignalPathBridge(
+        recorder,
+        _Output(),
+        _Processing(),
+        playback_path_provider=lambda: (
+            projection_threads.append(threading.get_ident()) or ""
+        ),
+    )
+    witness = _TruthOwnerWitness()
+    bridge.state_changed.connect(witness.on_update)
+    projection_threads.clear()
+
+    worker = threading.Thread(target=_emit_truth_updates, args=(recorder,))
+    worker.start()
+    worker.join(timeout=5.0)
+    assert not worker.is_alive(), "worker blocked by UI"
+
+    # No worker is permitted to reconstruct presentation QObject state.
+    assert projection_threads == []
+    assert witness.delivery_threads == []
+    assert _pump_truth_owner(app, lambda: len(witness.delivery_threads) == 1)
+    assert projection_threads == [owner]
+    assert witness.delivery_threads == [owner]
+    bridge.dispose()
+
+
+def test_truth_worker_burst_uses_single_owner_refresh() -> None:
+    app = QCoreApplication.instance() or QCoreApplication([])
+    owner = threading.get_ident()
+    recorder = SignalTruthRecorder()
+    rebuild_threads: list[int] = []
+    bridge = SignalPathBridge(
+        recorder,
+        _Output(),
+        _Processing(),
+        playback_path_provider=lambda: (
+            rebuild_threads.append(threading.get_ident()) or ""
+        ),
+    )
+    witness = _TruthOwnerWitness()
+    bridge.state_changed.connect(witness.on_update)
+    rebuild_threads.clear()
+
+    worker = threading.Thread(target=_emit_truth_updates, args=(recorder, 250))
+    worker.start()
+    worker.join(timeout=5.0)
+    assert not worker.is_alive()
+    assert rebuild_threads == []
+    assert witness.delivery_threads == []
+    assert _pump_truth_owner(app, lambda: len(witness.delivery_threads) >= 1)
+    app.processEvents()
+
+    assert rebuild_threads == [owner], rebuild_threads
+    assert witness.delivery_threads == [owner]
+    assert bridge.generation == 1
+    bridge.dispose()
+
+
+def test_truth_dispose_discards_queued_owner_refresh() -> None:
+    app = QCoreApplication.instance() or QCoreApplication([])
+    recorder = SignalTruthRecorder()
+    projection_threads: list[int] = []
+    bridge = SignalPathBridge(
+        recorder,
+        _Output(),
+        _Processing(),
+        playback_path_provider=lambda: (
+            projection_threads.append(threading.get_ident()) or ""
+        ),
+    )
+    witness = _TruthOwnerWitness()
+    bridge.state_changed.connect(witness.on_update)
+    projection_threads.clear()
+
+    worker = threading.Thread(target=_emit_truth_updates, args=(recorder,))
+    worker.start()
+    worker.join(timeout=5.0)
+    assert not worker.is_alive()
+    bridge.dispose()
+    app.processEvents()
+    assert projection_threads == []
+    assert witness.delivery_threads == []
+
+
+def test_truth_owner_updates_remain_synchronous_without_worker() -> None:
+    app = QCoreApplication.instance() or QCoreApplication([])
+    owner = threading.get_ident()
+    recorder = SignalTruthRecorder()
+    bridge = SignalPathBridge(recorder, _Output(), _Processing())
+    witness = _TruthOwnerWitness()
+    bridge.state_changed.connect(witness.on_update)
+
+    _emit_truth_updates(recorder)
+    assert witness.delivery_threads == [owner]
+    assert bridge.generation == 1
+    bridge.dispose()
+    app.processEvents()
+
+
+def test_truth_reentrant_owner_notification_preserves_next_refresh() -> None:
+    app = QCoreApplication.instance() or QCoreApplication([])
+    owner = threading.get_ident()
+    recorder = SignalTruthRecorder()
+    bridge = SignalPathBridge(recorder, _Output(), _Processing())
+    witnessed: list[int] = []
+
+    def on_updated() -> None:
+        witnessed.append(threading.get_ident())
+        if len(witnessed) == 1:
+            _emit_truth_updates(recorder)
+
+    bridge.state_changed.connect(on_updated)
+    _emit_truth_updates(recorder)
+    assert _pump_truth_owner(app, lambda: len(witnessed) == 2)
+    assert witnessed == [owner, owner]
+    assert bridge.generation == 2
+    bridge.dispose()
+
+
+# A13 DSP regressions: output plan ID is NOT DSP plan ID, and the newest
+# causal event must revoke an earlier effective receipt.
+def _truth_dsp_event(
+    state: ProcessingTruthState,
+    *,
+    revision: int,
+    plan: str | None = "dsp:owner",
+    pipeline: int | None = 1,
+    readback: bool = False,
+) -> ProcessingTruthEvent:
+    return ProcessingTruthEvent(
+        state=state,
+        processing_generation=revision,
+        plan_id=plan,
+        host_generation=1,
+        pipeline_generation=pipeline,
+        readback_proven=readback,
+    )
+
+
+def _truth_effective_processing(revision: int = 3, plan: str = "dsp:owner"):
+    processing = _Processing()
+    processing.truth = {
+        "effective_state": "effective",
+        "effective_revision": revision,
+        "effective_plan_id": plan,
+    }
+    return processing
+
+
+def _truth_dsp_stage(recorder: SignalTruthRecorder, processing) -> dict:
+    bridge = SignalPathBridge(recorder, _Output(), processing)
+    return next(row for row in bridge.stages if row["id"] == "processing")
+
+
+def test_truth_equal_output_and_dsp_plan_without_receipt_is_unverified() -> None:
+    recorder = _recorder_with_active(_snapshot())
+    stage = _truth_dsp_stage(
+        recorder, _truth_effective_processing(3, plan="plan:f11")
+    )
+    assert stage["state"] == "unknown"
+    assert "identity unverified" in stage["summary"]
+
+
+def test_truth_latest_bypass_revokes_earlier_effective_receipt() -> None:
+    recorder = _recorder_with_active(_snapshot())
+    recorder.record_processing_event(
+        _truth_dsp_event(ProcessingTruthState.EFFECTIVE, revision=3, readback=True)
+    )
+    recorder.record_processing_event(
+        _truth_dsp_event(ProcessingTruthState.BYPASSED, revision=4, plan=None)
+    )
+    stage = _truth_dsp_stage(recorder, _truth_effective_processing())
+    assert stage["state"] != "transformed"
+
+
+def test_truth_latest_unavailable_revokes_earlier_effective_receipt() -> None:
+    recorder = _recorder_with_active(_snapshot())
+    recorder.record_processing_event(
+        _truth_dsp_event(ProcessingTruthState.EFFECTIVE, revision=3, readback=True)
+    )
+    recorder.record_processing_event(
+        _truth_dsp_event(ProcessingTruthState.UNAVAILABLE, revision=4, plan=None)
+    )
+    stage = _truth_dsp_stage(recorder, _truth_effective_processing())
+    assert stage["state"] != "transformed"
+
+
+def test_truth_newer_wrong_plan_revokes_older_matching_receipt() -> None:
+    recorder = _recorder_with_active(_snapshot())
+    recorder.record_processing_event(
+        _truth_dsp_event(ProcessingTruthState.EFFECTIVE, revision=3, readback=True)
+    )
+    recorder.record_processing_event(
+        _truth_dsp_event(
+            ProcessingTruthState.EFFECTIVE,
+            revision=4,
+            plan="dsp:other",
+            readback=True,
+        )
+    )
+    stage = _truth_dsp_stage(recorder, _truth_effective_processing())
+    assert stage["state"] == "unknown"
+
+
+def test_truth_dsp_effective_revision_must_match_current_owner() -> None:
+    recorder = _recorder_with_active(_snapshot())
+    recorder.record_processing_event(
+        _truth_dsp_event(ProcessingTruthState.EFFECTIVE, revision=2, readback=True)
+    )
+    stage = _truth_dsp_stage(recorder, _truth_effective_processing(revision=3))
+    assert stage["state"] == "unknown"
+
+
+def test_truth_new_request_does_not_resurrect_effective_on_same_pipeline() -> None:
+    recorder = _recorder_with_active(_snapshot())
+    recorder.record_processing_event(
+        _truth_dsp_event(ProcessingTruthState.EFFECTIVE, revision=3, readback=True)
+    )
+    recorder.record_processing_event(
+        _truth_dsp_event(ProcessingTruthState.REQUESTED, revision=4)
+    )
+    stage = _truth_dsp_stage(recorder, _truth_effective_processing())
+    assert stage["state"] != "transformed"
+
+
+def test_truth_unscoped_terminal_blocks_unproven_effective_join() -> None:
+    recorder = _recorder_with_active(_snapshot())
+    recorder.record_processing_event(
+        _truth_dsp_event(ProcessingTruthState.EFFECTIVE, revision=3, readback=True)
+    )
+    recorder.record_processing_event(
+        _truth_dsp_event(
+            ProcessingTruthState.UNAVAILABLE,
+            revision=4,
+            plan=None,
+            pipeline=None,
+        )
+    )
+    stage = _truth_dsp_stage(recorder, _truth_effective_processing())
+    assert stage["state"] == "unknown"
+
+
+def test_truth_other_pipeline_terminal_does_not_revoke_current_proof() -> None:
+    recorder = _recorder_with_active(_snapshot())
+    recorder.record_processing_event(
+        _truth_dsp_event(ProcessingTruthState.EFFECTIVE, revision=3, readback=True)
+    )
+    recorder.record_processing_event(
+        _truth_dsp_event(
+            ProcessingTruthState.UNAVAILABLE,
+            revision=4,
+            pipeline=2,
+            plan=None,
+        )
+    )
+    stage = _truth_dsp_stage(recorder, _truth_effective_processing())
+    assert stage["state"] == "transformed"
+
+
+def test_truth_new_valid_effective_reactivates_after_bypass() -> None:
+    recorder = _recorder_with_active(_snapshot())
+    recorder.record_processing_event(
+        _truth_dsp_event(ProcessingTruthState.EFFECTIVE, revision=3, readback=True)
+    )
+    recorder.record_processing_event(
+        _truth_dsp_event(ProcessingTruthState.BYPASSED, revision=4, plan=None)
+    )
+    recorder.record_processing_event(
+        _truth_dsp_event(ProcessingTruthState.EFFECTIVE, revision=5, readback=True)
+    )
+    stage = _truth_dsp_stage(recorder, _truth_effective_processing(revision=5))
+    assert stage["state"] == "transformed"
+
+
+def test_truth_aborted_preparation_is_not_historical_playback() -> None:
+    recorder = SignalTruthRecorder()
+    snapshot = _snapshot()
+    recorder.begin_candidate(snapshot.plan)
+    assert recorder.discard_candidate(snapshot.identity)
+    assert recorder.last_snapshot is not None
+    bridge = SignalPathBridge(recorder, _Output(), _Processing())
+    assert bridge.status == "NOT_ACTIVE"
+    assert bridge.historical is False
+
+
+def test_truth_last_committed_survives_failed_handover() -> None:
+    recorder = SignalTruthRecorder()
+    source = _snapshot()
+    recorder.begin_candidate(source.plan)
+    assert recorder.commit_candidate(source.identity)
+    assert recorder.retire_active(source.identity)
+    replacement_identity = replace(
+        source.identity, execution_generation=2, port_generation=2
+    )
+    recorder.begin_candidate(replace(source.plan, identity=replacement_identity))
+    assert recorder.discard_candidate(replacement_identity)
+
+    bridge = SignalPathBridge(recorder, _Output(), _Processing())
+    assert bridge.status == "HISTORICAL"
+    assert bridge.identity["execution_generation"] == 1
