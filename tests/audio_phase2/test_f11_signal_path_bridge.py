@@ -549,9 +549,7 @@ def _truth_dsp_stage(recorder: SignalTruthRecorder, processing) -> dict:
 
 def test_truth_equal_output_and_dsp_plan_without_receipt_is_unverified() -> None:
     recorder = _recorder_with_active(_snapshot())
-    stage = _truth_dsp_stage(
-        recorder, _truth_effective_processing(3, plan="plan:f11")
-    )
+    stage = _truth_dsp_stage(recorder, _truth_effective_processing(3, plan="plan:f11"))
     assert stage["state"] == "unknown"
     assert "identity unverified" in stage["summary"]
 
