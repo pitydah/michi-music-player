@@ -1,0 +1,962 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:michi:signal-truth:truth-frame:v1",
+  "title": "Michi Signal Truth — read-only TruthFrame v1 (architecture proposal)",
+  "description": "Contract candidate A11. This is not an ABI implemented in main, a hardware certificate or a new truth authority.",
+  "type": "object",
+  "required": [
+    "schema",
+    "capture_revision",
+    "temporal",
+    "consistency",
+    "identity",
+    "family",
+    "source",
+    "dsp",
+    "route",
+    "quality",
+    "operations",
+    "stages",
+    "reason_codes",
+    "provenance",
+    "blockers"
+  ],
+  "properties": {
+    "schema": {
+      "const": "michi.truth_frame.v1"
+    },
+    "capture_revision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "temporal": {
+      "type": "string",
+      "enum": [
+        "NOT_ACTIVE",
+        "PENDING",
+        "ACTIVE",
+        "HISTORICAL"
+      ]
+    },
+    "consistency": {
+      "type": "string",
+      "enum": [
+        "RECORDER_ONLY",
+        "CORRELATED",
+        "PARTIAL",
+        "CONFLICTED"
+      ]
+    },
+    "identity": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": [
+            "plan_id",
+            "execution_generation",
+            "port_generation",
+            "binding_generation",
+            "stable_device_id",
+            "stable_endpoint_signature"
+          ],
+          "properties": {
+            "plan_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            },
+            "execution_generation": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "port_generation": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "binding_generation": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "stable_device_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "stable_endpoint_signature": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "family": {
+      "type": "string",
+      "enum": [
+        "UNKNOWN",
+        "SHARED",
+        "DIRECT_PCM",
+        "MANAGED_PCM",
+        "NATIVE_DSD",
+        "DOP",
+        "DSD_TO_PCM"
+      ]
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "kind",
+        "codec",
+        "container",
+        "nominal_pcm",
+        "nominal_dsd_hz"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "UNKNOWN",
+            "PCM",
+            "DSD"
+          ]
+        },
+        "codec": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "container": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "nominal_pcm": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "transport_format",
+                "rate_hz",
+                "channels",
+                "significant_bits"
+              ],
+              "properties": {
+                "transport_format": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                "rate_hz": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2000000
+                },
+                "channels": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 128
+                },
+                "significant_bits": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 64
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "nominal_dsd_hz": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "dsp": {
+      "type": "object",
+      "required": [
+        "state",
+        "correlation",
+        "readback_proven",
+        "processing_plan_id",
+        "processing_generation",
+        "host_generation",
+        "pipeline_generation",
+        "runtime_identity",
+        "source_execution_ref",
+        "last_event_sequence"
+      ],
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "UNKNOWN",
+            "REQUESTED",
+            "PREPARING",
+            "EFFECTIVE",
+            "BYPASSED",
+            "UNAVAILABLE"
+          ]
+        },
+        "correlation": {
+          "type": "string",
+          "enum": [
+            "UNCORRELATED",
+            "CORRELATED",
+            "CONFIRMED",
+            "REVOKED",
+            "STALE"
+          ]
+        },
+        "readback_proven": {
+          "type": "boolean"
+        },
+        "processing_plan_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "processing_generation": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "host_generation": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "pipeline_generation": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "runtime_identity": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_execution_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "last_event_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "route": {
+      "type": "object",
+      "required": [
+        "last_observed_boundary",
+        "negotiated_pcm",
+        "carrier_pcm",
+        "dac_interpretation"
+      ],
+      "properties": {
+        "last_observed_boundary": {
+          "type": "string",
+          "enum": [
+            "NONE",
+            "SOURCE",
+            "DECODE",
+            "HOST",
+            "ALSA",
+            "REMOTE",
+            "DAC_PHYSICAL",
+            "ANALOG"
+          ]
+        },
+        "negotiated_pcm": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "transport_format",
+                "rate_hz",
+                "channels",
+                "significant_bits"
+              ],
+              "properties": {
+                "transport_format": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                "rate_hz": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2000000
+                },
+                "channels": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 128
+                },
+                "significant_bits": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 64
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "carrier_pcm": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "transport_format",
+                "rate_hz",
+                "channels",
+                "significant_bits"
+              ],
+              "properties": {
+                "transport_format": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                "rate_hz": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2000000
+                },
+                "channels": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 128
+                },
+                "significant_bits": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 64
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dac_interpretation": {
+          "type": "string",
+          "enum": [
+            "UNKNOWN",
+            "DEVICE_REPORTED",
+            "LAB_PROVEN"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "quality": {
+      "type": "object",
+      "required": [
+        "nominal_class",
+        "path_verdict",
+        "fidelity_proof",
+        "proof_authority"
+      ],
+      "properties": {
+        "nominal_class": {
+          "type": "string",
+          "enum": [
+            "UNKNOWN",
+            "LOSSY",
+            "PCM_STANDARD",
+            "PCM_HIRES",
+            "DSD"
+          ]
+        },
+        "path_verdict": {
+          "type": "string",
+          "enum": [
+            "direct",
+            "direct_container_adapted",
+            "dsp",
+            "resampled",
+            "remixed",
+            "unknown",
+            "contradicted"
+          ]
+        },
+        "fidelity_proof": {
+          "type": "string",
+          "enum": [
+            "NOT_ESTABLISHED",
+            "CONTRADICTED",
+            "MATCHED_PARTIAL",
+            "MATCHED_COMPLETE"
+          ]
+        },
+        "proof_authority": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            null,
+            "M11_5",
+            "DAC_V35"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "operations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "instance_id",
+          "kind",
+          "observation",
+          "order_state",
+          "predecessors",
+          "evidence_refs",
+          "order_index"
+        ],
+        "properties": {
+          "instance_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "DECODE",
+              "PEQ",
+              "FIR",
+              "RESAMPLE",
+              "REMIX",
+              "GAIN",
+              "DITHER",
+              "DOP_PACK",
+              "DSD_TO_PCM",
+              "OTHER"
+            ]
+          },
+          "observation": {
+            "type": "string",
+            "enum": [
+              "UNKNOWN",
+              "REQUESTED",
+              "INSTALLED",
+              "EFFECTIVE",
+              "OBSERVED",
+              "CONTRADICTED"
+            ]
+          },
+          "order_state": {
+            "type": "string",
+            "enum": [
+              "UNKNOWN",
+              "OBSERVED"
+            ]
+          },
+          "predecessors": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "maxItems": 64
+          },
+          "evidence_refs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "maxItems": 16
+          },
+          "order_index": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "order_state": {
+                  "const": "UNKNOWN"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "order_index": {
+                  "type": "null"
+                },
+                "predecessors": {
+                  "maxItems": 0
+                }
+              }
+            }
+          }
+        ]
+      },
+      "maxItems": 64
+    },
+    "stages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "state",
+          "summary",
+          "configuration_action"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": [
+              "SOURCE",
+              "DECODE",
+              "PROCESSING",
+              "OUTPUT",
+              "DEVICE"
+            ]
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "UNKNOWN",
+              "PENDING",
+              "OBSERVED",
+              "TRANSFORMED",
+              "HISTORICAL",
+              "ERROR"
+            ]
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 350
+          },
+          "configuration_action": {
+            "type": "string",
+            "enum": [
+              "NONE",
+              "OPEN_ENGINE",
+              "OPEN_PROCESSING",
+              "OPEN_OUTPUT",
+              "OPEN_DEVICE_SETUP"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 5,
+      "maxItems": 5
+    },
+    "reason_codes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^ST_[A-Z0-9_]+$"
+      },
+      "maxItems": 128
+    },
+    "provenance": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "boundary",
+          "owner",
+          "evidence_ref",
+          "generation"
+        ],
+        "properties": {
+          "boundary": {
+            "type": "string",
+            "enum": [
+              "SOURCE",
+              "DECODE",
+              "HOST",
+              "DSP",
+              "ALSA",
+              "REMOTE",
+              "DAC_PHYSICAL",
+              "ANALOG",
+              "SAMPLE_COMPARE"
+            ]
+          },
+          "owner": {
+            "type": "string",
+            "enum": [
+              "SOURCE",
+              "OUTPUT_SESSION",
+              "AUDIO_ENGINE",
+              "AUDIO_PROCESSING",
+              "SIGNAL_TRUTH",
+              "DAC_V35",
+              "M11_5",
+              "REMOTE"
+            ]
+          },
+          "evidence_ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[a-zA-Z0-9_:.-]+$"
+          },
+          "generation": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxItems": 128
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128
+      },
+      "maxItems": 32
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "temporal": {
+            "const": "NOT_ACTIVE"
+          }
+        },
+        "required": [
+          "temporal"
+        ]
+      },
+      "then": {
+        "properties": {
+          "identity": {
+            "type": "null"
+          },
+          "family": {
+            "const": "UNKNOWN"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "temporal": {
+            "enum": [
+              "ACTIVE",
+              "PENDING",
+              "HISTORICAL"
+            ]
+          }
+        },
+        "required": [
+          "temporal"
+        ]
+      },
+      "then": {
+        "properties": {
+          "identity": {
+            "type": "object",
+            "required": [
+              "plan_id",
+              "execution_generation",
+              "port_generation",
+              "binding_generation",
+              "stable_device_id",
+              "stable_endpoint_signature"
+            ],
+            "properties": {
+              "plan_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "execution_generation": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "port_generation": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "binding_generation": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "stable_device_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "stable_endpoint_signature": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "dsp": {
+            "properties": {
+              "correlation": {
+                "const": "CONFIRMED"
+              }
+            },
+            "required": [
+              "correlation"
+            ]
+          }
+        },
+        "required": [
+          "dsp"
+        ]
+      },
+      "then": {
+        "properties": {
+          "dsp": {
+            "properties": {
+              "state": {
+                "const": "EFFECTIVE"
+              },
+              "readback_proven": {
+                "const": true
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "family": {
+            "enum": [
+              "NATIVE_DSD",
+              "DOP"
+            ]
+          }
+        },
+        "required": [
+          "family"
+        ]
+      },
+      "then": {
+        "properties": {
+          "source": {
+            "properties": {
+              "nominal_pcm": {
+                "type": "null"
+              }
+            }
+          },
+          "route": {
+            "properties": {
+              "negotiated_pcm": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "quality": {
+            "properties": {
+              "fidelity_proof": {
+                "enum": [
+                  "MATCHED_COMPLETE",
+                  "MATCHED_PARTIAL"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "quality": {
+            "properties": {
+              "proof_authority": {
+                "enum": [
+                  "M11_5",
+                  "DAC_V35"
+                ]
+              }
+            }
+          },
+          "provenance": {
+            "contains": {
+              "properties": {
+                "boundary": {
+                  "const": "SAMPLE_COMPARE"
+                }
+              }
+            },
+            "minContains": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "source": {
+            "properties": {
+              "kind": {
+                "const": "DSD"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "source": {
+            "properties": {
+              "nominal_pcm": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "family": {
+            "const": "DOP"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "source": {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "DSD",
+                  "UNKNOWN"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "dsp": {
+            "properties": {
+              "correlation": {
+                "const": "CONFIRMED"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "temporal": {
+            "const": "ACTIVE"
+          },
+          "dsp": {
+            "properties": {
+              "state": {
+                "const": "EFFECTIVE"
+              },
+              "readback_proven": {
+                "const": true
+              },
+              "processing_plan_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "processing_generation": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "host_generation": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "pipeline_generation": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "source_execution_ref": {
+                "type": "string",
+                "minLength": 1
+              },
+              "last_event_sequence": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
