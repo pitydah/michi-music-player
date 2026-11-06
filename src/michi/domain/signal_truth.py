@@ -1070,6 +1070,7 @@ class SignalTruthRecorder:
             self._active = self._candidate
             self._candidate = None
             self._lifecycle_revision += 1
+            self._capture_revision += 1
         self._publish()
         return True
 
@@ -1081,6 +1082,7 @@ class SignalTruthRecorder:
             self._last_aborted_candidate = self._candidate
             self._candidate = None
             self._lifecycle_revision += 1
+            self._capture_revision += 1
         self._publish()
         return True
 
@@ -1092,6 +1094,7 @@ class SignalTruthRecorder:
             self._last_committed = self._active
             self._active = None
             self._lifecycle_revision += 1
+            self._capture_revision += 1
         self._publish()
         return True
 
