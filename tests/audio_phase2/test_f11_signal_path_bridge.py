@@ -855,3 +855,70 @@ def test_truth_last_committed_survives_failed_handover() -> None:
     bridge = SignalPathBridge(recorder, _Output(), _Processing())
     assert bridge.status == "HISTORICAL"
     assert bridge.identity["execution_generation"] == 1
+
+
+# A15: One recorder capture must be the source of BOTH lifecycle and DSP
+# receipts. Reading the event property separately would mix two revisions.
+def test_truth_projection_consumes_only_one_capture() -> None:
+    class _CaptureOnlyRecorder(SignalTruthRecorder):
+        def __init__(self) -> None:
+            super().__init__()
+            self.capture_reads = 0
+
+        def read_capture_state(self):
+            self.capture_reads += 1
+            return super().read_capture_state()
+
+        @property
+        def processing_events(self):
+            raise AssertionError("a projection cannot read a second recorder epoch")
+
+    recorder = _CaptureOnlyRecorder()
+    recorder._active = _snapshot()
+    recorder.record_processing_event(
+        _truth_dsp_event(ProcessingTruthState.EFFECTIVE, revision=3, readback=True)
+    )
+    bridge = SignalPathBridge(
+        recorder, _Output(), _truth_effective_processing()
+    )
+    assert recorder.capture_reads == 1
+    stage = next(row for row in bridge.stages if row["id"] == "processing")
+    assert stage["state"] == "transformed"
+    bridge.dispose()
+
+
+def test_truth_concurrent_terminal_only_affects_subsequent_capture() -> None:
+    class _InterleavingRecorder(SignalTruthRecorder):
+        inject_terminal = False
+
+        def read_capture_state(self):
+            captured = super().read_capture_state()
+            if self.inject_terminal:
+                self.inject_terminal = False
+                # Deterministic interleaving AFTER capture, BEFORE DSP projection.
+                # Avoid a callback so the first frame is tested independently.
+                with self._lock:
+                    self._processing_events.append(
+                        _truth_dsp_event(
+                            ProcessingTruthState.BYPASSED, revision=4, plan=None
+                        )
+                    )
+                    self._capture_revision += 1
+            return captured
+
+    recorder = _InterleavingRecorder()
+    recorder._active = _snapshot()
+    recorder.record_processing_event(
+        _truth_dsp_event(ProcessingTruthState.EFFECTIVE, revision=3, readback=True)
+    )
+    recorder.inject_terminal = True
+    bridge = SignalPathBridge(
+        recorder, _Output(), _truth_effective_processing()
+    )
+    stage = next(row for row in bridge.stages if row["id"] == "processing")
+    assert stage["state"] == "transformed", "frame mixed two recorder epochs"
+
+    bridge._on_source_changed()
+    stage = next(row for row in bridge.stages if row["id"] == "processing")
+    assert stage["state"] != "transformed", "terminal must revoke DSP on refresh"
+    bridge.dispose()
