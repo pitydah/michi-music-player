@@ -969,7 +969,10 @@ class SignalTruthRecorder:
         # Construct and classify outside the short lifecycle critical section.
         candidate = _initial_snapshot(plan)
         with self._lock:
-            if self._candidate is not None and self._candidate.identity != plan.identity:
+            if (
+                self._candidate is not None
+                and self._candidate.identity != plan.identity
+            ):
                 self._last = self._candidate
             self._candidate = candidate
             self._lifecycle_revision += 1
@@ -981,9 +984,15 @@ class SignalTruthRecorder:
         # Classification runs outside the lock: never block lifecycle on DSP.
         while True:
             with self._lock:
-                if self._candidate is not None and event.identity == self._candidate.identity:
+                if (
+                    self._candidate is not None
+                    and event.identity == self._candidate.identity
+                ):
                     previous = self._candidate
-                elif self._active is not None and event.identity == self._active.identity:
+                elif (
+                    self._active is not None
+                    and event.identity == self._active.identity
+                ):
                     previous = self._active
                 else:
                     return False
