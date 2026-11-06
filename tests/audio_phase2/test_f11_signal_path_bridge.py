@@ -4,7 +4,11 @@
 
 from __future__ import annotations
 
+import threading
+import time
 from dataclasses import replace
+
+from PySide6.QtCore import QCoreApplication, QObject, Slot
 
 from michi.domain.audio_evidence import PcmTuple
 from michi.domain.signal_truth import (
@@ -506,3 +510,157 @@ def test_configuration_action_is_an_intent_only() -> None:
     bridge.request_configuration("INVALID")
 
     assert seen == ["OPEN_PROCESSING"]
+# A11 Qt-thread negative tests. The legacy module import above is untouched;
+# new public identifiers are deliberately Michi-owned for the future rename.
+class _TruthOwnerWitness(QObject):
+    def __init__(self) -> None:
+        super().__init__()
+        self.delivery_threads: list[int] = []
+
+    @Slot()
+    def on_update(self) -> None:
+        self.delivery_threads.append(threading.get_ident())
+
+
+def _pump_truth_owner(app: QCoreApplication, predicate, timeout: float = 5.0) -> bool:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        app.processEvents()
+        if predicate():
+            return True
+        time.sleep(0.002)
+    return predicate()
+
+
+def _emit_truth_updates(recorder: SignalTruthRecorder, count: int = 1) -> None:
+    for index in range(count):
+        recorder.record_processing_event(
+            ProcessingTruthEvent(
+                state=ProcessingTruthState.REQUESTED,
+                processing_generation=index + 1,
+            )
+        )
+
+
+def test_truth_worker_event_only_projects_on_qt_owner() -> None:
+    app = QCoreApplication.instance() or QCoreApplication([])
+    owner = threading.get_ident()
+    recorder = SignalTruthRecorder()
+    projection_threads: list[int] = []
+    bridge = SignalPathBridge(
+        recorder,
+        _Output(),
+        _Processing(),
+        playback_path_provider=lambda: (
+            projection_threads.append(threading.get_ident()) or ""
+        ),
+    )
+    witness = _TruthOwnerWitness()
+    bridge.state_changed.connect(witness.on_update)
+    projection_threads.clear()
+
+    worker = threading.Thread(target=_emit_truth_updates, args=(recorder,))
+    worker.start()
+    worker.join(timeout=5.0)
+    assert not worker.is_alive(), "worker blocked by UI"
+
+    # No worker is permitted to reconstruct presentation QObject state.
+    assert projection_threads == []
+    assert witness.delivery_threads == []
+    assert _pump_truth_owner(app, lambda: len(witness.delivery_threads) == 1)
+    assert projection_threads == [owner]
+    assert witness.delivery_threads == [owner]
+    bridge.dispose()
+
+
+def test_truth_worker_burst_uses_single_owner_refresh() -> None:
+    app = QCoreApplication.instance() or QCoreApplication([])
+    owner = threading.get_ident()
+    recorder = SignalTruthRecorder()
+    rebuild_threads: list[int] = []
+    bridge = SignalPathBridge(
+        recorder,
+        _Output(),
+        _Processing(),
+        playback_path_provider=lambda: (
+            rebuild_threads.append(threading.get_ident()) or ""
+        ),
+    )
+    witness = _TruthOwnerWitness()
+    bridge.state_changed.connect(witness.on_update)
+    rebuild_threads.clear()
+
+    worker = threading.Thread(target=_emit_truth_updates, args=(recorder, 250))
+    worker.start()
+    worker.join(timeout=5.0)
+    assert not worker.is_alive()
+    assert rebuild_threads == []
+    assert witness.delivery_threads == []
+    assert _pump_truth_owner(app, lambda: len(witness.delivery_threads) >= 1)
+    app.processEvents()
+
+    assert rebuild_threads == [owner], rebuild_threads
+    assert witness.delivery_threads == [owner]
+    assert bridge.generation == 1
+    bridge.dispose()
+
+
+def test_truth_dispose_discards_queued_owner_refresh() -> None:
+    app = QCoreApplication.instance() or QCoreApplication([])
+    recorder = SignalTruthRecorder()
+    projection_threads: list[int] = []
+    bridge = SignalPathBridge(
+        recorder,
+        _Output(),
+        _Processing(),
+        playback_path_provider=lambda: (
+            projection_threads.append(threading.get_ident()) or ""
+        ),
+    )
+    witness = _TruthOwnerWitness()
+    bridge.state_changed.connect(witness.on_update)
+    projection_threads.clear()
+
+    worker = threading.Thread(target=_emit_truth_updates, args=(recorder,))
+    worker.start()
+    worker.join(timeout=5.0)
+    assert not worker.is_alive()
+    bridge.dispose()
+    app.processEvents()
+    assert projection_threads == []
+    assert witness.delivery_threads == []
+
+
+def test_truth_owner_updates_remain_synchronous_without_worker() -> None:
+    app = QCoreApplication.instance() or QCoreApplication([])
+    owner = threading.get_ident()
+    recorder = SignalTruthRecorder()
+    bridge = SignalPathBridge(recorder, _Output(), _Processing())
+    witness = _TruthOwnerWitness()
+    bridge.state_changed.connect(witness.on_update)
+
+    _emit_truth_updates(recorder)
+    assert witness.delivery_threads == [owner]
+    assert bridge.generation == 1
+    bridge.dispose()
+    app.processEvents()
+
+
+def test_truth_reentrant_owner_notification_preserves_next_refresh() -> None:
+    app = QCoreApplication.instance() or QCoreApplication([])
+    owner = threading.get_ident()
+    recorder = SignalTruthRecorder()
+    bridge = SignalPathBridge(recorder, _Output(), _Processing())
+    witnessed: list[int] = []
+
+    def on_updated() -> None:
+        witnessed.append(threading.get_ident())
+        if len(witnessed) == 1:
+            _emit_truth_updates(recorder)
+
+    bridge.state_changed.connect(on_updated)
+    _emit_truth_updates(recorder)
+    assert _pump_truth_owner(app, lambda: len(witnessed) == 2)
+    assert witnessed == [owner, owner]
+    assert bridge.generation == 2
+    bridge.dispose()
