@@ -114,8 +114,10 @@ def test_dop_carrier_separate_from_musical_pcm() -> None:
     assert "dac_interpretation" in s["properties"]
     f = copy.deepcopy(_examples()["dop_pending"])
     f["route"]["carrier_pcm"] = {
-        "transport_format": "S24_3LE", "rate_hz": 176400,
-        "channels": 2, "significant_bits": 24,
+        "transport_format": "S24_3LE",
+        "rate_hz": 176400,
+        "channels": 2,
+        "significant_bits": 24,
     }
     _semantic_check(f)
     f["route"]["negotiated_pcm"] = f["route"]["carrier_pcm"]
@@ -135,12 +137,18 @@ def test_dsp_confirmed_requires_owner_scope_and_readback() -> None:
     f["dsp"]["correlation"] = "CONFIRMED"
     with pytest.raises(AssertionError):
         _semantic_check(f)
-    f["dsp"].update({
-        "state": "EFFECTIVE", "readback_proven": True,
-        "processing_plan_id": "dsp:plan-b", "source_execution_ref": "exec:3",
-        "pipeline_generation": 3, "host_generation": 1,
-        "processing_generation": 2, "last_event_sequence": 8,
-    })
+    f["dsp"].update(
+        {
+            "state": "EFFECTIVE",
+            "readback_proven": True,
+            "processing_plan_id": "dsp:plan-b",
+            "source_execution_ref": "exec:3",
+            "pipeline_generation": 3,
+            "host_generation": 1,
+            "processing_generation": 2,
+            "last_event_sequence": 8,
+        }
+    )
     _semantic_check(f)
     f["dsp"]["host_generation"] = None
     with pytest.raises(AssertionError):
@@ -153,24 +161,36 @@ def test_matched_complete_needs_sample_authority_and_provenance() -> None:
     with pytest.raises(AssertionError):
         _semantic_check(f)
     f["quality"]["proof_authority"] = "M11_5"
-    f["provenance"].append({
-        "boundary": "SAMPLE_COMPARE", "owner": "M11_5",
-        "evidence_ref": "comparison:fixture", "generation": 3,
-    })
+    f["provenance"].append(
+        {
+            "boundary": "SAMPLE_COMPARE",
+            "owner": "M11_5",
+            "evidence_ref": "comparison:fixture",
+            "generation": 3,
+        }
+    )
     _semantic_check(f)
 
 
 def test_operation_cycles_and_duplicates_fail_closed() -> None:
     f = copy.deepcopy(_examples()["direct_pcm"])
     one = {
-        "instance_id": "src:a", "kind": "RESAMPLE", "observation": "OBSERVED",
-        "order_state": "OBSERVED", "order_index": 1,
-        "predecessors": ["fir:b"], "evidence_refs": ["host:fixture"],
+        "instance_id": "src:a",
+        "kind": "RESAMPLE",
+        "observation": "OBSERVED",
+        "order_state": "OBSERVED",
+        "order_index": 1,
+        "predecessors": ["fir:b"],
+        "evidence_refs": ["host:fixture"],
     }
     two = {
-        "instance_id": "fir:b", "kind": "FIR", "observation": "OBSERVED",
-        "order_state": "OBSERVED", "order_index": 2,
-        "predecessors": ["src:a"], "evidence_refs": ["host:fixture"],
+        "instance_id": "fir:b",
+        "kind": "FIR",
+        "observation": "OBSERVED",
+        "order_state": "OBSERVED",
+        "order_index": 2,
+        "predecessors": ["src:a"],
+        "evidence_refs": ["host:fixture"],
     }
     f["operations"] = [one, two]
     with pytest.raises(AssertionError):
@@ -182,11 +202,17 @@ def test_operation_cycles_and_duplicates_fail_closed() -> None:
 
 def test_unordered_ops_never_have_invented_edges() -> None:
     f = copy.deepcopy(_examples()["direct_pcm"])
-    f["operations"] = [{
-        "instance_id": "fir:1", "kind": "FIR", "observation": "INSTALLED",
-        "order_state": "UNKNOWN", "order_index": None,
-        "predecessors": [], "evidence_refs": [],
-    }]
+    f["operations"] = [
+        {
+            "instance_id": "fir:1",
+            "kind": "FIR",
+            "observation": "INSTALLED",
+            "order_state": "UNKNOWN",
+            "order_index": None,
+            "predecessors": [],
+            "evidence_refs": [],
+        }
+    ]
     _semantic_check(f)
     f["operations"][0]["predecessors"] = ["src:1"]
     with pytest.raises(AssertionError):
