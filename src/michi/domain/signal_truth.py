@@ -912,7 +912,10 @@ class SignalTruthRecorder:
             self._processing_measurements = retained
             if discarded:
                 self._capture_revision += 1
-            return discarded
+        if discarded:
+            # A retired execution invalidates a visible DSP measurement.
+            self._publish()
+        return discarded
 
     def record_processing_measurement(self, measurement: ProcessingMeasurement) -> None:
         if not measurement.execution_id.strip():
@@ -943,7 +946,12 @@ class SignalTruthRecorder:
             ]
             discarded = len(self._processing_measurements) - len(retained)
             self._processing_measurements = retained
-            return discarded
+            if discarded:
+                self._capture_revision += 1
+        if discarded:
+            # Discard is a material read-model change, not a silent cleanup.
+            self._publish()
+        return discarded
 
     @property
     def output_family_events(self) -> tuple[OutputFamilyEvent, ...]:
