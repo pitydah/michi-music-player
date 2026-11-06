@@ -1,4 +1,5 @@
 """Synthetic executable acceptance tests for the static M0 tool."""
+
 from __future__ import annotations
 
 import json

@@ -4,6 +4,7 @@
 This tool is designed to be copied into ``scripts/`` on an authorized branch.
 It does not rewrite product files, phase manifests, evidence or Git history.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -48,8 +49,17 @@ TEXT_SUFFIXES = frozenset(
 )
 # A source-lexicon guard must not contain its own disallowed lexeme verbatim.
 RESERVED_LEXEME = re.compile(
-    "signal" + "path" + "|" + "signal" + r"[_-]" + "path" + "|"
-    + "signal" + r"\s+" + "path" + r"\b",
+    "signal"
+    + "path"
+    + "|"
+    + "signal"
+    + r"[_-]"
+    + "path"
+    + "|"
+    + "signal"
+    + r"\s+"
+    + "path"
+    + r"\b",
     re.IGNORECASE,
 )
 EMITTER_RE = re.compile(
