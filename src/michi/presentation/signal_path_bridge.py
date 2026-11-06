@@ -11,11 +11,12 @@ recorder.
 from __future__ import annotations
 
 import logging
+import threading
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import Property, QObject, Signal, Slot
+from PySide6.QtCore import Property, QObject, Qt, QThread, Signal, Slot
 
 from michi.domain.signal_truth import (
     SignalTruthRecorder,
@@ -180,6 +181,7 @@ class SignalPathBridge(QObject):
 
     state_changed = Signal()
     configuration_action_requested = Signal(str)
+    _owner_refresh_requested = Signal()
 
     def __init__(
         self,
@@ -200,6 +202,13 @@ class SignalPathBridge(QObject):
         self._disposed = False
         self._generation = 0
         self._projection: dict[str, Any] = {}
+        # Recorder callbacks may originate on output/GStreamer workers.
+        self._owner_refresh_lock = threading.Lock()
+        self._owner_refresh_pending = False
+        self._owner_refresh_draining = False
+        self._owner_refresh_requested.connect(
+            self._drain_owner_refresh, Qt.QueuedConnection
+        )
         recorder.subscribe(self._on_source_changed)
         output_changed = getattr(output_bridge, "state_changed", None)
         if output_changed is not None:
@@ -210,17 +219,53 @@ class SignalPathBridge(QObject):
         self._rebuild()
 
     def dispose(self) -> None:
-        if self._disposed:
-            return
-        self._disposed = True
+        # The Qt owner invalidates queued work before detaching the producer.
+        with self._owner_refresh_lock:
+            if self._disposed:
+                return
+            self._disposed = True
+            self._owner_refresh_pending = False
         self._recorder.unsubscribe(self._on_source_changed)
 
+    @Slot()
     def _on_source_changed(self) -> None:
-        if self._disposed:
-            return
-        self._generation += 1
-        self._rebuild()
-        self.state_changed.emit()
+        # Direct recorder callbacks may run on a worker: only request refresh.
+        with self._owner_refresh_lock:
+            if self._disposed or self._owner_refresh_pending:
+                return
+            self._owner_refresh_pending = True
+
+        try:
+            if (
+                QThread.currentThread() == self.thread()
+                and not self._owner_refresh_draining
+            ):
+                self._drain_owner_refresh()
+            else:
+                # Single queued wakeup; the owner reads the newest source state.
+                self._owner_refresh_requested.emit()
+        except RuntimeError:
+            # A concurrent QObject teardown can invalidate its signal wrapper.
+            with self._owner_refresh_lock:
+                self._owner_refresh_pending = False
+
+    @Slot()
+    def _drain_owner_refresh(self) -> None:
+        with self._owner_refresh_lock:
+            if self._disposed:
+                self._owner_refresh_pending = False
+                return
+            if not self._owner_refresh_pending:
+                return
+            self._owner_refresh_pending = False
+
+        self._owner_refresh_draining = True
+        try:
+            self._generation += 1
+            self._rebuild()
+            self.state_changed.emit()
+        finally:
+            self._owner_refresh_draining = False
 
     # ------------------------------------------------------------------
     # projection
