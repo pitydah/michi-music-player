@@ -1,0 +1,35 @@
+name: F11 Truth Qt owner thread
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/michi/presentation/signal*bridge.py"
+      - "tests/audio_phase2/test_f11*bridge.py"
+      - ".github/workflows/f11-truth-qt-owner.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  truth-qt-owner:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install project and test tools
+        run: python -m pip install -e ".[test]"
+      - name: Real PySide6 bridge and Qt owner regression
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          set -euo pipefail
+          python -m pytest tests/audio_phase2/test_f11*bridge.py -q
+      - name: Ruff verification of owner boundary
+        run: |
+          set -euo pipefail
+          ruff check src/michi/presentation/signal*bridge.py tests/audio_phase2/test_f11*bridge.py
+          ruff format --check src/michi/presentation/signal*bridge.py tests/audio_phase2/test_f11*bridge.py
