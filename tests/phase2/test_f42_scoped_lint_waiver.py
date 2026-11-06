@@ -75,8 +75,5 @@ def test_f42_legacy_diagnostic_is_exactly_one_sim102_at_frozen_site() -> None:
     )
     assert process.returncode == 1, process.stderr
     payload = json.loads(process.stdout)
-    actual = [
-        (item["code"], item["location"]["row"])
-        for item in payload
-    ]
+    actual = [(item["code"], item["location"]["row"]) for item in payload]
     assert actual == [("SIM102", 4149)], actual
