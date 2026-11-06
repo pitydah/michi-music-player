@@ -11,11 +11,12 @@ recorder.
 from __future__ import annotations
 
 import logging
+import threading
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import Property, QObject, Signal, Slot
+from PySide6.QtCore import Property, QObject, Qt, QThread, Signal, Slot
 
 from michi.domain.signal_truth import (
     SignalTruthRecorder,
@@ -180,6 +181,7 @@ class SignalPathBridge(QObject):
 
     state_changed = Signal()
     configuration_action_requested = Signal(str)
+    _owner_refresh_requested = Signal()
 
     def __init__(
         self,
@@ -200,6 +202,13 @@ class SignalPathBridge(QObject):
         self._disposed = False
         self._generation = 0
         self._projection: dict[str, Any] = {}
+        # Recorder callbacks may originate on output/GStreamer workers.
+        self._owner_refresh_lock = threading.Lock()
+        self._owner_refresh_pending = False
+        self._owner_refresh_draining = False
+        self._owner_refresh_requested.connect(
+            self._drain_owner_refresh, Qt.QueuedConnection
+        )
         recorder.subscribe(self._on_source_changed)
         output_changed = getattr(output_bridge, "state_changed", None)
         if output_changed is not None:
@@ -210,17 +219,53 @@ class SignalPathBridge(QObject):
         self._rebuild()
 
     def dispose(self) -> None:
-        if self._disposed:
-            return
-        self._disposed = True
+        # The Qt owner invalidates queued work before detaching the producer.
+        with self._owner_refresh_lock:
+            if self._disposed:
+                return
+            self._disposed = True
+            self._owner_refresh_pending = False
         self._recorder.unsubscribe(self._on_source_changed)
 
+    @Slot()
     def _on_source_changed(self) -> None:
-        if self._disposed:
-            return
-        self._generation += 1
-        self._rebuild()
-        self.state_changed.emit()
+        # Direct recorder callbacks may run on a worker: only request refresh.
+        with self._owner_refresh_lock:
+            if self._disposed or self._owner_refresh_pending:
+                return
+            self._owner_refresh_pending = True
+
+        try:
+            if (
+                QThread.currentThread() == self.thread()
+                and not self._owner_refresh_draining
+            ):
+                self._drain_owner_refresh()
+            else:
+                # Single queued wakeup; the owner reads the newest source state.
+                self._owner_refresh_requested.emit()
+        except RuntimeError:
+            # A concurrent QObject teardown can invalidate its signal wrapper.
+            with self._owner_refresh_lock:
+                self._owner_refresh_pending = False
+
+    @Slot()
+    def _drain_owner_refresh(self) -> None:
+        with self._owner_refresh_lock:
+            if self._disposed:
+                self._owner_refresh_pending = False
+                return
+            if not self._owner_refresh_pending:
+                return
+            self._owner_refresh_pending = False
+
+        self._owner_refresh_draining = True
+        try:
+            self._generation += 1
+            self._rebuild()
+            self.state_changed.emit()
+        finally:
+            self._owner_refresh_draining = False
 
     # ------------------------------------------------------------------
     # projection
@@ -253,26 +298,18 @@ class SignalPathBridge(QObject):
         return diagnostics
 
     def _snapshot_choice(self):
-        """Choose ONE evidence source and label its temporal status.
-
-        ACTIVE and HISTORICAL are mutually exclusive. A candidate is PENDING:
-        it is not a completed execution and can never publish ACTIVE proof.
-        """
-        active = self._recorder.active_snapshot
+        """Read a single coherent capture; aborted candidates are diagnostics."""
+        capture = self._recorder.read_capture_state()
+        active = capture.active
         if active is not None:
             transport = self._transport_status()
             if transport in {"stopped", "idle", "no_media"}:
                 return active, "HISTORICAL"
             return active, "ACTIVE"
-        try:
-            candidate = self._recorder.candidate_snapshot
-        except RuntimeError:
-            candidate = None
-        if candidate is not None:
-            return candidate, "PENDING"
-        last = self._recorder.last_snapshot
-        if last is not None:
-            return last, "HISTORICAL"
+        if capture.candidate is not None:
+            return capture.candidate, "PENDING"
+        if capture.last_committed is not None:
+            return capture.last_committed, "HISTORICAL"
         return None, "NONE"
 
     def _transport_status(self) -> str:
@@ -293,38 +330,55 @@ class SignalPathBridge(QObject):
         self,
         identity: dict[str, Any],
         effective_plan_id: str,
+        effective_revision: int,
     ) -> tuple[bool, object | None]:
-        """Correlate the processing receipt with this exact output pipeline.
+        """Find only the latest causally applicable DSP receipt.
 
-        The processing plan id and the output plan id belong to different
-        authorities and are never equal. The durable link is the pipeline
-        generation the processing child observed when it committed. Return
-        ``(events_available, event)`` so callers can distinguish "no evidence
-        stream" (legacy/test doubles) from "a receipt that belongs elsewhere".
+        Output plan IDs and processing plan IDs are different namespaces.
+        The latest state for the same pipeline wins; an unscoped negative
+        receipt cannot be used to resurrect an older EFFECTIVE event.
         """
         try:
             events = tuple(self._recorder.processing_events)
-        except Exception:  # noqa: BLE001 - projection failure is not runtime truth
+        except Exception:  # noqa: BLE001 - missing evidence stays unverified
             return False, None
         if not events:
             return False, None
+
         port_generation = int(
             identity.get("port_generation") or identity.get("execution_generation") or 0
         )
-        if port_generation <= 0:
+        if port_generation <= 0 or effective_revision <= 0 or not effective_plan_id:
             return True, None
+
         for event in reversed(events):
             state = getattr(event, "state", None)
-            state_value = str(getattr(state, "value", state) or "")
-            if state_value != "effective":
-                continue
-            if not bool(getattr(event, "readback_proven", False)):
-                continue
-            if str(getattr(event, "plan_id", None) or "") != effective_plan_id:
-                continue
+            state_value = str(getattr(state, "value", state) or "").casefold()
             pipeline_generation = int(getattr(event, "pipeline_generation", 0) or 0)
-            if pipeline_generation == port_generation:
-                return True, event
+
+            if pipeline_generation != port_generation:
+                if pipeline_generation:
+                    # Explicitly belongs to a different pipeline.
+                    continue
+                if state_value != "effective":
+                    # Unscoped terminal/transition cannot establish that an
+                    # old effective receipt remains current: fail closed.
+                    return True, None
+                continue
+
+            # This is the most recent receipt for the current pipeline.
+            if state_value != "effective":
+                return True, None
+            if not bool(getattr(event, "readback_proven", False)):
+                return True, None
+            if str(getattr(event, "plan_id", None) or "") != effective_plan_id:
+                return True, None
+            if int(getattr(event, "processing_generation", 0) or 0) != (
+                effective_revision
+            ):
+                return True, None
+            return True, event
+
         return True, None
 
     def _device_display_name(self, stable_device_id: str) -> str:
@@ -558,22 +612,16 @@ class SignalPathBridge(QObject):
         effective_state = str(truth.get("effective_state", "unknown"))
         effective_plan_id = str(truth.get("effective_plan_id") or "")
         snapshot_plan_id = str(identity.get("plan_id") or "")
-        events_available, processing_event = self._processing_event_for(
-            identity, effective_plan_id
+        _, processing_event = self._processing_event_for(
+            identity,
+            effective_plan_id,
+            int(truth.get("effective_revision") or 0),
         )
-        if events_available:
-            processing_matches = bool(
-                effective_state == "effective" and processing_event is not None
-            )
-        else:
-            # Compatibility for read-model doubles that publish the processing
-            # truth without a recorder event stream.
-            processing_matches = bool(
-                effective_state == "effective"
-                and effective_plan_id
-                and snapshot_plan_id
-                and effective_plan_id == snapshot_plan_id
-            )
+        # An unavailable receipt or missing event stream never proves that
+        # DSP is effective, even when output/DSP plan IDs happen to match.
+        processing_matches = bool(
+            effective_state == "effective" and processing_event is not None
+        )
         engine_graph_factories = [
             str(item) for item in engine.get("graph_factories", []) or []
         ]
