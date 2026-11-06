@@ -114,7 +114,10 @@ def test_capture_revision_advances_for_observation_and_event_streams() -> None:
     )
     captured = recorder.read_capture_state()
     revisions.append(captured.revision)
-    assert all(left < right for left, right in zip(revisions, revisions[1:], strict=False))
+    assert all(
+        left < right
+        for left, right in zip(revisions, revisions[1:], strict=False)
+    )
     assert len(captured.processing_events) == 1
     assert len(captured.output_family_events) == 1
     assert captured.candidate.source_file_facts is not None
