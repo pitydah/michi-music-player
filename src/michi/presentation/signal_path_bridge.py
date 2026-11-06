@@ -19,6 +19,8 @@ from typing import Any
 from PySide6.QtCore import Property, QObject, Qt, QThread, Signal, Slot
 
 from michi.domain.signal_truth import (
+    ProcessingTruthEvent,
+    RecorderCaptureState,
     SignalTruthRecorder,
     signal_truth_snapshot_diagnostics,
 )
@@ -297,9 +299,8 @@ class SignalPathBridge(QObject):
             }
         return diagnostics
 
-    def _snapshot_choice(self):
-        """Read a single coherent capture; aborted candidates are diagnostics."""
-        capture = self._recorder.read_capture_state()
+    def _snapshot_choice(self, capture: RecorderCaptureState):
+        """Choose status from the ONE capture for this projection frame."""
         active = capture.active
         if active is not None:
             transport = self._transport_status()
@@ -328,6 +329,7 @@ class SignalPathBridge(QObject):
 
     def _processing_event_for(
         self,
+        events: tuple[ProcessingTruthEvent, ...],
         identity: dict[str, Any],
         effective_plan_id: str,
         effective_revision: int,
@@ -338,10 +340,6 @@ class SignalPathBridge(QObject):
         The latest state for the same pipeline wins; an unscoped negative
         receipt cannot be used to resurrect an older EFFECTIVE event.
         """
-        try:
-            events = tuple(self._recorder.processing_events)
-        except Exception:  # noqa: BLE001 - missing evidence stays unverified
-            return False, None
         if not events:
             return False, None
 
@@ -458,7 +456,10 @@ class SignalPathBridge(QObject):
         return decorated
 
     def _rebuild(self) -> None:
-        snapshot, temporal_status = self._snapshot_choice()
+        # Never mix recorder lifecycle revision A with DSP stream revision B.
+        # Other owners remain separately correlated by identity/readback.
+        capture = self._recorder.read_capture_state()
+        snapshot, temporal_status = self._snapshot_choice(capture)
         diagnostics = self._snapshot_diagnostics(snapshot)
         truth = self._processing_truth()
         output_label = str(self._output_value("signalTruthLabel", "") or "")
@@ -613,6 +614,7 @@ class SignalPathBridge(QObject):
         effective_plan_id = str(truth.get("effective_plan_id") or "")
         snapshot_plan_id = str(identity.get("plan_id") or "")
         _, processing_event = self._processing_event_for(
+            capture.processing_events,
             identity,
             effective_plan_id,
             int(truth.get("effective_revision") or 0),
