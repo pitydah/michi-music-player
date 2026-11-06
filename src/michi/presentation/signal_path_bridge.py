@@ -293,38 +293,55 @@ class SignalPathBridge(QObject):
         self,
         identity: dict[str, Any],
         effective_plan_id: str,
+        effective_revision: int,
     ) -> tuple[bool, object | None]:
-        """Correlate the processing receipt with this exact output pipeline.
+        """Find only the latest causally applicable DSP receipt.
 
-        The processing plan id and the output plan id belong to different
-        authorities and are never equal. The durable link is the pipeline
-        generation the processing child observed when it committed. Return
-        ``(events_available, event)`` so callers can distinguish "no evidence
-        stream" (legacy/test doubles) from "a receipt that belongs elsewhere".
+        Output plan IDs and processing plan IDs are different namespaces.
+        The latest state for the same pipeline wins; an unscoped negative
+        receipt cannot be used to resurrect an older EFFECTIVE event.
         """
         try:
             events = tuple(self._recorder.processing_events)
-        except Exception:  # noqa: BLE001 - projection failure is not runtime truth
+        except Exception:  # noqa: BLE001 - missing evidence stays unverified
             return False, None
         if not events:
             return False, None
+
         port_generation = int(
             identity.get("port_generation") or identity.get("execution_generation") or 0
         )
-        if port_generation <= 0:
+        if port_generation <= 0 or effective_revision <= 0 or not effective_plan_id:
             return True, None
+
         for event in reversed(events):
             state = getattr(event, "state", None)
-            state_value = str(getattr(state, "value", state) or "")
-            if state_value != "effective":
-                continue
-            if not bool(getattr(event, "readback_proven", False)):
-                continue
-            if str(getattr(event, "plan_id", None) or "") != effective_plan_id:
-                continue
+            state_value = str(getattr(state, "value", state) or "").casefold()
             pipeline_generation = int(getattr(event, "pipeline_generation", 0) or 0)
-            if pipeline_generation == port_generation:
-                return True, event
+
+            if pipeline_generation != port_generation:
+                if pipeline_generation:
+                    # Explicitly belongs to a different pipeline.
+                    continue
+                if state_value != "effective":
+                    # Unscoped terminal/transition cannot establish that an
+                    # old effective receipt remains current: fail closed.
+                    return True, None
+                continue
+
+            # This is the most recent receipt for the current pipeline.
+            if state_value != "effective":
+                return True, None
+            if not bool(getattr(event, "readback_proven", False)):
+                return True, None
+            if str(getattr(event, "plan_id", None) or "") != effective_plan_id:
+                return True, None
+            if int(getattr(event, "processing_generation", 0) or 0) != (
+                effective_revision
+            ):
+                return True, None
+            return True, event
+
         return True, None
 
     def _device_display_name(self, stable_device_id: str) -> str:
@@ -558,22 +575,16 @@ class SignalPathBridge(QObject):
         effective_state = str(truth.get("effective_state", "unknown"))
         effective_plan_id = str(truth.get("effective_plan_id") or "")
         snapshot_plan_id = str(identity.get("plan_id") or "")
-        events_available, processing_event = self._processing_event_for(
-            identity, effective_plan_id
+        _, processing_event = self._processing_event_for(
+            identity,
+            effective_plan_id,
+            int(truth.get("effective_revision") or 0),
         )
-        if events_available:
-            processing_matches = bool(
-                effective_state == "effective" and processing_event is not None
-            )
-        else:
-            # Compatibility for read-model doubles that publish the processing
-            # truth without a recorder event stream.
-            processing_matches = bool(
-                effective_state == "effective"
-                and effective_plan_id
-                and snapshot_plan_id
-                and effective_plan_id == snapshot_plan_id
-            )
+        # An unavailable receipt or missing event stream never proves that
+        # DSP is effective, even when output/DSP plan IDs happen to match.
+        processing_matches = bool(
+            effective_state == "effective" and processing_event is not None
+        )
         engine_graph_factories = [
             str(item) for item in engine.get("graph_factories", []) or []
         ]

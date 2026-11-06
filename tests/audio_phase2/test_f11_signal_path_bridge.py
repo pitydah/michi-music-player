@@ -225,11 +225,17 @@ def test_matching_processing_receipt_is_the_only_dsp_claim() -> None:
         }
         bands = [{"gainDb": 6.0}, {"gainDb": 0.0}]
 
-    bridge = SignalPathBridge(
-        _recorder_with_active(_snapshot()),
-        _Output(),
-        _Matched(),
+    recorder = _recorder_with_active(_snapshot())
+    recorder.record_processing_event(
+        ProcessingTruthEvent(
+            state=ProcessingTruthState.EFFECTIVE,
+            processing_generation=7,
+            plan_id="plan:f11",
+            pipeline_generation=1,
+            readback_proven=True,
+        )
     )
+    bridge = SignalPathBridge(recorder, _Output(), _Matched())
 
     processing = next(stage for stage in bridge.stages if stage["id"] == "processing")
     assert processing["state"] == "transformed"
@@ -506,3 +512,154 @@ def test_configuration_action_is_an_intent_only() -> None:
     bridge.request_configuration("INVALID")
 
     assert seen == ["OPEN_PROCESSING"]
+# A13 DSP regressions: output plan ID is NOT DSP plan ID, and the newest
+# causal event must revoke an earlier effective receipt.
+def _truth_dsp_event(
+    state: ProcessingTruthState,
+    *,
+    revision: int,
+    plan: str | None = "dsp:owner",
+    pipeline: int | None = 1,
+    readback: bool = False,
+) -> ProcessingTruthEvent:
+    return ProcessingTruthEvent(
+        state=state,
+        processing_generation=revision,
+        plan_id=plan,
+        host_generation=1,
+        pipeline_generation=pipeline,
+        readback_proven=readback,
+    )
+
+
+def _truth_effective_processing(revision: int = 3, plan: str = "dsp:owner"):
+    processing = _Processing()
+    processing.truth = {
+        "effective_state": "effective",
+        "effective_revision": revision,
+        "effective_plan_id": plan,
+    }
+    return processing
+
+
+def _truth_dsp_stage(recorder: SignalTruthRecorder, processing) -> dict:
+    bridge = SignalPathBridge(recorder, _Output(), processing)
+    return next(row for row in bridge.stages if row["id"] == "processing")
+
+
+def test_truth_equal_output_and_dsp_plan_without_receipt_is_unverified() -> None:
+    recorder = _recorder_with_active(_snapshot())
+    stage = _truth_dsp_stage(recorder, _truth_effective_processing(3, plan="plan:f11"))
+    assert stage["state"] == "unknown"
+    assert "identity unverified" in stage["summary"]
+
+
+def test_truth_latest_bypass_revokes_earlier_effective_receipt() -> None:
+    recorder = _recorder_with_active(_snapshot())
+    recorder.record_processing_event(
+        _truth_dsp_event(ProcessingTruthState.EFFECTIVE, revision=3, readback=True)
+    )
+    recorder.record_processing_event(
+        _truth_dsp_event(ProcessingTruthState.BYPASSED, revision=4, plan=None)
+    )
+    stage = _truth_dsp_stage(recorder, _truth_effective_processing())
+    assert stage["state"] != "transformed"
+
+
+def test_truth_latest_unavailable_revokes_earlier_effective_receipt() -> None:
+    recorder = _recorder_with_active(_snapshot())
+    recorder.record_processing_event(
+        _truth_dsp_event(ProcessingTruthState.EFFECTIVE, revision=3, readback=True)
+    )
+    recorder.record_processing_event(
+        _truth_dsp_event(ProcessingTruthState.UNAVAILABLE, revision=4, plan=None)
+    )
+    stage = _truth_dsp_stage(recorder, _truth_effective_processing())
+    assert stage["state"] != "transformed"
+
+
+def test_truth_newer_wrong_plan_revokes_older_matching_receipt() -> None:
+    recorder = _recorder_with_active(_snapshot())
+    recorder.record_processing_event(
+        _truth_dsp_event(ProcessingTruthState.EFFECTIVE, revision=3, readback=True)
+    )
+    recorder.record_processing_event(
+        _truth_dsp_event(
+            ProcessingTruthState.EFFECTIVE,
+            revision=4,
+            plan="dsp:other",
+            readback=True,
+        )
+    )
+    stage = _truth_dsp_stage(recorder, _truth_effective_processing())
+    assert stage["state"] == "unknown"
+
+
+def test_truth_dsp_effective_revision_must_match_current_owner() -> None:
+    recorder = _recorder_with_active(_snapshot())
+    recorder.record_processing_event(
+        _truth_dsp_event(ProcessingTruthState.EFFECTIVE, revision=2, readback=True)
+    )
+    stage = _truth_dsp_stage(recorder, _truth_effective_processing(revision=3))
+    assert stage["state"] == "unknown"
+
+
+def test_truth_new_request_does_not_resurrect_effective_on_same_pipeline() -> None:
+    recorder = _recorder_with_active(_snapshot())
+    recorder.record_processing_event(
+        _truth_dsp_event(ProcessingTruthState.EFFECTIVE, revision=3, readback=True)
+    )
+    recorder.record_processing_event(
+        _truth_dsp_event(ProcessingTruthState.REQUESTED, revision=4)
+    )
+    stage = _truth_dsp_stage(recorder, _truth_effective_processing())
+    assert stage["state"] != "transformed"
+
+
+def test_truth_unscoped_terminal_blocks_unproven_effective_join() -> None:
+    recorder = _recorder_with_active(_snapshot())
+    recorder.record_processing_event(
+        _truth_dsp_event(ProcessingTruthState.EFFECTIVE, revision=3, readback=True)
+    )
+    recorder.record_processing_event(
+        _truth_dsp_event(
+            ProcessingTruthState.UNAVAILABLE,
+            revision=4,
+            plan=None,
+            pipeline=None,
+        )
+    )
+    stage = _truth_dsp_stage(recorder, _truth_effective_processing())
+    assert stage["state"] == "unknown"
+
+
+def test_truth_other_pipeline_terminal_does_not_revoke_current_proof() -> None:
+    recorder = _recorder_with_active(_snapshot())
+    recorder.record_processing_event(
+        _truth_dsp_event(ProcessingTruthState.EFFECTIVE, revision=3, readback=True)
+    )
+    recorder.record_processing_event(
+        _truth_dsp_event(
+            ProcessingTruthState.UNAVAILABLE,
+            revision=4,
+            pipeline=2,
+            plan=None,
+        )
+    )
+    stage = _truth_dsp_stage(recorder, _truth_effective_processing())
+    assert stage["state"] == "transformed"
+
+
+def test_truth_new_valid_effective_reactivates_after_bypass() -> None:
+    recorder = _recorder_with_active(_snapshot())
+    recorder.record_processing_event(
+        _truth_dsp_event(ProcessingTruthState.EFFECTIVE, revision=3, readback=True)
+    )
+    recorder.record_processing_event(
+        _truth_dsp_event(ProcessingTruthState.BYPASSED, revision=4, plan=None)
+    )
+    recorder.record_processing_event(
+        _truth_dsp_event(ProcessingTruthState.EFFECTIVE, revision=5, readback=True)
+    )
+    stage = _truth_dsp_stage(recorder, _truth_effective_processing(revision=5))
+    assert stage["state"] == "transformed"
