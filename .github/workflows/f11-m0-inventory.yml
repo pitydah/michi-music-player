@@ -1,0 +1,80 @@
+name: AP2-F11 M0 integration baseline
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/audit_michi_truth_m0.py"
+      - "tests/phase2/test_signal_truth_m0_audit.py"
+      - ".github/workflows/f11-m0-inventory.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  f11-m0-baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # AP2/DAC verify ancestry against the historical baseline
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Collect AP2 and DAC contract receipts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/f11-m0
+          git rev-parse HEAD > artifacts/f11-m0/checkout_sha.txt
+          echo "${{ github.event.pull_request.head.sha }}" > artifacts/f11-m0/pr_head_sha.txt
+          python scripts/phase2_context.py --phase AP2-F11 --receipt-json \
+            > artifacts/f11-m0/phase2_context.json
+          python scripts/verify_audio_phase2_repository_alignment.py --phase AP2-F11 \
+            > artifacts/f11-m0/phase2_alignment.json
+          python scripts/verify_dac_repository_alignment.py \
+            | tee artifacts/f11-m0/dac_alignment.log
+          cp artifacts/dac_repository_alignment.json artifacts/f11-m0/
+          cp artifacts/dac_repository_alignment.md artifacts/f11-m0/
+
+      - name: Collect read-only full-checkout inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/audit_michi_truth_m0.py --repo . \
+            --out artifacts/f11-m0 --gate baseline
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path("artifacts/f11-m0/F11_M0_INTEGRATION_INVENTORY.json")
+          a = json.loads(p.read_text(encoding="utf-8"))
+          assert a["evidence_state"] == "STATIC_ONLY_NO_RUNTIME_TESTS"
+          assert a["phase2"]["f11"] == "ACTIVE"
+          assert not a["blockers"], a["blockers"]
+          print("M0 inventory:", a["tracked_files"], "tracked files")
+          print("Product nomenclature matches:", a["nomenclature"]["matches"])
+          print("Producer callsites:", len(a["evidence_producer_calls"]))
+          print("Subscriber callsites:", len(a["evidence_subscriptions"]))
+          PY
+
+      - name: Run targeted tests and formatting checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install -e ".[test]"
+          python -m pytest tests/phase2/test_signal_truth_m0_audit.py -q \
+            | tee artifacts/f11-m0/m0-tests.log
+          ruff check scripts/audit_michi_truth_m0.py tests/phase2/test_signal_truth_m0_audit.py \
+            | tee artifacts/f11-m0/m0-ruff-check.log
+          ruff format --check scripts/audit_michi_truth_m0.py tests/phase2/test_signal_truth_m0_audit.py \
+            | tee artifacts/f11-m0/m0-ruff-format.log
+
+      - name: Upload M0 evidence regardless of gate result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: f11-m0-inventory-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/f11-m0/
+          if-no-files-found: warn
