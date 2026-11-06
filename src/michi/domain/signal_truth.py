@@ -826,6 +826,24 @@ class ProcessingTruthEvent:
     readback_proven: bool = False
 
 
+@dataclass(frozen=True, slots=True)
+class RecorderCaptureState:
+    """One lock-consistent, passive snapshot of recorder facts.
+
+    last_committed refers only to a previously active execution. The legacy
+    last_snapshot property intentionally retains its DAC-facing contract.
+    """
+
+    revision: int
+    candidate: SignalTruthSnapshot | None
+    active: SignalTruthSnapshot | None
+    last_committed: SignalTruthSnapshot | None
+    last_aborted_candidate: SignalTruthSnapshot | None
+    processing_events: tuple[ProcessingTruthEvent, ...]
+    output_family_events: tuple[OutputFamilyEvent, ...]
+    processing_measurements: tuple[ProcessingMeasurement, ...]
+
+
 class SignalTruthRecorder:
     """One passive candidate/active runtime evidence recorder."""
 
@@ -833,6 +851,8 @@ class SignalTruthRecorder:
         self._candidate: SignalTruthSnapshot | None = None
         self._active: SignalTruthSnapshot | None = None
         self._last: SignalTruthSnapshot | None = None
+        self._last_committed: SignalTruthSnapshot | None = None
+        self._last_aborted_candidate: SignalTruthSnapshot | None = None
         self._subscribers: list[Callable[[], None]] = []
         # Additive AP2-F05 stream: DSP state convergence, separate from (and
         # never substituting) the DAC Signal Truth verdict.
@@ -845,6 +865,22 @@ class SignalTruthRecorder:
         self._lock = threading.RLock()
         # Advanced only by lifecycle changes, not by new evidence receipts.
         self._lifecycle_revision = 0
+        # Revision of facts exposed by read_capture_state, including events.
+        self._capture_revision = 0
+
+    def read_capture_state(self) -> RecorderCaptureState:
+        """Capture all visible truth streams under one existing recorder lock."""
+        with self._lock:
+            return RecorderCaptureState(
+                revision=self._capture_revision,
+                candidate=self._candidate,
+                active=self._active,
+                last_committed=self._last_committed,
+                last_aborted_candidate=self._last_aborted_candidate,
+                processing_events=tuple(self._processing_events),
+                output_family_events=tuple(self._output_family_events),
+                processing_measurements=tuple(self._processing_measurements),
+            )
 
     @property
     def processing_events(self) -> tuple[ProcessingTruthEvent, ...]:
@@ -874,6 +910,8 @@ class SignalTruthRecorder:
             ]
             discarded = len(self._processing_measurements) - len(retained)
             self._processing_measurements = retained
+            if discarded:
+                self._capture_revision += 1
             return discarded
 
     def record_processing_measurement(self, measurement: ProcessingMeasurement) -> None:
@@ -891,6 +929,7 @@ class SignalTruthRecorder:
             self._processing_measurements.append(measurement)
             if len(self._processing_measurements) > 16:
                 del self._processing_measurements[:-16]
+            self._capture_revision += 1
         # Notify OUTSIDE the lock: slow subscribers never block the fence.
         self._publish()
 
@@ -925,6 +964,7 @@ class SignalTruthRecorder:
             self._output_family_events.append(event)
             if len(self._output_family_events) > 64:
                 del self._output_family_events[:-64]
+            self._capture_revision += 1
         self._publish()
 
     def record_processing_event(self, event: ProcessingTruthEvent) -> None:
@@ -935,6 +975,7 @@ class SignalTruthRecorder:
             self._processing_events.append(event)
             if len(self._processing_events) > 64:
                 del self._processing_events[:-64]
+            self._capture_revision += 1
         self._publish()
 
     @property
@@ -974,8 +1015,10 @@ class SignalTruthRecorder:
                 and self._candidate.identity != plan.identity
             ):
                 self._last = self._candidate
+                self._last_aborted_candidate = self._candidate
             self._candidate = candidate
             self._lifecycle_revision += 1
+            self._capture_revision += 1
         self._publish()
 
     def observe(self, event: SignalTruthEvidence) -> bool:
@@ -1012,6 +1055,7 @@ class SignalTruthRecorder:
                     # Concurrent observation of the same lifecycle version
                     # updated the snapshot; retry to preserve both receipts.
                     continue
+                self._capture_revision += 1
             self._publish()
             return True
 
@@ -1034,6 +1078,7 @@ class SignalTruthRecorder:
             if self._candidate is None or self._candidate.identity != identity:
                 return False
             self._last = self._candidate
+            self._last_aborted_candidate = self._candidate
             self._candidate = None
             self._lifecycle_revision += 1
         self._publish()
@@ -1044,6 +1089,7 @@ class SignalTruthRecorder:
             if self._active is None or self._active.identity != identity:
                 return False
             self._last = self._active
+            self._last_committed = self._active
             self._active = None
             self._lifecycle_revision += 1
         self._publish()
@@ -1054,14 +1100,17 @@ class SignalTruthRecorder:
             changed = False
             if self._candidate is not None and self._candidate.identity == identity:
                 self._last = self._candidate
+                self._last_aborted_candidate = self._candidate
                 self._candidate = None
                 changed = True
             if self._active is not None and self._active.identity == identity:
                 self._last = self._active
+                self._last_committed = self._active
                 self._active = None
                 changed = True
             if changed:
                 self._lifecycle_revision += 1
+                self._capture_revision += 1
         if changed:
             self._publish()
         return changed
