@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import threading
 
+import pytest
+
 from michi.domain.audio_evidence import PcmTuple
 from michi.domain.signal_truth import (
     DecodedRuntimeEvidence,
@@ -127,12 +129,8 @@ def test_commit_during_evidence_calculation_keeps_active_identity(monkeypatch) -
     assert recorder.active_snapshot.identity == current
     assert recorder.active_snapshot.decoded_runtime == decoded
     # The callback cannot resurrect the already-committed candidate.
-    try:
-        recorder.candidate_snapshot
-    except RuntimeError:
-        pass
-    else:
-        raise AssertionError("candidate resurrected after commit")
+    with pytest.raises(RuntimeError):
+        _ = recorder.candidate_snapshot
 
 
 def test_retired_active_cannot_be_resurrected(monkeypatch) -> None:
