@@ -14,6 +14,7 @@ from michi.domain.signal_truth import (
     OutputFamilyEvent,
     OutputFamilyState,
     OutputPlanEvidence,
+    ProcessingMeasurement,
     ProcessingTruthEvent,
     ProcessingTruthState,
     SignalTruthIdentity,
@@ -177,3 +178,53 @@ def test_capture_reads_remain_consistent_during_writer_bursts() -> None:
     assert not worker.is_alive(), "writer stalled"
     assert not errors, errors
     assert recorder.read_capture_state().last_committed.identity == _identity(300)
+
+
+def _measured_execution(sequence: int) -> ProcessingMeasurement:
+    return ProcessingMeasurement(
+        execution_id="exec:A",
+        plan_id="plan:A",
+        sample_peak=0.5,
+        estimated_true_peak=0.6,
+        worst_channel=0,
+        channels=2,
+        sample_rate_hz=96_000,
+        window="captured",
+        evidence_level="observed",
+        sequence=sequence,
+    )
+
+
+def test_measurement_cleanup_invalidates_capture_and_notifies() -> None:
+    recorder = SignalTruthRecorder()
+    recorder.activate_execution("exec:A", plan_id="plan:A")
+    recorder.record_processing_measurement(_measured_execution(1))
+    captured_before = recorder.read_capture_state()
+    revisions: list[int] = []
+    recorder.subscribe(lambda: revisions.append(recorder.read_capture_state().revision))
+
+    assert recorder.discard_processing_measurements("exec:A") == 1
+    captured_after = recorder.read_capture_state()
+    assert captured_after.revision > captured_before.revision
+    assert captured_after.processing_measurements == ()
+    assert captured_before.processing_measurements == (_measured_execution(1),)
+    assert revisions == [captured_after.revision]
+    assert recorder.discard_processing_measurements("exec:A") == 0
+    assert revisions == [captured_after.revision]
+
+
+def test_retiring_execution_clears_measurement_with_capture_notification() -> None:
+    recorder = SignalTruthRecorder()
+    recorder.activate_execution("exec:A", plan_id="plan:A")
+    recorder.record_processing_measurement(_measured_execution(2))
+    old = recorder.read_capture_state()
+    revisions: list[int] = []
+    recorder.subscribe(lambda: revisions.append(recorder.read_capture_state().revision))
+
+    assert recorder.retire_execution("exec:A") == 1
+    current = recorder.read_capture_state()
+    assert current.revision > old.revision
+    assert current.processing_measurements == ()
+    assert revisions == [current.revision]
+    assert recorder.retire_execution("exec:A") == 0
+    assert revisions == [current.revision]
