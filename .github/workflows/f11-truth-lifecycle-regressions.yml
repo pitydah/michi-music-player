@@ -1,0 +1,37 @@
+name: AP2-F11 lifecycle race regressions
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "tests/audio_phase2/test_signal_truth_lifecycle_interleavings.py"
+      - "src/michi/domain/signal_truth.py"
+      - ".github/workflows/f11-truth-lifecycle-regressions.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lifecycle-races:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install project test dependencies
+        run: python -m pip install -e ".[test]"
+      - name: Run deterministic candidate/active interleaving tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          set -euo pipefail
+          python -m pytest \
+            tests/audio_phase2/test_signal_truth_lifecycle_interleavings.py \
+            -v --tb=short
+      - name: Check source and test style
+        run: |
+          set -euo pipefail
+          ruff check tests/audio_phase2/test_signal_truth_lifecycle_interleavings.py
+          ruff format --check tests/audio_phase2/test_signal_truth_lifecycle_interleavings.py
