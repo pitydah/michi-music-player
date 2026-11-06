@@ -878,9 +878,7 @@ def test_truth_projection_consumes_only_one_capture() -> None:
     recorder.record_processing_event(
         _truth_dsp_event(ProcessingTruthState.EFFECTIVE, revision=3, readback=True)
     )
-    bridge = SignalPathBridge(
-        recorder, _Output(), _truth_effective_processing()
-    )
+    bridge = SignalPathBridge(recorder, _Output(), _truth_effective_processing())
     assert recorder.capture_reads == 1
     stage = next(row for row in bridge.stages if row["id"] == "processing")
     assert stage["state"] == "transformed"
@@ -912,9 +910,7 @@ def test_truth_concurrent_terminal_only_affects_subsequent_capture() -> None:
         _truth_dsp_event(ProcessingTruthState.EFFECTIVE, revision=3, readback=True)
     )
     recorder.inject_terminal = True
-    bridge = SignalPathBridge(
-        recorder, _Output(), _truth_effective_processing()
-    )
+    bridge = SignalPathBridge(recorder, _Output(), _truth_effective_processing())
     stage = next(row for row in bridge.stages if row["id"] == "processing")
     assert stage["state"] == "transformed", "frame mixed two recorder epochs"
 
