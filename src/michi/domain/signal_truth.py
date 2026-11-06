@@ -843,6 +843,8 @@ class SignalTruthRecorder:
         self._active_executions: dict[str, str] = {}
         #: Concurrency: validation + append are atomic wrt activation/retire.
         self._lock = threading.RLock()
+        # Advanced only by lifecycle changes, not by new evidence receipts.
+        self._lifecycle_revision = 0
 
     @property
     def processing_events(self) -> tuple[ProcessingTruthEvent, ...]:
@@ -937,17 +939,21 @@ class SignalTruthRecorder:
 
     @property
     def candidate_snapshot(self) -> SignalTruthSnapshot:
-        if self._candidate is None:
+        with self._lock:
+            candidate = self._candidate
+        if candidate is None:
             raise RuntimeError("no Signal Truth candidate")
-        return self._candidate
+        return candidate
 
     @property
     def active_snapshot(self) -> SignalTruthSnapshot | None:
-        return self._active
+        with self._lock:
+            return self._active
 
     @property
     def last_snapshot(self) -> SignalTruthSnapshot | None:
-        return self._last
+        with self._lock:
+            return self._last
 
     def subscribe(self, callback: Callable[[], None]) -> None:
         with self._lock:
@@ -960,60 +966,94 @@ class SignalTruthRecorder:
                 self._subscribers.remove(callback)
 
     def begin_candidate(self, plan: OutputPlanEvidence) -> None:
-        if self._candidate is not None and self._candidate.identity != plan.identity:
-            self._last = self._candidate
-        self._candidate = _initial_snapshot(plan)
+        # Construct and classify outside the short lifecycle critical section.
+        candidate = _initial_snapshot(plan)
+        with self._lock:
+            if self._candidate is not None and self._candidate.identity != plan.identity:
+                self._last = self._candidate
+            self._candidate = candidate
+            self._lifecycle_revision += 1
         self._publish()
 
     def observe(self, event: SignalTruthEvidence) -> bool:
-        if self._candidate is not None and event.identity == self._candidate.identity:
-            self._candidate = self._with_event(self._candidate, event)
+        # Optimistic compare-and-swap prevents a late observer from replacing
+        # another execution or erasing an independent concurrent observation.
+        # Classification runs outside the lock: never block lifecycle on DSP.
+        while True:
+            with self._lock:
+                if self._candidate is not None and event.identity == self._candidate.identity:
+                    previous = self._candidate
+                elif self._active is not None and event.identity == self._active.identity:
+                    previous = self._active
+                else:
+                    return False
+                lifecycle_revision = self._lifecycle_revision
+
+            updated = self._with_event(previous, event)
+            with self._lock:
+                if self._candidate is previous:
+                    self._candidate = updated
+                elif self._active is previous:
+                    # Commit may move the same immutable snapshot into ACTIVE
+                    # while the runtime observation is being calculated.
+                    self._active = updated
+                elif lifecycle_revision != self._lifecycle_revision:
+                    # Candidate replaced or active retired; do not resurrect it.
+                    return False
+                else:
+                    # Concurrent observation of the same lifecycle version
+                    # updated the snapshot; retry to preserve both receipts.
+                    continue
             self._publish()
             return True
-        if self._active is not None and event.identity == self._active.identity:
-            self._active = self._with_event(self._active, event)
-            self._publish()
-            return True
-        return False
 
     def commit_candidate(self, identity: SignalTruthIdentity) -> bool:
-        if (
-            self._candidate is None
-            or self._candidate.identity != identity
-            or self._active is not None
-        ):
-            return False
-        self._active = self._candidate
-        self._candidate = None
+        with self._lock:
+            if (
+                self._candidate is None
+                or self._candidate.identity != identity
+                or self._active is not None
+            ):
+                return False
+            self._active = self._candidate
+            self._candidate = None
+            self._lifecycle_revision += 1
         self._publish()
         return True
 
     def discard_candidate(self, identity: SignalTruthIdentity) -> bool:
-        if self._candidate is None or self._candidate.identity != identity:
-            return False
-        self._last = self._candidate
-        self._candidate = None
+        with self._lock:
+            if self._candidate is None or self._candidate.identity != identity:
+                return False
+            self._last = self._candidate
+            self._candidate = None
+            self._lifecycle_revision += 1
         self._publish()
         return True
 
     def retire_active(self, identity: SignalTruthIdentity) -> bool:
-        if self._active is None or self._active.identity != identity:
-            return False
-        self._last = self._active
-        self._active = None
+        with self._lock:
+            if self._active is None or self._active.identity != identity:
+                return False
+            self._last = self._active
+            self._active = None
+            self._lifecycle_revision += 1
         self._publish()
         return True
 
     def terminate(self, identity: SignalTruthIdentity) -> bool:
-        changed = False
-        if self._candidate is not None and self._candidate.identity == identity:
-            self._last = self._candidate
-            self._candidate = None
-            changed = True
-        if self._active is not None and self._active.identity == identity:
-            self._last = self._active
-            self._active = None
-            changed = True
+        with self._lock:
+            changed = False
+            if self._candidate is not None and self._candidate.identity == identity:
+                self._last = self._candidate
+                self._candidate = None
+                changed = True
+            if self._active is not None and self._active.identity == identity:
+                self._last = self._active
+                self._active = None
+                changed = True
+            if changed:
+                self._lifecycle_revision += 1
         if changed:
             self._publish()
         return changed
