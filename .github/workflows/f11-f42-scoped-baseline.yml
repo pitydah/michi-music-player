@@ -1,0 +1,32 @@
+name: M11.3F F42 scoped baseline lint
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "tests/phase2/test_f42_scoped_lint_waiver.py"
+      - "pyproject.toml"
+      - ".github/workflows/f11-f42-scoped-baseline.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  f42-scoped-waiver:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install development dependencies
+        run: python -m pip install -e ".[test]"
+      - name: Verify sealed bytes, original Ruff diagnostic and scoped exception
+        run: |
+          set -euo pipefail
+          python -m pytest -q tests/phase2/test_f42_scoped_lint_waiver.py \
+            tests/test_m11_3f_engine_selection.py::TestF42AdapterContract::test_f42_no_adapter_source_changes
+          ruff check src tests scripts
+          ruff check tests/phase2/test_f42_scoped_lint_waiver.py
+          ruff format --check tests/phase2/test_f42_scoped_lint_waiver.py
