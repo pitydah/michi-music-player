@@ -225,11 +225,17 @@ def test_matching_processing_receipt_is_the_only_dsp_claim() -> None:
         }
         bands = [{"gainDb": 6.0}, {"gainDb": 0.0}]
 
-    bridge = SignalPathBridge(
-        _recorder_with_active(_snapshot()),
-        _Output(),
-        _Matched(),
+    recorder = _recorder_with_active(_snapshot())
+    recorder.record_processing_event(
+        ProcessingTruthEvent(
+            state=ProcessingTruthState.EFFECTIVE,
+            processing_generation=7,
+            plan_id="plan:f11",
+            pipeline_generation=1,
+            readback_proven=True,
+        )
     )
+    bridge = SignalPathBridge(recorder, _Output(), _Matched())
 
     processing = next(stage for stage in bridge.stages if stage["id"] == "processing")
     assert processing["state"] == "transformed"
