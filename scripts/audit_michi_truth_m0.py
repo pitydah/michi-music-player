@@ -129,11 +129,14 @@ def analyze_python(content: str, rel: str) -> tuple[list[dict[str, Any]], list[s
             for alias in node.names:
                 if alias.name.startswith("michi"):
                     imports.append({"line": node.lineno, "module": alias.name})
-        elif isinstance(node, ast.ImportFrom):
-            if node.module and (node.module.startswith("michi") or node.level):
-                imports.append(
-                    {"line": node.lineno, "module": "." * node.level + node.module}
-                )
+        elif (
+            isinstance(node, ast.ImportFrom)
+            and node.module
+            and (node.module.startswith("michi") or node.level)
+        ):
+            imports.append(
+                {"line": node.lineno, "module": "." * node.level + node.module}
+            )
     return sorted(imports, key=lambda x: (x["line"], x["module"])), parse_errors
 
 
