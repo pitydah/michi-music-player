@@ -826,6 +826,24 @@ class ProcessingTruthEvent:
     readback_proven: bool = False
 
 
+@dataclass(frozen=True, slots=True)
+class RecorderCaptureState:
+    """One lock-consistent, passive snapshot of recorder facts.
+
+    last_committed refers only to a previously active execution. The legacy
+    last_snapshot property intentionally retains its DAC-facing contract.
+    """
+
+    revision: int
+    candidate: SignalTruthSnapshot | None
+    active: SignalTruthSnapshot | None
+    last_committed: SignalTruthSnapshot | None
+    last_aborted_candidate: SignalTruthSnapshot | None
+    processing_events: tuple[ProcessingTruthEvent, ...]
+    output_family_events: tuple[OutputFamilyEvent, ...]
+    processing_measurements: tuple[ProcessingMeasurement, ...]
+
+
 class SignalTruthRecorder:
     """One passive candidate/active runtime evidence recorder."""
 
@@ -833,6 +851,8 @@ class SignalTruthRecorder:
         self._candidate: SignalTruthSnapshot | None = None
         self._active: SignalTruthSnapshot | None = None
         self._last: SignalTruthSnapshot | None = None
+        self._last_committed: SignalTruthSnapshot | None = None
+        self._last_aborted_candidate: SignalTruthSnapshot | None = None
         self._subscribers: list[Callable[[], None]] = []
         # Additive AP2-F05 stream: DSP state convergence, separate from (and
         # never substituting) the DAC Signal Truth verdict.
@@ -843,6 +863,24 @@ class SignalTruthRecorder:
         self._active_executions: dict[str, str] = {}
         #: Concurrency: validation + append are atomic wrt activation/retire.
         self._lock = threading.RLock()
+        # Advanced only by lifecycle changes, not by new evidence receipts.
+        self._lifecycle_revision = 0
+        # Revision of facts exposed by read_capture_state, including events.
+        self._capture_revision = 0
+
+    def read_capture_state(self) -> RecorderCaptureState:
+        """Capture all visible truth streams under one existing recorder lock."""
+        with self._lock:
+            return RecorderCaptureState(
+                revision=self._capture_revision,
+                candidate=self._candidate,
+                active=self._active,
+                last_committed=self._last_committed,
+                last_aborted_candidate=self._last_aborted_candidate,
+                processing_events=tuple(self._processing_events),
+                output_family_events=tuple(self._output_family_events),
+                processing_measurements=tuple(self._processing_measurements),
+            )
 
     @property
     def processing_events(self) -> tuple[ProcessingTruthEvent, ...]:
@@ -872,6 +910,8 @@ class SignalTruthRecorder:
             ]
             discarded = len(self._processing_measurements) - len(retained)
             self._processing_measurements = retained
+            if discarded:
+                self._capture_revision += 1
             return discarded
 
     def record_processing_measurement(self, measurement: ProcessingMeasurement) -> None:
@@ -889,6 +929,7 @@ class SignalTruthRecorder:
             self._processing_measurements.append(measurement)
             if len(self._processing_measurements) > 16:
                 del self._processing_measurements[:-16]
+            self._capture_revision += 1
         # Notify OUTSIDE the lock: slow subscribers never block the fence.
         self._publish()
 
@@ -923,6 +964,7 @@ class SignalTruthRecorder:
             self._output_family_events.append(event)
             if len(self._output_family_events) > 64:
                 del self._output_family_events[:-64]
+            self._capture_revision += 1
         self._publish()
 
     def record_processing_event(self, event: ProcessingTruthEvent) -> None:
@@ -933,21 +975,26 @@ class SignalTruthRecorder:
             self._processing_events.append(event)
             if len(self._processing_events) > 64:
                 del self._processing_events[:-64]
+            self._capture_revision += 1
         self._publish()
 
     @property
     def candidate_snapshot(self) -> SignalTruthSnapshot:
-        if self._candidate is None:
+        with self._lock:
+            candidate = self._candidate
+        if candidate is None:
             raise RuntimeError("no Signal Truth candidate")
-        return self._candidate
+        return candidate
 
     @property
     def active_snapshot(self) -> SignalTruthSnapshot | None:
-        return self._active
+        with self._lock:
+            return self._active
 
     @property
     def last_snapshot(self) -> SignalTruthSnapshot | None:
-        return self._last
+        with self._lock:
+            return self._last
 
     def subscribe(self, callback: Callable[[], None]) -> None:
         with self._lock:
@@ -960,60 +1007,113 @@ class SignalTruthRecorder:
                 self._subscribers.remove(callback)
 
     def begin_candidate(self, plan: OutputPlanEvidence) -> None:
-        if self._candidate is not None and self._candidate.identity != plan.identity:
-            self._last = self._candidate
-        self._candidate = _initial_snapshot(plan)
+        # Construct and classify outside the short lifecycle critical section.
+        candidate = _initial_snapshot(plan)
+        with self._lock:
+            if (
+                self._candidate is not None
+                and self._candidate.identity != plan.identity
+            ):
+                self._last = self._candidate
+                self._last_aborted_candidate = self._candidate
+            self._candidate = candidate
+            self._lifecycle_revision += 1
+            self._capture_revision += 1
         self._publish()
 
     def observe(self, event: SignalTruthEvidence) -> bool:
-        if self._candidate is not None and event.identity == self._candidate.identity:
-            self._candidate = self._with_event(self._candidate, event)
+        # Optimistic compare-and-swap prevents a late observer from replacing
+        # another execution or erasing an independent concurrent observation.
+        # Classification runs outside the lock: never block lifecycle on DSP.
+        while True:
+            with self._lock:
+                if (
+                    self._candidate is not None
+                    and event.identity == self._candidate.identity
+                ):
+                    previous = self._candidate
+                elif (
+                    self._active is not None and event.identity == self._active.identity
+                ):
+                    previous = self._active
+                else:
+                    return False
+                lifecycle_revision = self._lifecycle_revision
+
+            updated = self._with_event(previous, event)
+            with self._lock:
+                if self._candidate is previous:
+                    self._candidate = updated
+                elif self._active is previous:
+                    # Commit may move the same immutable snapshot into ACTIVE
+                    # while the runtime observation is being calculated.
+                    self._active = updated
+                elif lifecycle_revision != self._lifecycle_revision:
+                    # Candidate replaced or active retired; do not resurrect it.
+                    return False
+                else:
+                    # Concurrent observation of the same lifecycle version
+                    # updated the snapshot; retry to preserve both receipts.
+                    continue
+                self._capture_revision += 1
             self._publish()
             return True
-        if self._active is not None and event.identity == self._active.identity:
-            self._active = self._with_event(self._active, event)
-            self._publish()
-            return True
-        return False
 
     def commit_candidate(self, identity: SignalTruthIdentity) -> bool:
-        if (
-            self._candidate is None
-            or self._candidate.identity != identity
-            or self._active is not None
-        ):
-            return False
-        self._active = self._candidate
-        self._candidate = None
+        with self._lock:
+            if (
+                self._candidate is None
+                or self._candidate.identity != identity
+                or self._active is not None
+            ):
+                return False
+            self._active = self._candidate
+            self._candidate = None
+            self._lifecycle_revision += 1
+            self._capture_revision += 1
         self._publish()
         return True
 
     def discard_candidate(self, identity: SignalTruthIdentity) -> bool:
-        if self._candidate is None or self._candidate.identity != identity:
-            return False
-        self._last = self._candidate
-        self._candidate = None
+        with self._lock:
+            if self._candidate is None or self._candidate.identity != identity:
+                return False
+            self._last = self._candidate
+            self._last_aborted_candidate = self._candidate
+            self._candidate = None
+            self._lifecycle_revision += 1
+            self._capture_revision += 1
         self._publish()
         return True
 
     def retire_active(self, identity: SignalTruthIdentity) -> bool:
-        if self._active is None or self._active.identity != identity:
-            return False
-        self._last = self._active
-        self._active = None
+        with self._lock:
+            if self._active is None or self._active.identity != identity:
+                return False
+            self._last = self._active
+            self._last_committed = self._active
+            self._active = None
+            self._lifecycle_revision += 1
+            self._capture_revision += 1
         self._publish()
         return True
 
     def terminate(self, identity: SignalTruthIdentity) -> bool:
-        changed = False
-        if self._candidate is not None and self._candidate.identity == identity:
-            self._last = self._candidate
-            self._candidate = None
-            changed = True
-        if self._active is not None and self._active.identity == identity:
-            self._last = self._active
-            self._active = None
-            changed = True
+        with self._lock:
+            changed = False
+            if self._candidate is not None and self._candidate.identity == identity:
+                self._last = self._candidate
+                self._last_aborted_candidate = self._candidate
+                self._candidate = None
+                changed = True
+            if self._active is not None and self._active.identity == identity:
+                self._last = self._active
+                self._last_committed = self._active
+                self._active = None
+                changed = True
+            if changed:
+                self._lifecycle_revision += 1
+                self._capture_revision += 1
         if changed:
             self._publish()
         return changed
