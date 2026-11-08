@@ -1,0 +1,1051 @@
+{
+  "schema": "michi.ap2.f11.st_r2_certification.v1",
+  "phase": "AP2-F11",
+  "generated_at": "2026-11-08T20:08:27.940538+00:00",
+  "execution": {
+    "sha": "31dd609c68764e66473a3006652d1836611e6a33",
+    "baseline_sha": "31dd609c68764e66473a3006652d1836611e6a33",
+    "dirty": true,
+    "worktree_sha256": "51463216f461127ea1a93b51e963ace38599fce13c90ce0595db589f84a7f951",
+    "tracked_diff_sha256": "739a091a9ba6b5487408925a1c018fed97c4d28d747a18cdaeb6b602e7c73305",
+    "untracked_files": [
+      {
+        "path": "docs/audio/phase2/F11_SIGNAL_TRUTH_ST_R2_PERFORMANCE.json",
+        "sha256": "410ec4b1302cf6a51a673f92ff78c8012d16ca3c670c40f4e74defb024b9d320"
+      },
+      {
+        "path": "scripts/benchmark_michi_truth_st_r2.py",
+        "sha256": "c11ae7335f6e806d6a9625e920e91013c4e2425885876ccdc7d22a3081563627"
+      },
+      {
+        "path": "scripts/verify_michi_truth_certification_st_r2.py",
+        "sha256": "8ac61c5f53b492a2b7d849c36127668b16b11ebe717f59f0f87ae1ec6ca269cc"
+      },
+      {
+        "path": "src/michi/presentation/qml/components/MichiSignalStageData.qml",
+        "sha256": "56f0786c8df811e094538cffd8ac557138ace9d5ae0eb1464062b1ea463af8ad"
+      },
+      {
+        "path": "tests/audio_phase2/test_michi_truth_certification_st_r2.py",
+        "sha256": "39caf6b61270fe0e06ec4b4e76184eca4e1fd0c973e2c411439a0f5fff5033d7"
+      }
+    ],
+    "identity_scope": "git diff --binary HEAD plus SHA-256 of every untracked product file, excluding .serena/ and the output artifact",
+    "ci_run": "NOT_RUN",
+    "ci_status": "NOT_RUN",
+    "phase2_spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12"
+  },
+  "sources": {
+    "map": {
+      "path": "docs/audio/phase2/F11_SIGNAL_TRUTH_R15C_MAP_ST_R1.json",
+      "sha256": "6cf4f8c9f35b685262be3be83d6f7a711542b2040f0825de70491ec07dbe6ae6"
+    },
+    "historical_coverage": {
+      "path": "docs/audio/phase2/F11_SIGNAL_TRUTH_R15C_ST_R1_COVERAGE.json",
+      "sha256": "804972938cb0a4303631f84d4a9e4cc6a474f6edbf743b2fcb180eef97c21222",
+      "historical": true,
+      "status_counts": {
+        "NOT_RUN": 46,
+        "PASS": 4
+      }
+    },
+    "historical_receipt": {
+      "path": "docs/audio/phase2/F11_SIGNAL_TRUTH_ST_R1_RECEIPT.json",
+      "sha256": "d23b54909f6a78e94af5090bc7d314e6f74f4c5006327c9a25962b0d388e2869",
+      "code_sha": "40bffa0e056072530fc0cee777cbcb86f64a1ab0",
+      "merge_sha": "31dd609c68764e66473a3006652d1836611e6a33",
+      "ci_run": 42494741939
+    }
+  },
+  "cases": [
+    {
+      "id": "R15C-01",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_f11_signal_path_bridge.py::test_quality_badge_fields_are_typed_and_never_parsed_from_labels",
+        "tests/audio_phase2/test_signal_truth_semantic_gate_a38.py::test_no_capture_returns_no_positive_claim"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_f11_signal_path_bridge.py::test_quality_badge_fields_are_typed_and_never_parsed_from_labels",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_signal_truth_semantic_gate_a38.py::test_no_capture_returns_no_positive_claim",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-02",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_true_peak_analysis.py::test_truncated_capture_never_claims_absence_of_clipping",
+        "tests/audio_phase2/test_michi_truth_p1_a48.py::test_metrics_unknown_without_producer"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_true_peak_analysis.py::test_truncated_capture_never_claims_absence_of_clipping",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p1_a48.py::test_metrics_unknown_without_producer",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-03",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_signal_truth_causal_a26.py::test_unproven_event_readback_is_not_confirmed",
+        "tests/audio_phase2/test_michi_truth_p1_a48.py::test_capabilities_effective_requires_matching_execution"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_signal_truth_causal_a26.py::test_unproven_event_readback_is_not_confirmed",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p1_a48.py::test_capabilities_effective_requires_matching_execution",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-04",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_productive_output_resolver.py::test_ambiguous_alsa_endpoints_are_still_rejected_for_managed",
+        "tests/audio_phase2/test_signal_truth_output_owner_a37.py::test_owner_real_recorder_running_receipt_is_current_scope_only[managed]"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_productive_output_resolver.py::test_ambiguous_alsa_endpoints_are_still_rejected_for_managed",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_signal_truth_output_owner_a37.py::test_owner_real_recorder_running_receipt_is_current_scope_only[managed]",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-05",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_signal_truth_causal_a26.py::test_host_restart_with_reused_pipeline_rejected",
+        "tests/audio_phase2/test_signal_truth_causal_a26.py::test_same_textual_plan_with_new_execution_not_enough"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_signal_truth_causal_a26.py::test_host_restart_with_reused_pipeline_rejected",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_signal_truth_causal_a26.py::test_same_textual_plan_with_new_execution_not_enough",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-06",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_signal_truth_dynamic_stages_a46.py::test_noncurrent_capture_does_not_inherit_live_transformations[PENDING]",
+        "tests/audio_phase2/test_michi_truth_p1_a48.py::test_coalescer_cross_epoch_and_stale_denied"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_signal_truth_dynamic_stages_a46.py::test_noncurrent_capture_does_not_inherit_live_transformations[PENDING]",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p1_a48.py::test_coalescer_cross_epoch_and_stale_denied",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-07",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_signal_truth_causal_a26.py::test_stale_latest_runtime_id_is_not_confirmed",
+        "tests/audio_phase2/test_signal_truth_owner_bridge_a36.py::test_owner_changes_between_reads_are_rejected"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_signal_truth_causal_a26.py::test_stale_latest_runtime_id_is_not_confirmed",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_signal_truth_owner_bridge_a36.py::test_owner_changes_between_reads_are_rejected",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-08",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_michi_truth_p1_a48.py::test_coalescer_overflow_forces_full_resnapshot",
+        "tests/audio_phase2/test_michi_truth_p1_a48.py::test_coalescer_rejects_malformed[bad0]"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p1_a48.py::test_coalescer_overflow_forces_full_resnapshot",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p1_a48.py::test_coalescer_rejects_malformed[bad0]",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-09",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_signal_truth_output_owner_a37.py::test_owner_ledger_subscription_is_unsubscribable",
+        "tests/audio_phase2/test_signal_truth_causal_a26.py::test_wrong_event_epoch_rejects_positive",
+        "tests/audio_phase2/test_signal_truth_causal_a26.py::test_event_order_reversed_rejects_positive"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_signal_truth_output_owner_a37.py::test_owner_ledger_subscription_is_unsubscribable",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_signal_truth_causal_a26.py::test_wrong_event_epoch_rejects_positive",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_signal_truth_causal_a26.py::test_event_order_reversed_rejects_positive",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-10",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_negative_malformed_empty_scope_inconclusive",
+        "tests/audio_phase2/test_michi_truth_p1_a48.py::test_metrics_negative_values[bad0]"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_negative_malformed_empty_scope_inconclusive",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p1_a48.py::test_metrics_negative_values[bad0]",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-11",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_f11_signal_path_bridge.py::test_dsd_and_lossy_are_distinct_quality_classes",
+        "tests/audio_phase2/test_f11_signal_path_bridge.py::test_hires_quality_requires_more_than_sixteen_bits_or_48_khz"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_f11_signal_path_bridge.py::test_dsd_and_lossy_are_distinct_quality_classes",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_f11_signal_path_bridge.py::test_hires_quality_requires_more_than_sixteen_bits_or_48_khz",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-12",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_positive_fidelity_claim_rejected_without_m115",
+        "tests/audio_phase2/test_signal_truth_dynamic_stages_a46.py::test_src_and_remix_keep_reported_transformation_but_not_pcm_bitperfect"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_positive_fidelity_claim_rejected_without_m115",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_signal_truth_dynamic_stages_a46.py::test_src_and_remix_keep_reported_transformation_but_not_pcm_bitperfect",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-13",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/dac/test_v35_070r21_transform_semantics.py::test_r21_25_26_unknown_transform_state_makes_signal_truth_unknown[evidence1-ST_RESAMPLER_STATE_UNKNOWN]",
+        "tests/audio_phase2/test_signal_truth_dynamic_stages_a46.py::test_fir_is_not_promoted_by_graph_presence_without_adoption_proof"
+      ],
+      "evidence": [
+        {
+          "node": "tests/dac/test_v35_070r21_transform_semantics.py::test_r21_25_26_unknown_transform_state_makes_signal_truth_unknown[evidence1-ST_RESAMPLER_STATE_UNKNOWN]",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_signal_truth_dynamic_stages_a46.py::test_fir_is_not_promoted_by_graph_presence_without_adoption_proof",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-14",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_signal_truth_owner_bridge_a36.py::test_same_output_plan_multiple_live_executions_refuses_inheritance",
+        "tests/audio_phase2/test_signal_truth_causal_a26.py::test_independent_owner_rev_changes_fail_even_with_same_identity"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_signal_truth_owner_bridge_a36.py::test_same_output_plan_multiple_live_executions_refuses_inheritance",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_signal_truth_causal_a26.py::test_independent_owner_rev_changes_fail_even_with_same_identity",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-15",
+      "status": "PARTIAL",
+      "category": "COALESCING_AND_UI_LOAD_ONLY",
+      "missing": "No audio-callback or ALSA XRUN measurement was executed.",
+      "nodes": [
+        "tests/audio_phase2/test_michi_truth_p1_a48.py::test_high_frequency_ui_observations_coalesce_to_one_noncritical",
+        "tests/audio_phase2/test_michi_truth_p1_a48.py::test_high_frequency_metric_samples_remain_bounded",
+        "tests/audio_phase2/test_michi_truth_a49_owner_metrics.py::test_bounded_cpu_readout_and_ranked_p99"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p1_a48.py::test_high_frequency_ui_observations_coalesce_to_one_noncritical",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p1_a48.py::test_high_frequency_metric_samples_remain_bounded",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_michi_truth_a49_owner_metrics.py::test_bounded_cpu_readout_and_ranked_p99",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-16",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_signal_path_service.py::test_late_source_facts_do_not_claim_a_native_path"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_signal_path_service.py::test_late_source_facts_do_not_claim_a_native_path",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-17",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_partial_single_frame_not_complete",
+        "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_complete_coverage_digital_scope_only"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_partial_single_frame_not_complete",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_complete_coverage_digital_scope_only",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-18",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_partial_missing_lfe_channel",
+        "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_mismatch_third_channel_detected"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_partial_missing_lfe_channel",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_mismatch_third_channel_detected",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-19",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_non_pcm_unsupported",
+        "tests/dac/test_v35_070r2_runtime_evidence.py::test_r2_08_float_formats_are_unknown[F32LE]"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_non_pcm_unsupported",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/dac/test_v35_070r2_runtime_evidence.py::test_r2_08_float_formats_are_unknown[F32LE]",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-20",
+      "status": "BLOCKED_NOT_IMPLEMENTED",
+      "category": "POLARITY_DSP_NOT_IMPLEMENTED",
+      "scope": "PRODUCT_GAP",
+      "reason": "POLARITY_DSP_NOT_IMPLEMENTED",
+      "nodes": [],
+      "evidence": []
+    },
+    {
+      "id": "R15C-21",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_zero_rate_rejected",
+        "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_schema_not_certification"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_zero_rate_rejected",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_schema_not_certification",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-22",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_processing_compiler.py::test_gainless_lowpass_band_still_changes_sample_values"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_processing_compiler.py::test_gainless_lowpass_band_still_changes_sample_values",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-23",
+      "status": "EXTERNAL_VALIDATION_REQUIRED",
+      "category": "RT_CALLBACK_AND_XRUN_REQUIRE_PHYSICAL_HOST",
+      "scope": "PHYSICAL_RT_HOST",
+      "reason": "RT_CALLBACK_AND_XRUN_REQUIRE_PHYSICAL_HOST",
+      "nodes": [],
+      "evidence": []
+    },
+    {
+      "id": "R15C-24",
+      "status": "BLOCKED_RUNTIME",
+      "category": "REAL_CROSSFADE_WINDOWS_REQUIRE_PLAYBACK_RUNTIME",
+      "scope": "PLAYBACK_RUNTIME",
+      "reason": "REAL_CROSSFADE_WINDOWS_REQUIRE_PLAYBACK_RUNTIME",
+      "nodes": [],
+      "evidence": []
+    },
+    {
+      "id": "R15C-25",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_michi_truth_p1_a48.py::test_metrics_latency_percentiles_and_counter_not_summed",
+        "tests/audio_phase2/test_michi_truth_a49_owner_metrics.py::test_local_metric_does_not_generate_audio_dac_xrun_claims"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p1_a48.py::test_metrics_latency_percentiles_and_counter_not_summed",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_michi_truth_a49_owner_metrics.py::test_local_metric_does_not_generate_audio_dac_xrun_claims",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-26",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/dac/test_v35_070r2_runtime_evidence.py::test_r2_05_twenty_four_in_thirty_two_container_is_unknown[S24_32LE]",
+        "tests/dac/test_v35_070r1_provenance.py::test_st70r1_08_s32_alone_never_proves_32_significant_bits"
+      ],
+      "evidence": [
+        {
+          "node": "tests/dac/test_v35_070r2_runtime_evidence.py::test_r2_05_twenty_four_in_thirty_two_container_is_unknown[S24_32LE]",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/dac/test_v35_070r1_provenance.py::test_st70r1_08_s32_alone_never_proves_32_significant_bits",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-27",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/dac/test_v35_070_alsa_runtime.py::test_st70_38_closed_or_malformed_hw_params_is_missing_evidence",
+        "tests/dac/test_v35_070_productive_signal_truth.py::test_st70_42_missing_alsa_readback_stays_unknown"
+      ],
+      "evidence": [
+        {
+          "node": "tests/dac/test_v35_070_alsa_runtime.py::test_st70_38_closed_or_malformed_hw_params_is_missing_evidence",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/dac/test_v35_070_productive_signal_truth.py::test_st70_42_missing_alsa_readback_stays_unknown",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-28",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_signal_truth_causal_a26.py::test_wrong_event_epoch_rejects_positive",
+        "tests/audio_phase2/test_signal_truth_dynamic_stages_a46.py::test_noncurrent_capture_does_not_inherit_live_transformations[PENDING]"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_signal_truth_causal_a26.py::test_wrong_event_epoch_rejects_positive",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_signal_truth_dynamic_stages_a46.py::test_noncurrent_capture_does_not_inherit_live_transformations[PENDING]",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-29",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_shared_hwparams_without_source_receipt_rejected",
+        "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_six_family_modes_have_contract[shared_pcm-PCM-PCM]"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_shared_hwparams_without_source_receipt_rejected",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_six_family_modes_have_contract[shared_pcm-PCM-PCM]",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-30",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_complete_coverage_digital_scope_only",
+        "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_analog_claim_rejected"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_complete_coverage_digital_scope_only",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_analog_claim_rejected",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-31",
+      "status": "OUT_OF_SCOPE_DESKTOP",
+      "category": "ANDROID_USB_REQUIRES_PHYSICAL_DEVICE",
+      "scope": "MOBILE_PLATFORM",
+      "reason": "ANDROID_USB_REQUIRES_PHYSICAL_DEVICE",
+      "nodes": [],
+      "evidence": []
+    },
+    {
+      "id": "R15C-32",
+      "status": "OUT_OF_SCOPE_DESKTOP",
+      "category": "BROWSER_RUNTIME_REQUIRES_BROWSER_HOST",
+      "scope": "BROWSER_PLATFORM",
+      "reason": "BROWSER_RUNTIME_REQUIRES_BROWSER_HOST",
+      "nodes": [],
+      "evidence": []
+    },
+    {
+      "id": "R15C-33",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/dac/test_v35_070r21_transform_semantics.py::test_r21_25_26_unknown_transform_state_makes_signal_truth_unknown[evidence1-ST_RESAMPLER_STATE_UNKNOWN]",
+        "tests/audio_phase2/test_signal_truth_dynamic_stages_a46.py::test_src_and_remix_keep_reported_transformation_but_not_pcm_bitperfect"
+      ],
+      "evidence": [
+        {
+          "node": "tests/dac/test_v35_070r21_transform_semantics.py::test_r21_25_26_unknown_transform_state_makes_signal_truth_unknown[evidence1-ST_RESAMPLER_STATE_UNKNOWN]",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_signal_truth_dynamic_stages_a46.py::test_src_and_remix_keep_reported_transformation_but_not_pcm_bitperfect",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-34",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_signal_path_service.py::test_three_rate_provenance_is_a_contradiction_not_a_target_claim"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_signal_path_service.py::test_three_rate_provenance_is_a_contradiction_not_a_target_claim",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-35",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_partial_missing_lfe_channel",
+        "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_declared_drops_not_complete"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_partial_missing_lfe_channel",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_declared_drops_not_complete",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-36",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_dop_pcm_fabrication_refused",
+        "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_six_family_modes_have_contract[dop-DSD-DSD]"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_dop_pcm_fabrication_refused",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_six_family_modes_have_contract[dop-DSD-DSD]",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-37",
+      "status": "OUT_OF_SCOPE_CURRENT_PLATFORM",
+      "category": "WINDOWS_QPC_AUDIOCONTEXT_REQUIRES_WINDOWS_HOST",
+      "scope": "WINDOWS_PLATFORM",
+      "reason": "WINDOWS_QPC_AUDIOCONTEXT_REQUIRES_WINDOWS_HOST",
+      "nodes": [],
+      "evidence": []
+    },
+    {
+      "id": "R15C-38",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_michi_truth_p1_a48.py::test_remote_report_never_physical_even_authenticated",
+        "tests/audio_phase2/test_michi_truth_p1_a48.py::test_remote_terminal_is_remote_only"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p1_a48.py::test_remote_report_never_physical_even_authenticated",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p1_a48.py::test_remote_terminal_is_remote_only",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-39",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_true_peak_analysis.py::test_truncated_capture_never_claims_absence_of_clipping",
+        "tests/audio_phase2/test_true_peak_analysis.py::test_over_full_scale_is_reported_as_detected_clipping"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_true_peak_analysis.py::test_truncated_capture_never_claims_absence_of_clipping",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_true_peak_analysis.py::test_over_full_scale_is_reported_as_detected_clipping",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-40",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_signal_truth_owner_bridge_a36.py::test_same_output_plan_multiple_live_executions_refuses_inheritance",
+        "tests/audio_phase2/test_signal_truth_owner_bridge_a36.py::test_plan_from_other_owner_must_not_link"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_signal_truth_owner_bridge_a36.py::test_same_output_plan_multiple_live_executions_refuses_inheritance",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_signal_truth_owner_bridge_a36.py::test_plan_from_other_owner_must_not_link",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-41",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_signal_truth_causal_a26.py::test_absent_event_is_not_effective",
+        "tests/audio_phase2/test_signal_truth_real_recorder_c6_a35.py::test_real_recorder_delivery_joins_family_but_not_dsp_without_adoption"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_signal_truth_causal_a26.py::test_absent_event_is_not_effective",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_signal_truth_real_recorder_c6_a35.py::test_real_recorder_delivery_joins_family_but_not_dsp_without_adoption",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-42",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_f11_signal_path_bridge.py::test_candidate_snapshot_is_pending_not_effective",
+        "tests/audio_phase2/test_f11_signal_path_bridge.py::test_historical_snapshot_is_never_presented_as_active",
+        "tests/audio_phase2/test_michi_truth_a49_owner_metrics.py::test_nonactive_f03_drops_metric[PENDING]"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_f11_signal_path_bridge.py::test_candidate_snapshot_is_pending_not_effective",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_f11_signal_path_bridge.py::test_historical_snapshot_is_never_presented_as_active",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_michi_truth_a49_owner_metrics.py::test_nonactive_f03_drops_metric[PENDING]",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-43",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_signal_truth_causal_a26.py::test_stale_latest_dsp_revision_is_not_confirmed",
+        "tests/audio_phase2/test_signal_truth_frame_a42.py::test_changed_revision_fails_closed"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_signal_truth_causal_a26.py::test_stale_latest_dsp_revision_is_not_confirmed",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_signal_truth_frame_a42.py::test_changed_revision_fails_closed",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-44",
+      "status": "PARTIAL",
+      "category": "STAGES_SCROLL_FOCUS_ONLY",
+      "missing": "200% DPI, live KWin rendering and NowPlayingBar stability were not measured.",
+      "nodes": [
+        "tests/test_f11_qml_contract.py::test_signal_path_view_accepts_twenty_stages_and_popup_has_scroll_contract"
+      ],
+      "evidence": [
+        {
+          "node": "tests/test_f11_qml_contract.py::test_signal_path_view_accepts_twenty_stages_and_popup_has_scroll_contract",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-45",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_michi_truth_p1_a48.py::test_high_frequency_ui_observations_coalesce_to_one_noncritical",
+        "tests/audio_phase2/test_michi_truth_p1_a48.py::test_high_frequency_metric_samples_remain_bounded",
+        "tests/audio_phase2/test_michi_truth_p1_a48.py::test_coalescer_overflow_forces_full_resnapshot"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p1_a48.py::test_high_frequency_ui_observations_coalesce_to_one_noncritical",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p1_a48.py::test_high_frequency_metric_samples_remain_bounded",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p1_a48.py::test_coalescer_overflow_forces_full_resnapshot",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-46",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_signal_truth_frame_a42.py::test_unknown_ui_actions_and_source_path_not_exported",
+        "tests/audio_phase2/test_michi_truth_p1_a48.py::test_diagnostics_no_leaks_and_bounded_allowlist",
+        "tests/audio_phase2/test_michi_truth_p1_a48.py::test_large_foreign_diagnostic_fields_are_not_exported"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_signal_truth_frame_a42.py::test_unknown_ui_actions_and_source_path_not_exported",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p1_a48.py::test_diagnostics_no_leaks_and_bounded_allowlist",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p1_a48.py::test_large_foreign_diagnostic_fields_are_not_exported",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-47",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_michi_truth_p1_a48.py::test_remote_replay_stress_never_changes_boundary_to_dac",
+        "tests/audio_phase2/test_michi_truth_p1_a48.py::test_remote_expiry_and_future_skew_and_owner_cap"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p1_a48.py::test_remote_replay_stress_never_changes_boundary_to_dac",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p1_a48.py::test_remote_expiry_and_future_skew_and_owner_cap",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-48",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_michi_truth_a49_owner_metrics.py::test_all_six_dac_families_require_observed_capability_receipts",
+        "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_analog_claim_rejected",
+        "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_ack_without_owner_running_not_eligible"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_michi_truth_a49_owner_metrics.py::test_all_six_dac_families_require_observed_capability_receipts",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_analog_claim_rejected",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_ack_without_owner_running_not_eligible",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-49",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_six_family_modes_have_contract[dop-DSD-DSD]",
+        "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_dop_pcm_fabrication_refused"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_six_family_modes_have_contract[dop-DSD-DSD]",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_dop_pcm_fabrication_refused",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "R15C-50",
+      "status": "PASS",
+      "category": "SOFTWARE_ORACLE",
+      "missing": null,
+      "nodes": [
+        "tests/audio_phase2/test_michi_truth_a49_owner_metrics.py::test_dac_qualification_is_not_inferred_from_seemingly_positive_receipt",
+        "tests/audio_phase2/test_michi_truth_a49_owner_metrics.py::test_all_six_dac_families_require_observed_capability_receipts",
+        "tests/audio_phase2/test_michi_truth_a49_owner_metrics.py::test_r15c_missing_checkout_gives_stop"
+      ],
+      "evidence": [
+        {
+          "node": "tests/audio_phase2/test_michi_truth_a49_owner_metrics.py::test_dac_qualification_is_not_inferred_from_seemingly_positive_receipt",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_michi_truth_a49_owner_metrics.py::test_all_six_dac_families_require_observed_capability_receipts",
+          "result": "PASS"
+        },
+        {
+          "node": "tests/audio_phase2/test_michi_truth_a49_owner_metrics.py::test_r15c_missing_checkout_gives_stop",
+          "result": "PASS"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "total": 50,
+    "pass": 42,
+    "partial": 2,
+    "fail": 0,
+    "error": 0,
+    "skip": 0,
+    "not_run": 0,
+    "blocked": 0,
+    "blocked_not_implemented": 1,
+    "external_validation_required": 1,
+    "blocked_runtime": 1,
+    "out_of_scope_desktop": 2,
+    "out_of_scope_current_platform": 1,
+    "status_counts": {
+      "BLOCKED_NOT_IMPLEMENTED": 1,
+      "BLOCKED_RUNTIME": 1,
+      "EXTERNAL_VALIDATION_REQUIRED": 1,
+      "OUT_OF_SCOPE_CURRENT_PLATFORM": 1,
+      "OUT_OF_SCOPE_DESKTOP": 2,
+      "PARTIAL": 2,
+      "PASS": 42
+    }
+  },
+  "evidence": {
+    "code": "PASS_EXECUTED_MAPPED_TESTS_WITH_TWO_PARTIAL_ORACLES",
+    "ci": "NOT_RUN",
+    "software_oracle": "PARTIAL",
+    "qml_runtime": "PASS",
+    "physical_dac": "NOT_RUN",
+    "external_hardware": "NOT_RUN"
+  },
+  "certification": {
+    "software_oracle": "PARTIAL",
+    "physical_dac": "NOT_RUN",
+    "kwin_live": "NOT_RUN",
+    "external_hardware": "NOT_RUN",
+    "f11_state": "ACTIVE",
+    "product_certification": "NO_GO"
+  }
+}

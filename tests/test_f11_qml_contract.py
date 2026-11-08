@@ -12,7 +12,15 @@ import sys
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import Property, QMetaObject, QObject, QUrl, Signal, Slot
+from PySide6.QtCore import (
+    Property,
+    QMetaObject,
+    QObject,
+    Qt,
+    QUrl,
+    Signal,
+    Slot,
+)
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 from PySide6.QtTest import QTest
@@ -485,7 +493,9 @@ def test_signal_truth_popup_is_measured_against_the_quality_badge(qapp, width, h
         )
         QMetaObject.invokeMethod(bar, "positionTruthPopup")
         QMetaObject.invokeMethod(popup, "open")
-        QTest.qWait(120)
+        # Popup.onOpened is delivered after the enter transition; wait for it
+        # so the stage selection below is not reset by the opening reset.
+        QTest.qWait(600)
         assert popup.property("visible") is True
         viewport = _named(popup, "signalTruthStagesViewport")
         popup_width = float(popup.property("width"))
@@ -628,7 +638,7 @@ def test_signal_path_view_accepts_twenty_stages_and_popup_has_scroll_contract(
         view.setProperty("stages", stages)
         QTest.qWait(100)
         assert len(view.property("stages")) == 20
-        assert "model: root.stages" in (
+        assert "model: root.stageItems" in (
             QML_DIR / "components" / "MichiSignalPathView.qml"
         ).read_text(encoding="utf-8")
         popup = (QML_DIR / "player" / "SignalTruthPopup.qml").read_text(
@@ -636,6 +646,74 @@ def test_signal_path_view_accepts_twenty_stages_and_popup_has_scroll_contract(
         )
         assert "interactive: contentHeight > height + 1" in popup
         assert "stageViewportLimit" in popup
+    finally:
+        view.deleteLater()
+
+
+def test_signal_path_view_keeps_stage_identity_for_content_updates(qapp):
+    """Content-only updates must mutate StageData, not rebuild every delegate."""
+    import shiboken6
+    from PySide6.QtQuick import QQuickItem
+
+    def stages(summary):
+        return [
+            {
+                "id": f"stage-{index}",
+                "title": f"Stage {index}",
+                "summary": summary,
+                "detail": f"detail-{summary}",
+                "expandable": True,
+            }
+            for index in range(3)
+        ]
+
+    def stage_items(item):
+        value = item.property("stageItems")
+        if hasattr(value, "toVariant"):
+            value = value.toVariant()
+        return list(value)
+
+    def pointers(item):
+        return [shiboken6.getCppPointer(stage)[0] for stage in stage_items(item)]
+
+    def delegates(item):
+        return {
+            child.objectName(): shiboken6.getCppPointer(child)[0]
+            for child in item.childItems()
+            if child.objectName().startswith("signalStage_")
+        }
+
+    def delegate(item, name):
+        for child in item.childItems():
+            if child.objectName() == name:
+                return child
+        return None
+
+    view = _instantiate(QML_DIR / "components" / "MichiSignalPathView.qml", 480, 600)
+    view_item = shiboken6.wrapInstance(shiboken6.getCppPointer(view)[0], QQuickItem)
+    try:
+        view.setProperty("stages", stages("first"))
+        QTest.qWait(100)
+        first = pointers(view)
+        first_delegates = delegates(view_item)
+        node = delegate(view_item, "signalStage_stage-0")
+        assert node is not None
+        assert node.property("summary") == "first"
+        items = stage_items(view)
+        assert [item.property("summary") for item in items] == ["first"] * 3
+
+        view.setProperty("stages", stages("second"))
+        QTest.qWait(100)
+        assert pointers(view) == first
+        assert delegates(view_item) == first_delegates
+        assert node.property("summary") == "second"
+        items = stage_items(view)
+        assert [item.property("summary") for item in items] == ["second"] * 3
+
+        view.setProperty("stages", stages("second")[:2])
+        QTest.qWait(100)
+        assert len(stage_items(view)) == 2
+        assert pointers(view) == first[:2]
     finally:
         view.deleteLater()
 
@@ -657,3 +735,113 @@ def test_signal_truth_panel_consumes_expansion_request(qapp):
         assert panel.property("expandedStageId") == ""
     finally:
         panel.deleteLater()
+
+
+def _stage(stage_id: str, *, detail: str = "detail") -> dict:
+    return {
+        "id": stage_id,
+        "title": stage_id.title(),
+        "detail": detail,
+        "expandable": bool(detail),
+    }
+
+
+def _open_popup(bridge: _FakeTruthBridge, width: int = 440, height: int = 560):
+    from PySide6.QtQuick import QQuickWindow
+
+    popup = _instantiate(QML_DIR / "player" / "SignalTruthPopup.qml", width, height)
+    window = QQuickWindow()
+    window.resize(width, height)
+    window.show()
+    popup.setProperty("parent", window.contentItem())
+    popup.setProperty("signalPathBridge", bridge)
+    popup._f11_window = window
+    QMetaObject.invokeMethod(popup, "open")
+    QTest.qWait(600)
+    return popup
+
+
+def _stage_item(popup, stage_id: str):
+    view = _named(popup, "signalTruthStageView")
+    for item in view.childItems():
+        if item.objectName() == f"signalStage_{stage_id}":
+            return item
+    return None
+
+
+def test_signal_truth_stage_keyboard_expands_and_focus_ring_visible(qapp):
+    bridge = _FakeTruthBridge([_stage("source"), _stage("decode")], [])
+    popup = _open_popup(bridge)
+    try:
+        node = _stage_item(popup, "source")
+        assert node is not None
+        node.forceActiveFocus()
+        QTest.qWait(60)
+        assert node.property("activeFocus") is True
+        assert _named(node, "stageFocusRing") is not None
+
+        before = node.property("height")
+        QTest.keyClick(popup._f11_window, Qt.Key_Return)
+        QTest.qWait(120)
+        assert popup.property("expandedStageId") == "source"
+        assert node.property("height") > before
+
+        QTest.keyClick(popup._f11_window, Qt.Key_Return)
+        QTest.qWait(120)
+        assert popup.property("expandedStageId") == ""
+    finally:
+        popup.close()
+        popup.deleteLater()
+        QTest.qWait(50)
+
+
+def test_signal_truth_popup_scrolls_twenty_stages_and_resets_on_reopen(qapp):
+    stages = [_stage(f"stage-{index}") for index in range(20)]
+    bridge = _FakeTruthBridge(stages, [])
+    popup = _open_popup(bridge, height=420)
+    try:
+        viewport = _named(popup, "signalTruthStagesViewport")
+        assert viewport is not None
+        assert viewport.property("interactive") is True
+        assert viewport.property("contentHeight") > viewport.property("height")
+
+        popup.setProperty("expandedStageId", "stage-19")
+        QTest.qWait(150)
+        assert viewport.property("contentY") > 0
+
+        QMetaObject.invokeMethod(popup, "close")
+        QTest.qWait(80)
+        popup.setProperty("expandedStageId", "stage-5")
+        QMetaObject.invokeMethod(popup, "open")
+        QTest.qWait(600)
+        assert popup.property("expandedStageId") == ""
+        assert viewport.property("contentY") == 0
+    finally:
+        popup.close()
+        popup.deleteLater()
+        QTest.qWait(50)
+
+
+def test_signal_truth_popup_reflows_when_family_changes(qapp):
+    bridge = _FakeTruthBridge([_stage("source")], [])
+    popup = _open_popup(bridge)
+    try:
+        view = _named(popup, "signalTruthStageView")
+        assert len(view.property("stages")) == 1
+
+        bridge._canonical = [_stage("source"), _stage("decode"), _stage("output")]
+        bridge.changed.emit()
+        QTest.qWait(120)
+        assert len(view.property("stages")) == 3
+        assert _stage_item(popup, "output") is not None
+
+        bridge._canonical = []
+        bridge._legacy = [_stage("source"), _stage("device")]
+        bridge.changed.emit()
+        QTest.qWait(120)
+        assert len(view.property("stages")) == 2
+        assert _stage_item(popup, "device") is not None
+    finally:
+        popup.close()
+        popup.deleteLater()
+        QTest.qWait(50)

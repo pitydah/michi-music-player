@@ -230,7 +230,12 @@ def _replace(text: str, source: str) -> str:
         ("SIGNAL" + "_PATH", "SIGNAL_TRUTH"),
         ("SIGNAL" + " PATH", "MICHI SIGNAL TRUTH"),
         ("Signal " + "Path", "Michi Signal Truth"),
+        ("Signal " + "path", "Michi Signal truth"),
         ("signal " + "path", "audio route"),
+        # A docstring may wrap the two words across lines; keep the line
+        # structure while retiring the historical vocabulary.
+        ("signal\n" + "path", "audio\nroute"),
+        ("Signal\n" + "Path", "Michi Signal\nTruth"),
         (OLD_BIBLE, NEW_BIBLE),
     ):
         text = text.replace(old, new)
@@ -316,7 +321,13 @@ def plan(repo: Path, *, expected_head: str = SOURCE_HEAD) -> list[Change]:
             rewritten = _replace(binary.decode("utf-8"), old).encode("utf-8")
         except UnicodeDecodeError as exc:
             raise Refusal(f"text decode error: {old}") from exc
-        if RESTRICTED.search(rewritten.decode("utf-8")) and _allowed_source(old):
+        # The canonical Bible is relocated as a historical normative document;
+        # its prose is not rewritten by a code-naming migration.
+        if (
+            old != OLD_BIBLE
+            and RESTRICTED.search(rewritten.decode("utf-8"))
+            and _allowed_source(old)
+        ):
             raise Refusal(f"unresolved retired name: {old}")
         if old != dst or binary != rewritten:
             changes.append(

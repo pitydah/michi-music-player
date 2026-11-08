@@ -1,0 +1,269 @@
+{
+  "environment": {
+    "platform": "offscreen",
+    "python": "3.11.15",
+    "qt": "6.11.1"
+  },
+  "generated_at_utc": "2026-11-08T19:26:26Z",
+  "measurements": {
+    "bursts": [
+      {
+        "batch": 1,
+        "cold_us": 421.58,
+        "count": 400,
+        "max_us": 420.1,
+        "p50_us": 378.75,
+        "p95_us": 396.85,
+        "p99_us": 412.6
+      },
+      {
+        "batch": 10,
+        "cold_us": 385.95,
+        "count": 400,
+        "max_us": 435.45,
+        "p50_us": 377.16,
+        "p95_us": 390.63,
+        "p99_us": 422.67
+      },
+      {
+        "batch": 100,
+        "cold_us": 387.49,
+        "count": 400,
+        "max_us": 428.96,
+        "p50_us": 382.39,
+        "p95_us": 401.26,
+        "p99_us": 411.94
+      }
+    ],
+    "publish_truth_frame_5_stages": {
+      "count": 20000,
+      "max_us": 926.22,
+      "p50_us": 370.6,
+      "p95_us": 391.86,
+      "p99_us": 452.48
+    },
+    "qml": {
+      "create_delete_20_stages": {
+        "cycles": 10,
+        "rss_after_kib": 408792,
+        "rss_before_kib": 294976,
+        "rss_delta_kib": 113816,
+        "total": {
+          "count": 10,
+          "max_ms": 53.17,
+          "over_16_67_ms": 10,
+          "p50_ms": 46.809,
+          "p95_ms": 53.17,
+          "p99_ms": 53.17
+        }
+      },
+      "interpretation": "initial_materialize creates the stable StageData objects and the Repeater delegates once per popup opening. update_changed_steady mutates those stable objects, so a content-only update does not rebuild the delegate list. event_loop covers queued polish and layout. This is presentation construction, not DAC latency or XRUN.",
+      "stages": {
+        "10": {
+          "create": {
+            "count": 10,
+            "max_ms": 0.238,
+            "over_16_67_ms": 0,
+            "p50_ms": 0.196,
+            "p95_ms": 0.238,
+            "p99_ms": 0.238
+          },
+          "event_loop": {
+            "count": 100,
+            "max_ms": 4.616,
+            "over_16_67_ms": 0,
+            "p50_ms": 0.004,
+            "p95_ms": 1.697,
+            "p99_ms": 4.616
+          },
+          "initial_materialize": {
+            "count": 10,
+            "max_ms": 30.567,
+            "over_16_67_ms": 10,
+            "p50_ms": 22.993,
+            "p95_ms": 30.567,
+            "p99_ms": 30.567
+          },
+          "property_set": {
+            "count": 100,
+            "max_ms": 25.951,
+            "over_16_67_ms": 10,
+            "p50_ms": 0.259,
+            "p95_ms": 22.171,
+            "p99_ms": 25.951
+          },
+          "update_changed": {
+            "count": 100,
+            "max_ms": 30.567,
+            "over_16_67_ms": 10,
+            "p50_ms": 0.263,
+            "p95_ms": 22.993,
+            "p99_ms": 30.567
+          },
+          "update_changed_steady": {
+            "count": 90,
+            "max_ms": 4.955,
+            "over_16_67_ms": 0,
+            "p50_ms": 0.259,
+            "p95_ms": 1.327,
+            "p99_ms": 4.955
+          },
+          "update_unchanged_control": {
+            "count": 50,
+            "max_ms": 11.591,
+            "over_16_67_ms": 0,
+            "p50_ms": 0.066,
+            "p95_ms": 0.626,
+            "p99_ms": 11.591
+          }
+        },
+        "20": {
+          "create": {
+            "count": 10,
+            "max_ms": 0.291,
+            "over_16_67_ms": 0,
+            "p50_ms": 0.21,
+            "p95_ms": 0.291,
+            "p99_ms": 0.291
+          },
+          "event_loop": {
+            "count": 100,
+            "max_ms": 6.692,
+            "over_16_67_ms": 0,
+            "p50_ms": 0.005,
+            "p95_ms": 5.573,
+            "p99_ms": 6.692
+          },
+          "initial_materialize": {
+            "count": 10,
+            "max_ms": 49.48,
+            "over_16_67_ms": 10,
+            "p50_ms": 46.808,
+            "p95_ms": 49.48,
+            "p99_ms": 49.48
+          },
+          "property_set": {
+            "count": 100,
+            "max_ms": 43.287,
+            "over_16_67_ms": 10,
+            "p50_ms": 0.515,
+            "p95_ms": 41.498,
+            "p99_ms": 43.287
+          },
+          "update_changed": {
+            "count": 100,
+            "max_ms": 49.48,
+            "over_16_67_ms": 10,
+            "p50_ms": 0.52,
+            "p95_ms": 46.808,
+            "p99_ms": 49.48
+          },
+          "update_changed_steady": {
+            "count": 90,
+            "max_ms": 11.524,
+            "over_16_67_ms": 0,
+            "p50_ms": 0.496,
+            "p95_ms": 6.093,
+            "p99_ms": 11.524
+          },
+          "update_unchanged_control": {
+            "count": 50,
+            "max_ms": 0.344,
+            "over_16_67_ms": 0,
+            "p50_ms": 0.121,
+            "p95_ms": 0.143,
+            "p99_ms": 0.344
+          }
+        },
+        "5": {
+          "create": {
+            "count": 10,
+            "max_ms": 10.982,
+            "over_16_67_ms": 0,
+            "p50_ms": 0.161,
+            "p95_ms": 10.982,
+            "p99_ms": 10.982
+          },
+          "event_loop": {
+            "count": 100,
+            "max_ms": 0.627,
+            "over_16_67_ms": 0,
+            "p50_ms": 0.004,
+            "p95_ms": 0.428,
+            "p99_ms": 0.627
+          },
+          "initial_materialize": {
+            "count": 10,
+            "max_ms": 33.996,
+            "over_16_67_ms": 1,
+            "p50_ms": 8.877,
+            "p95_ms": 33.996,
+            "p99_ms": 33.996
+          },
+          "property_set": {
+            "count": 100,
+            "max_ms": 33.602,
+            "over_16_67_ms": 1,
+            "p50_ms": 0.148,
+            "p95_ms": 8.857,
+            "p99_ms": 33.602
+          },
+          "update_changed": {
+            "count": 100,
+            "max_ms": 33.996,
+            "over_16_67_ms": 1,
+            "p50_ms": 0.152,
+            "p95_ms": 8.877,
+            "p99_ms": 33.996
+          },
+          "update_changed_steady": {
+            "count": 90,
+            "max_ms": 4.144,
+            "over_16_67_ms": 0,
+            "p50_ms": 0.148,
+            "p95_ms": 1.179,
+            "p99_ms": 4.144
+          },
+          "update_unchanged_control": {
+            "count": 50,
+            "max_ms": 0.047,
+            "over_16_67_ms": 0,
+            "p50_ms": 0.031,
+            "p95_ms": 0.046,
+            "p99_ms": 0.047
+          }
+        }
+      },
+      "status": "MEASURED"
+    },
+    "rss_kib_after": 19072,
+    "rss_kib_before": 15644,
+    "total_elapsed_s": 27.24,
+    "tracemalloc_peak_kib": 1384.6,
+    "truth_frame_20_stages": {
+      "count": 2000,
+      "max_us": 1349.98,
+      "p50_us": 266.35,
+      "p95_us": 285.98,
+      "p99_us": 352.25
+    },
+    "truth_frame_5_stages": {
+      "count": 2000,
+      "max_us": 543.16,
+      "p50_us": 264.7,
+      "p95_us": 291.61,
+      "p99_us": 463.1
+    }
+  },
+  "schema": "michi.ap2f11.st_r2_performance.v1",
+  "scope": {
+    "measures": "Python TruthFrame construction and offscreen Qt Quick item updates",
+    "not_measured": "DAC latency, ALSA XRUN, true peak, LUFS, KWin composition, physical output"
+  },
+  "truth": {
+    "dac_latency_claim": "NOT_RUN",
+    "kwin_live_claim": "NOT_RUN",
+    "software_benchmark": "PASS",
+    "xrun_claim": "NOT_RUN"
+  }
+}

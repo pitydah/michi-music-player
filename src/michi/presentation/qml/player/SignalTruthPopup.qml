@@ -135,6 +135,9 @@ Popup {
 
     onOpened: {
         root.expandedStageId = ""
+        // Reopening is a fresh disclosure: never restore the previous scroll
+        // offset or an expanded stage from the prior playback generation.
+        stagesViewport.contentY = 0
         Qt.callLater(stageView.focusFirstStage)
     }
     onClosed: if (focusReturnTarget) focusReturnTarget.forceActiveFocus()

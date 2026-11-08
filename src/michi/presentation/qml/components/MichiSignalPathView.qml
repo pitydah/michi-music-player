@@ -1,22 +1,146 @@
 import QtQuick
 import QtQuick.Layouts
+
 import "../theme"
 
-// Single visual grammar for Signal Truth. Popup and DAC diagnostics both feed
-// it a read-only stage projection; this component owns no audio semantics.
 ColumnLayout {
     id: root
+
     property var stages: []
     property string expandedStageId: ""
     property bool compact: false
-    // DAC diagnostics stays read-only, while short Signal Truth windows
-    // keep their genuine configuration actions.
     property bool configurationEnabled: !compact
+
+    // Presentation models are stable while a stage keeps its identity. The
+    // Repeater only rebuilds when a stage is added, removed or reordered.
+    property var stageItems: []
+    property var stageCache: ({})
+    property bool stageSyncReady: false
+
     spacing: 0
     signal configurationRequested(string action)
     signal expansionRequested(string stageId)
 
-    // Use the Repeater API: children also includes non-delegate QML objects.
+    onStagesChanged: {
+        if (root.stageSyncReady)
+            root.syncStages()
+    }
+
+    function _stageValues(stage, index, count) {
+        const item = stage || {}
+        return {
+            stageId: item.id === undefined ? String(index) : String(item.id),
+            title: item.title || "",
+            summary: item.summary || "",
+            detail: item.detail || "",
+            detailRows: item.detailRows || [],
+            configAction: item.configAction || "NONE",
+            stageState: item.state || "unknown",
+            first: item.first !== undefined ? item.first : index === 0,
+            last: item.last !== undefined ? item.last : index === count - 1,
+            expandable: item.expandable !== undefined
+                ? item.expandable : (item.detail || "").length > 0
+        }
+    }
+
+    function _applyStageValues(data, values) {
+        for (const key in values) {
+            if (data[key] !== values[key])
+                data[key] = values[key]
+        }
+    }
+
+    function syncStages() {
+        const incoming = root.stages || []
+        const cache = root.stageCache
+        const next = []
+        const live = ({})
+        let structureChanged = false
+
+        for (let index = 0; index < incoming.length; index += 1) {
+            const values = root._stageValues(incoming[index], index, incoming.length)
+            live[values.stageId] = true
+            let data = cache[values.stageId]
+            if (!data) {
+                data = stageDataComponent.createObject(root)
+                if (!data)
+                    continue
+                cache[values.stageId] = data
+                structureChanged = true
+            }
+            root._applyStageValues(data, values)
+            next.push(data)
+        }
+
+        if (next.length !== root.stageItems.length)
+            structureChanged = true
+        if (!structureChanged) {
+            for (let index = 0; index < next.length; index += 1) {
+                if (next[index] !== root.stageItems[index]) {
+                    structureChanged = true
+                    break
+                }
+            }
+        }
+
+        const stale = []
+        for (const key in cache) {
+            if (!live[key]) {
+                stale.push(cache[key])
+                delete cache[key]
+            }
+        }
+
+        if (structureChanged)
+            root.stageItems = next
+        for (let index = 0; index < stale.length; index += 1)
+            stale[index].destroy()
+    }
+
+    Component {
+        id: stageDataComponent
+        MichiSignalStageData {}
+    }
+
+    Repeater {
+        id: stageRepeater
+        model: root.stageItems
+        delegate: MichiSignalNode {
+            required property var modelData
+            required property int index
+
+            objectName: "signalStage_" + modelData.stageId
+            Layout.fillWidth: true
+            stageIndex: index
+            stageCount: root.stageItems.length
+            compact: root.compact
+            first: modelData.first
+            last: modelData.last
+            expanded: root.expandedStageId === modelData.stageId
+            expandable: modelData.expandable
+            iconName: modelData.stageId === "source" ? "file-music"
+                : modelData.stageId === "decode" ? "binary"
+                : modelData.stageId === "processing" ? "adjustments-horizontal"
+                : modelData.stageId === "channel-remap" ? "arrows-exchange"
+                : modelData.stageId === "output" ? "wave-sine"
+                : "circuit-diode"
+            title: modelData.title
+            summary: modelData.summary
+            detail: modelData.detail
+            detailRows: modelData.detailRows
+            configAction: root.configurationEnabled
+                ? (modelData.configAction || "NONE") : "NONE"
+            stageState: modelData.stageState
+            onToggleRequested: {
+                root.expansionRequested(root.expandedStageId === modelData.stageId
+                    ? "" : modelData.stageId)
+            }
+            onConfigurationRequested: action => {
+                root.configurationRequested(action)
+            }
+        }
+    }
+
     function stageItem(stageId) {
         for (let index = 0; index < stageRepeater.count; index += 1) {
             const item = stageRepeater.itemAt(index)
@@ -36,48 +160,8 @@ ColumnLayout {
         }
     }
 
-    Repeater {
-        id: stageRepeater
-        model: root.stages
-        delegate: MichiSignalNode {
-            required property var modelData
-            required property int index
-            objectName: "signalStage_" + modelData.id
-            Layout.fillWidth: true
-            stageIndex: index
-            stageCount: root.stages.length
-            compact: root.compact
-            first: modelData.first !== undefined ? modelData.first : index === 0
-            last: modelData.last !== undefined ? modelData.last
-                : index === root.stages.length - 1
-            expanded: root.expandedStageId === modelData.id
-            expandable: modelData.expandable !== undefined
-                ? modelData.expandable
-                : (modelData.detail || "").length > 0
-            iconName: modelData.id === "source" ? "file-music"
-                : modelData.id === "decode" ? "cpu"
-                : modelData.id === "processing" ? "adjustments-horizontal"
-                : modelData.id === "resample" ? "arrows-exchange"
-                : modelData.id === "channel-remap" ? "arrows-exchange"
-                : modelData.id === "fir" ? "adjustments-horizontal"
-                : modelData.id === "output" ? "wave-sine"
-                : "circuit-diode"
-            title: modelData.title || ""
-            summary: modelData.summary || ""
-            detail: modelData.detail || ""
-            detailRows: modelData.detailRows || []
-            // Navigation is a capability, not a side effect of density.
-            configAction: root.configurationEnabled
-                ? (modelData.configAction || "NONE") : "NONE"
-            stageState: modelData.state || "unknown"
-            onToggleRequested: {
-                // The Popup owns expandedStageId; do not destroy its binding.
-                root.expansionRequested(root.expandedStageId === modelData.id
-                    ? "" : modelData.id)
-            }
-            onConfigurationRequested: action => {
-                root.configurationRequested(action)
-            }
-        }
+    Component.onCompleted: {
+        root.stageSyncReady = true
+        root.syncStages()
     }
 }
