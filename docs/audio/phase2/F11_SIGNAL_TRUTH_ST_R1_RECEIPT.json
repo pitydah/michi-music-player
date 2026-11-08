@@ -1,0 +1,147 @@
+{
+  "schema": "michi.ap2f11.st_r1_receipt.v1",
+  "sprint": "ST-R1",
+  "generated_at": "2026-11-08",
+  "baseline_sha": "27207b0278c43a4e96551b0ab4d9bed7fbda54d7",
+  "code_sha": "40bffa0e056072530fc0cee777cbcb86f64a1ab0",
+  "branch": "ap2-f11/st-r1-corrective-20261108",
+  "pull_request": 248,
+  "work_packages": {
+    "ST-R1-01": {
+      "status": "DONE",
+      "summary": "Verifier child processes use only the patched sandbox on PYTHONPATH and fail closed when a controlled module resolves outside it.",
+      "tests": [
+        "test_command_drops_inherited_pythonpath",
+        "test_module_identity_accepts_only_sandbox_files",
+        "test_module_identity_rejects_a_symlink_to_another_checkout",
+        "test_module_identity_fails_closed_on_an_editable_install",
+        "test_module_identity_fails_closed_when_a_dependency_is_missing"
+      ]
+    },
+    "ST-R1-02": {
+      "status": "DONE",
+      "summary": "A42 contract extracts the executable canonical-first stages binding, keeps the legacy fallback, and has a comment-only negative control plus an executable QML test.",
+      "tests": [
+        "test_popup_uses_read_model_for_proof_family_and_stages",
+        "test_stage_wiring_checker_rejects_a_comment_only_binding",
+        "test_signal_truth_popup_prefers_canonical_stages_and_keeps_legacy_fallback"
+      ]
+    },
+    "ST-R1-03": {
+      "status": "DONE",
+      "summary": "SignalTruthPanel consumes MichiSignalPathView.expansionRequested and owns expandedStageId.",
+      "tests": [
+        "test_signal_truth_panel_consumes_expansion_request"
+      ]
+    },
+    "ST-R1-04": {
+      "status": "DONE",
+      "summary": "Naming migrator routes domain graph imports to michi.domain.truth_graph, migrates a temporary checkout, imports the migrated service and refuses a second apply. No global migration was run on main.",
+      "tests": [
+        "test_rename_is_semantic_and_no_alias_survives",
+        "test_second_apply_refuses_instead_of_rewriting_twice"
+      ],
+      "normative_gate": "ST-NAME-001 global execution remains pending; the migrator is corrected and rehearsed only."
+    },
+    "ST-R1-05": {
+      "status": "PARTIAL_EXTERNAL",
+      "summary": "R15C has 44 traceable software cases with PASS and six external cases with explicit technical justification.",
+      "r15c": {
+        "mapped": 44,
+        "pass": 44,
+        "not_run": 6,
+        "fail_or_skip": 0,
+        "overall": "NO_GO",
+        "new_software_tests": {
+          "R15C-16": "test_late_source_facts_do_not_claim_a_native_path",
+          "R15C-22": "test_gainless_lowpass_band_still_changes_sample_values",
+          "R15C-34": "test_three_rate_provenance_is_a_contradiction_not_a_target_claim",
+          "R15C-44": "test_signal_path_view_accepts_twenty_stages_and_popup_has_scroll_contract"
+        },
+        "external_cases": {
+          "R15C-20": "REQUIRES_DSP_POLARITY_IMPLEMENTATION_NOT_PRESENT_IN_PRODUCT",
+          "R15C-23": "REQUIRES_REAL_TIME_AUDIO_CALLBACK_AND_XRUN_MEASUREMENT",
+          "R15C-24": "REQUIRES_PLAYER_CROSSFADE_RUNTIME_WINDOWS",
+          "R15C-31": "REQUIRES_ANDROID_USB_HARDWARE",
+          "R15C-32": "REQUIRES_BROWSER_RUNTIME_NOT_A_MICHI_SURFACE",
+          "R15C-37": "REQUIRES_WINDOWS_QPC_AUDIOCONTEXT_HARDWARE"
+        }
+      }
+    },
+    "ST-R1-06": {
+      "status": "DONE_SOFTWARE",
+      "summary": "Single recorder, single F03 capture read, OutputSession family authority, F05 DSP authority, Qt projection and canonical frame were re-exercised by the signal-truth, owner, causal, frame, dynamic-stage and metrics suites.",
+      "negative_tests": [
+        "test_absent_event_is_not_effective",
+        "test_unproven_event_readback_is_not_confirmed",
+        "test_stale_latest_runtime_id_is_not_confirmed",
+        "test_owner_changes_between_reads_are_rejected",
+        "test_owner_refuses_paused_as_current_playback",
+        "test_changed_revision_fails_closed",
+        "test_noncurrent_capture_does_not_inherit_live_transformations",
+        "test_metrics_unknown_without_producer",
+        "test_remote_report_never_physical_even_authenticated",
+        "test_owner_family_without_f03_binding_cannot_inherit_pcm_dynamic_stages"
+      ]
+    },
+    "ST-R1-07": {
+      "status": "DONE",
+      "summary": "Lint, format, QML syntax, local full suite, DAC software batch, AP2-F11 alignment, DAC alignment and exact-SHA CI were executed."
+    }
+  },
+  "codex_findings_resolved": [
+    "A42 popup assertion now verifies the executable stages binding, not a comment.",
+    "Verifier subprocesses cannot import the original checkout through inherited PYTHONPATH or an editable install.",
+    "The naming migrator separates recorder/event imports from truth_graph domain imports."
+  ],
+  "tests": {
+    "full_suite_local": {
+      "passed": 7072,
+      "skipped": 40,
+      "failed": 1,
+      "duration_s": 1887.74,
+      "failed_node": "tests/phase2/test_f42_scoped_lint_waiver.py::test_f42_legacy_diagnostic_is_exactly_one_sim102_at_frozen_site",
+      "classification": "ENVIRONMENT_RUFF_VERSION_ONLY",
+      "note": "Local ruff 0.17.1 reports no SIM102 on the frozen GStreamer site; the same check fails on the pre-sprint main worktree. The CI f42-scoped-waiver gate passes."
+    },
+    "signal_truth_and_michi_truth": {
+      "passed": 543
+    },
+    "dac_software": {
+      "passed": 934
+    },
+    "focused_f11_qml_naming_verifier": {
+      "passed": 226
+    }
+  },
+  "alignment": {
+    "ap2_f11": "GO",
+    "dac_repository": "OK"
+  },
+  "lint": {
+    "ruff_check_src_tests_scripts": "PASS",
+    "ruff_format_check_src_tests_scripts": "PASS",
+    "qmllint_changed_qml": "PASS_WITH_PREEXISTING_UNUSED_IMPORT_WARNING"
+  },
+  "ci": {
+    "sha": "40bffa0e056072530fc0cee777cbcb86f64a1ab0",
+    "run_id": 42494741939,
+    "url": "https://github.com/pitydah/michi-music-player/actions/runs/42494741939",
+    "conclusion": "success",
+    "checks": {
+      "check": "pass",
+      "dac-v35-software-closure": "pass",
+      "dop-native-gate-a": "pass",
+      "min-qt": "pass"
+    }
+  },
+  "certification": {
+    "software": "PASS",
+    "physical_dac": "NOT_RUN",
+    "kwin_live": "NOT_RUN",
+    "hardware_measurements": "NOT_RUN",
+    "ap2_f11_state": "ACTIVE",
+    "ap2_f11_certification": "NO_GO"
+  },
+  "rollback": "Revert the ST-R1 merge with git revert -m 1 <merge_sha>; no schema, frozen GStreamer or DAC contract migration was executed."
+}
