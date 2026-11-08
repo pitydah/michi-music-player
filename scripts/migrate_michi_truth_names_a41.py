@@ -218,6 +218,10 @@ def _replace(text: str, source: str) -> str:
         (OLD_PREFIX + "Edge", "TruthGraphEdge"),
         (OLD_PREFIX + "Service", "SignalTruthProjectionService"),
         (OLD_PREFIX + "Bridge", "SignalTruthBridge"),
+        # Domain graph types moved to truth_graph; the recorder keeps its own
+        # module name. Resolve the module before the generic snake-case pass.
+        ("michi.domain." + OLD_SNAKE + " import", "michi.domain.truth_graph import"),
+        ("domain." + OLD_SNAKE + " import", "domain.truth_graph import"),
         (OLD_SNAKE + "_service", "signal_truth_projection_service"),
         (OLD_SNAKE + "_bridge", "signal_truth_bridge"),
         (OLD_CAMEL + "Bridge", "signalTruthBridge"),

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
 
 import pytest
@@ -299,8 +300,13 @@ def test_settings_crud_needs_readback_not_selected_preset():
 
 
 from scripts.inspect_michi_truth_dac_a49 import inspect_receipts  # noqa: E402
+from scripts.verify_michi_truth_product_a49 import (  # noqa: E402
+    PRODUCT_MODULES,
+    command,
+    module_identity,
+    validate_source,  # noqa: E402
+)
 from scripts.verify_michi_truth_product_a49 import run as product_run  # noqa: E402
-from scripts.verify_michi_truth_product_a49 import validate_source  # noqa: E402
 
 
 def test_dac_qualification_is_not_inferred_from_seemingly_positive_receipt():
@@ -366,3 +372,67 @@ def test_product_gate_rejects_incomplete_fixture_without_mutating_it(tmp_path):
     assert result["github_mutated"] is False
     assert result["original_checkout_mutated"] is False
     assert not any(v["status"] == "PASS" for v in result["checks"].values())
+
+
+def _sandbox_modules(root: Path) -> Path:
+    src = root / "src"
+    for module in PRODUCT_MODULES:
+        path = src / Path(*module.split(".")).with_suffix(".py")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("VALUE = 1\n", encoding="utf-8")
+    for package in ("michi", "michi/domain", "michi/application", "michi/presentation"):
+        (src / package / "__init__.py").write_text("", encoding="utf-8")
+    return src
+
+
+def test_command_drops_inherited_pythonpath(tmp_path, monkeypatch):
+    foreign = tmp_path / "foreign-src"
+    monkeypatch.setenv("PYTHONPATH", str(foreign))
+    sandbox_src = tmp_path / "sandbox" / "src"
+    result = command(
+        [sys.executable, "-c", "import os;print(os.environ['PYTHONPATH'])"],
+        tmp_path,
+        30,
+        isolated_src=sandbox_src,
+    )
+    assert result["status"] == "PASS"
+    assert str(result["stdout_tail"]).strip() == str(sandbox_src.resolve())
+
+
+def test_module_identity_accepts_only_sandbox_files(tmp_path):
+    src = _sandbox_modules(tmp_path)
+    result = module_identity(tmp_path, src)
+    assert result["status"] == "PASS" and result["identity"] == "SANDBOX"
+    assert all(
+        Path(path).resolve().is_relative_to(src.resolve())
+        for path in result["files"].values()
+    )
+
+
+def test_module_identity_rejects_a_symlink_to_another_checkout(tmp_path):
+    src = _sandbox_modules(tmp_path)
+    outside = tmp_path / "other-checkout" / "signal_truth.py"
+    outside.parent.mkdir()
+    outside.write_text("VALUE = 2\n", encoding="utf-8")
+    target = src / "michi" / "domain" / "signal_truth.py"
+    target.unlink()
+    target.symlink_to(outside)
+    result = module_identity(tmp_path, src)
+    assert result["status"] == "FAIL" and result["identity"] == "FOREIGN_MODULE"
+    assert "michi.domain.signal_truth" in result["foreign"]
+
+
+def test_module_identity_fails_closed_on_an_editable_install(tmp_path):
+    (tmp_path / "src").mkdir()
+    result = module_identity(tmp_path, tmp_path / "src")
+    assert result["status"] == "FAIL"
+    assert result["identity"] in {"FOREIGN_MODULE", "IMPORT_FAILED"}
+
+
+def test_module_identity_fails_closed_when_a_dependency_is_missing(tmp_path):
+    src = _sandbox_modules(tmp_path)
+    (src / "michi" / "domain" / "signal_truth.py").write_text(
+        "import definitely_missing_dependency_xyz\n", encoding="utf-8"
+    )
+    result = module_identity(tmp_path, src)
+    assert result["status"] == "FAIL" and result["identity"] == "IMPORT_FAILED"

@@ -14,6 +14,7 @@ import hashlib
 import json
 import os
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -32,7 +33,30 @@ REQUIRED = (
 )
 
 
-def command(argv: list[str], cwd: Path, timeout: int = 180) -> dict[str, object]:
+PRODUCT_MODULES = (
+    "michi.domain.signal_truth",
+    "michi.application.signal_path_service",
+    "michi.application.audio_processing_service",
+    "michi.application.output_session_service",
+    "michi.presentation.signal_path_bridge",
+)
+
+
+def command(
+    argv: list[str],
+    cwd: Path,
+    timeout: int = 180,
+    *,
+    isolated_src: Path | None = None,
+) -> dict[str, object]:
+    environment = dict(
+        os.environ, QT_QPA_PLATFORM="offscreen", PYTHONDONTWRITEBYTECODE="1"
+    )
+    if isolated_src is not None:
+        # The sandbox must be the only checkout importable by the child. An
+        # inherited editable install or an absolute PYTHONPATH from the caller
+        # would otherwise let the child test the original modules.
+        environment["PYTHONPATH"] = str(isolated_src.resolve())
     try:
         run = subprocess.run(
             argv,
@@ -40,9 +64,7 @@ def command(argv: list[str], cwd: Path, timeout: int = 180) -> dict[str, object]
             text=True,
             capture_output=True,
             timeout=timeout,
-            env=dict(
-                os.environ, QT_QPA_PLATFORM="offscreen", PYTHONDONTWRITEBYTECODE="1"
-            ),
+            env=environment,
         )
         return {
             "status": "PASS" if run.returncode == 0 else "FAIL",
@@ -52,6 +74,43 @@ def command(argv: list[str], cwd: Path, timeout: int = 180) -> dict[str, object]
         }
     except (OSError, subprocess.TimeoutExpired):
         return {"status": "NOT_RUN", "reason": "COMMAND_UNAVAILABLE_OR_TIMEOUT"}
+
+
+def module_identity(root: Path, isolated_src: Path) -> dict[str, object]:
+    """Prove that every controlled module comes from the patched sandbox."""
+    probe = f"""
+import importlib
+import json
+
+names = {PRODUCT_MODULES!r}
+files = {{}}
+for name in names:
+    module = importlib.import_module(name)
+    files[name] = str(getattr(module, "__file__", ""))
+print(json.dumps(files, sort_keys=True))
+"""
+    result = command([sys.executable, "-c", probe], root, 60, isolated_src=isolated_src)
+    if result["status"] != "PASS":
+        result["identity"] = "IMPORT_FAILED"
+        return result
+    try:
+        files = json.loads(str(result.get("stdout_tail", "")))
+    except json.JSONDecodeError:
+        result["identity"] = "UNPARSEABLE_PROBE"
+        result["status"] = "FAIL"
+        return result
+    expected_root = isolated_src.resolve()
+    foreign = {
+        name: path
+        for name, path in files.items()
+        if not path or not Path(path).resolve().is_relative_to(expected_root)
+    }
+    result["files"] = files
+    result["identity"] = "FOREIGN_MODULE" if foreign else "SANDBOX"
+    if foreign:
+        result["foreign"] = foreign
+        result["status"] = "FAIL"
+    return result
 
 
 def validate_source(root: Path, sha: str) -> str | None:
@@ -128,62 +187,70 @@ def run(argv: list[str] | None = None) -> dict[str, object]:
                         applied = command(["git", "apply", str(patch)], sandbox, 45)
                         receipt["checks"]["git_apply"] = applied
                         if applied["status"] == "PASS":
-                            for name, cmd in (
-                                (
-                                    "phase_context",
-                                    [
-                                        "python",
-                                        "scripts/phase2_context.py",
-                                        "--phase",
-                                        "AP2-F11",
-                                        "--receipt-json",
-                                    ],
-                                ),
-                                (
-                                    "ap2_alignment",
-                                    [
-                                        "python",
-                                        "scripts/verify_audio_phase2_repository_alignment.py",
-                                        "--phase",
-                                        "AP2-F11",
-                                    ],
-                                ),
-                                (
-                                    "dac_alignment",
-                                    [
-                                        "python",
-                                        "scripts/verify_dac_repository_alignment.py",
-                                    ],
-                                ),
-                                (
-                                    "signal_truth_tests",
-                                    [
-                                        "python",
-                                        "-m",
-                                        "pytest",
-                                        "-q",
-                                        "-p",
-                                        "no:cacheprovider",
-                                        "tests/audio_phase2/test_signal_truth_concurrency.py",
-                                        "tests/audio_phase2/test_michi_truth_a49_owner_metrics.py",
-                                    ],
-                                ),
-                                (
-                                    "qt_contract_tests",
-                                    [
-                                        "python",
-                                        "-m",
-                                        "pytest",
-                                        "-q",
-                                        "-p",
-                                        "no:cacheprovider",
-                                        "tests/test_f11_qml_contract.py",
-                                        "tests/test_f11_kwin_visual_contract.py",
-                                        "tests/audio_phase2/test_f11_signal_path_bridge.py",
-                                    ],
-                                ),
-                            ):
-                                receipt["checks"][name] = command(cmd, sandbox, 240)
+                            sandbox_src = sandbox / "src"
+                            identity = module_identity(sandbox, sandbox_src)
+                            receipt["checks"]["import_identity"] = identity
+                            if identity["status"] != "PASS":
+                                receipt["blocker"] = "IMPORT_ISOLATION_FAILED"
+                            else:
+                                for name, cmd in (
+                                    (
+                                        "phase_context",
+                                        [
+                                            sys.executable,
+                                            "scripts/phase2_context.py",
+                                            "--phase",
+                                            "AP2-F11",
+                                            "--receipt-json",
+                                        ],
+                                    ),
+                                    (
+                                        "ap2_alignment",
+                                        [
+                                            sys.executable,
+                                            "scripts/verify_audio_phase2_repository_alignment.py",
+                                            "--phase",
+                                            "AP2-F11",
+                                        ],
+                                    ),
+                                    (
+                                        "dac_alignment",
+                                        [
+                                            sys.executable,
+                                            "scripts/verify_dac_repository_alignment.py",
+                                        ],
+                                    ),
+                                    (
+                                        "signal_truth_tests",
+                                        [
+                                            sys.executable,
+                                            "-m",
+                                            "pytest",
+                                            "-q",
+                                            "-p",
+                                            "no:cacheprovider",
+                                            "tests/audio_phase2/test_signal_truth_concurrency.py",
+                                            "tests/audio_phase2/test_michi_truth_a49_owner_metrics.py",
+                                        ],
+                                    ),
+                                    (
+                                        "qt_contract_tests",
+                                        [
+                                            sys.executable,
+                                            "-m",
+                                            "pytest",
+                                            "-q",
+                                            "-p",
+                                            "no:cacheprovider",
+                                            "tests/test_f11_qml_contract.py",
+                                            "tests/test_f11_kwin_visual_contract.py",
+                                            "tests/audio_phase2/test_f11_signal_path_bridge.py",
+                                        ],
+                                    ),
+                                ):
+                                    receipt["checks"][name] = command(
+                                        cmd, sandbox, 240, isolated_src=sandbox_src
+                                    )
                             receipt["checks"]["diff_check"] = command(
                                 ["git", "diff", "--check"], sandbox, 45
                             )

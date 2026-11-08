@@ -17,7 +17,6 @@ Popup {
 
     readonly property var canonicalTruthFrame: signalPathBridge
         && signalPathBridge.truthFrame ? signalPathBridge.truthFrame : ({})
-    // A42 read-model contract: stages: root.canonicalTruthFrame.stages || []
     // Prefer the canonical F03/owner frame; legacy projections without one
     // keep the established bridge stages instead of collapsing the popup.
     readonly property var stages: {
@@ -278,6 +277,7 @@ Popup {
 
             MichiSignalPathView {
                 id: stageView
+                objectName: "signalTruthStageView"
                 width: stagesViewport.width
                 compact: root.compactDensity
                 // Compact density must not silently remove configuration tools.
