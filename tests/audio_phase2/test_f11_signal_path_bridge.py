@@ -8,7 +8,8 @@ import threading
 import time
 from dataclasses import replace
 
-from PySide6.QtCore import QCoreApplication, QObject, Slot
+from PySide6.QtCore import QObject, Slot
+from PySide6.QtWidgets import QApplication
 
 from michi.domain.audio_evidence import PcmTuple
 from michi.domain.signal_truth import (
@@ -532,7 +533,7 @@ class _TruthOwnerWitness(QObject):
         self.delivery_threads.append(threading.get_ident())
 
 
-def _pump_truth_owner(app: QCoreApplication, predicate, timeout: float = 5.0) -> bool:
+def _pump_truth_owner(app: QApplication, predicate, timeout: float = 5.0) -> bool:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         app.processEvents()
@@ -553,7 +554,7 @@ def _emit_truth_updates(recorder: SignalTruthRecorder, count: int = 1) -> None:
 
 
 def test_truth_worker_event_only_projects_on_qt_owner() -> None:
-    app = QCoreApplication.instance() or QCoreApplication([])
+    app = QApplication.instance() or QApplication([])
     owner = threading.get_ident()
     recorder = SignalTruthRecorder()
     projection_threads: list[int] = []
@@ -584,7 +585,7 @@ def test_truth_worker_event_only_projects_on_qt_owner() -> None:
 
 
 def test_truth_worker_burst_uses_single_owner_refresh() -> None:
-    app = QCoreApplication.instance() or QCoreApplication([])
+    app = QApplication.instance() or QApplication([])
     owner = threading.get_ident()
     recorder = SignalTruthRecorder()
     rebuild_threads: list[int] = []
@@ -616,7 +617,7 @@ def test_truth_worker_burst_uses_single_owner_refresh() -> None:
 
 
 def test_truth_dispose_discards_queued_owner_refresh() -> None:
-    app = QCoreApplication.instance() or QCoreApplication([])
+    app = QApplication.instance() or QApplication([])
     recorder = SignalTruthRecorder()
     projection_threads: list[int] = []
     bridge = SignalPathBridge(
@@ -642,7 +643,7 @@ def test_truth_dispose_discards_queued_owner_refresh() -> None:
 
 
 def test_truth_owner_updates_remain_synchronous_without_worker() -> None:
-    app = QCoreApplication.instance() or QCoreApplication([])
+    app = QApplication.instance() or QApplication([])
     owner = threading.get_ident()
     recorder = SignalTruthRecorder()
     bridge = SignalPathBridge(recorder, _Output(), _Processing())
@@ -657,7 +658,7 @@ def test_truth_owner_updates_remain_synchronous_without_worker() -> None:
 
 
 def test_truth_reentrant_owner_notification_preserves_next_refresh() -> None:
-    app = QCoreApplication.instance() or QCoreApplication([])
+    app = QApplication.instance() or QApplication([])
     owner = threading.get_ident()
     recorder = SignalTruthRecorder()
     bridge = SignalPathBridge(recorder, _Output(), _Processing())

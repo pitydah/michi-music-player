@@ -11,6 +11,7 @@ import pytest
 pytest.importorskip("PySide6.QtCore")
 
 from PySide6.QtCore import QCoreApplication, QObject  # noqa: E402
+from PySide6.QtWidgets import QApplication  # noqa: E402
 
 from michi.application.audio_processing_service import (  # noqa: E402
     AudioProcessingService,
@@ -51,7 +52,7 @@ def _pump(app: QCoreApplication, predicate, timeout: float = 8.0) -> bool:
 
 
 def test_truth_and_completion_are_delivered_on_the_qt_owner_thread() -> None:
-    app = QCoreApplication.instance() or QCoreApplication([])
+    app = QApplication.instance() or QApplication([])
     assert app is not None
     owner_thread = threading.get_ident()
     executor = QtAsyncCallExecutor()
@@ -106,7 +107,7 @@ def test_truth_and_completion_are_delivered_on_the_qt_owner_thread() -> None:
 
 
 def test_no_presentation_event_after_shutdown() -> None:
-    app = QCoreApplication.instance() or QCoreApplication([])
+    app = QApplication.instance() or QApplication([])
     from michi.domain.signal_truth import SignalTruthRecorder
 
     recorder = SignalTruthRecorder()
