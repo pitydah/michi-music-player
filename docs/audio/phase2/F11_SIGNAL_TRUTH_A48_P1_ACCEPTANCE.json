@@ -1,0 +1,133 @@
+{
+  "schema": "michi.ap2.f11.signal_truth.p1_acceptance.a48.v1",
+  "version": "A48",
+  "source_patch": "MICHI_SIGNAL_TRUTH_A48_CUMULATIVE.patch",
+  "reference_baseline": "PR245 d32228fbcc49c4f107e4295b1a70e31fde4d9b07",
+  "gates": [
+    {
+      "gate_id": "P1-UI",
+      "open_id": "OPEN-P1-01",
+      "candidate_files": [
+        "signal_truth_p1_ui.py",
+        "MichiSignalTruthMetrics.qml"
+      ],
+      "required_product_evidence": "Qt owner, KWin 900x600-DPR 200, keyboard/focus, screen reader; visual goldens",
+      "contract_state": "SPECIFIED",
+      "candidate_state": "SYNTHETIC_PASS",
+      "product_state": "NOT_RUN",
+      "product_evidence": null,
+      "candidate_evidence": "tests/audio_phase2/test_michi_truth_p1_a48.py;tests/audio_phase2/test_michi_truth_p1_package_a48.py"
+    },
+    {
+      "gate_id": "P1-METRICS",
+      "open_id": "OPEN-P1-02",
+      "candidate_files": [
+        "signal_truth_p1_metrics.py"
+      ],
+      "required_product_evidence": "REAL signed producers for peak/clipping/truepeak/lufs/processing speed/XRUN; clock and window evidence",
+      "contract_state": "SPECIFIED",
+      "candidate_state": "SYNTHETIC_PASS",
+      "product_state": "NOT_RUN",
+      "product_evidence": null,
+      "candidate_evidence": "tests/audio_phase2/test_michi_truth_p1_a48.py;tests/audio_phase2/test_michi_truth_p1_package_a48.py"
+    },
+    {
+      "gate_id": "P1-PERF",
+      "open_id": "OPEN-P1-03",
+      "candidate_files": [
+        "signal_truth_p1_scheduler.py"
+      ],
+      "required_product_evidence": "Real workload p99 p99.9 audio callback, UI frames, no new XRUN, RSS and soak baseline",
+      "contract_state": "SPECIFIED",
+      "candidate_state": "SYNTHETIC_PASS",
+      "product_state": "NOT_RUN",
+      "product_evidence": null,
+      "candidate_evidence": "tests/audio_phase2/test_michi_truth_p1_a48.py;tests/audio_phase2/test_michi_truth_p1_package_a48.py"
+    },
+    {
+      "gate_id": "P1-DIAG",
+      "open_id": "OPEN-P1-04",
+      "candidate_files": [
+        "signal_truth_p1_diagnostics.py"
+      ],
+      "required_product_evidence": "Consent UI, real export 0600, retention deletion, privacy adversarial review",
+      "contract_state": "SPECIFIED",
+      "candidate_state": "SYNTHETIC_PASS",
+      "product_state": "NOT_RUN",
+      "product_evidence": null,
+      "candidate_evidence": "tests/audio_phase2/test_michi_truth_p1_a48.py;tests/audio_phase2/test_michi_truth_p1_package_a48.py"
+    },
+    {
+      "gate_id": "P1-DSP",
+      "open_id": "OPEN-P1-05",
+      "candidate_files": [
+        "signal_truth_p1_capabilities.py"
+      ],
+      "required_product_evidence": "F05 real owner capability and readback, disabled feature QA, no draft promotion",
+      "contract_state": "SPECIFIED",
+      "candidate_state": "SYNTHETIC_PASS",
+      "product_state": "NOT_RUN",
+      "product_evidence": null,
+      "candidate_evidence": "tests/audio_phase2/test_michi_truth_p1_a48.py;tests/audio_phase2/test_michi_truth_p1_package_a48.py"
+    },
+    {
+      "gate_id": "P1-REMOTE",
+      "open_id": "OPEN-P1-06",
+      "candidate_files": [
+        "signal_truth_p1_remote_receipts.py"
+      ],
+      "required_product_evidence": "F11 design and fixtures only, future authenticated transport and phase authorization",
+      "contract_state": "SPECIFIED",
+      "candidate_state": "SYNTHETIC_PASS",
+      "product_state": "NOT_RUN",
+      "product_evidence": null,
+      "candidate_evidence": "tests/audio_phase2/test_michi_truth_p1_a48.py;tests/audio_phase2/test_michi_truth_p1_package_a48.py"
+    }
+  ],
+  "r15c_related": {
+    "R15C-39": "P1-METRICS",
+    "R15C-44": "P1-UI",
+    "R15C-45": "P1-PERF",
+    "R15C-46": "P1-DIAG",
+    "R15C-47": "P1-REMOTE"
+  },
+  "governance": {
+    "id": "OPEN-GOV-01",
+    "state": "REVIEW_REQUIRED",
+    "acl_change_authorized": false,
+    "note": "External-anyone writer ACL observed in earlier Drive metadata; do not alter without user instruction."
+  },
+  "p0_remainder": {
+    "OPEN-P0-01": "NOT_RUN_PRODUCT",
+    "OPEN-P0-02": "NOT_RUN_PRODUCT",
+    "OPEN-P0-03": "NOT_RUN_PRODUCT",
+    "OPEN-P0-04": "NOT_RUN_PRODUCT",
+    "OPEN-P0-05": "NOT_RUN_PRODUCT",
+    "OPEN-P0-06": "NOT_RUN_PRODUCT",
+    "OPEN-P0-07": "NOT_RUN_PRODUCT"
+  },
+  "assertions": {
+    "audio_rt_tested": false,
+    "qt_kwin_product_tested": false,
+    "real_dac_tested": false,
+    "github_modified": false,
+    "remote_controller_activated": false,
+    "full_product_gate_go": false
+  },
+  "offline_focused_tests": {
+    "scope": "ISOLATED_SYNTHETIC",
+    "passed": 71,
+    "failed": 0,
+    "skipped": 0,
+    "commands": [
+      "pytest -q tests/audio_phase2/test_michi_truth_p1_a48.py tests/audio_phase2/test_michi_truth_p1_package_a48.py"
+    ]
+  },
+  "offline_selected_regression": {
+    "scope": "SYNTHETIC_FIXTURE_ONLY",
+    "passed": 233,
+    "failed": 0,
+    "skipped": 0,
+    "note": "Real PR245 checkout and complete suite NOT_RUN"
+  }
+}

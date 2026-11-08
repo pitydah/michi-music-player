@@ -11,13 +11,27 @@ recorder.
 from __future__ import annotations
 
 import logging
+import threading
 from collections.abc import Callable
+from copy import deepcopy
 from pathlib import Path
+from time import perf_counter_ns
 from typing import Any
 
-from PySide6.QtCore import Property, QObject, Signal, Slot
+from PySide6.QtCore import Property, QObject, Qt, QThread, Signal, Slot
 
+from michi.application.signal_path_service import SignalPathService
+from michi.application.signal_truth_frame import publish_truth_frame
+from michi.application.signal_truth_owner_bridge import overlay_from_output_session
+from michi.application.signal_truth_p1_f05_adapter import project_f05_capabilities
+from michi.application.signal_truth_p1_owner_metrics import OwnerProjectionMeter
+from michi.application.signal_truth_semantic_gate import (
+    mask_unlinked_output_family,
+    reconcile_f03_semantics,
+)
 from michi.domain.signal_truth import (
+    ProcessingTruthEvent,
+    RecorderCaptureState,
     SignalTruthRecorder,
     signal_truth_snapshot_diagnostics,
 )
@@ -180,6 +194,7 @@ class SignalPathBridge(QObject):
 
     state_changed = Signal()
     configuration_action_requested = Signal(str)
+    _owner_refresh_requested = Signal()
 
     def __init__(
         self,
@@ -187,6 +202,7 @@ class SignalPathBridge(QObject):
         output_bridge: object,
         processing_bridge: object,
         *,
+        output_session: object | None = None,
         playback_path_provider: Callable[[], str] | None = None,
         playback_status_provider: Callable[[], str] | None = None,
         parent: QObject | None = None,
@@ -195,12 +211,29 @@ class SignalPathBridge(QObject):
         self._recorder = recorder
         self._output = output_bridge
         self._processing = processing_bridge
+        self._output_session = output_session
+        self._capture_revision = 0
+        self._f03_projector = SignalPathService()  # existing F03 owner
+        self._f03_snapshot: object | None = None
+        self._ui_projection_meter = OwnerProjectionMeter()
         self._playback_path_provider = playback_path_provider
         self._playback_status_provider = playback_status_provider
         self._disposed = False
         self._generation = 0
         self._projection: dict[str, Any] = {}
+        # Recorder callbacks may originate on output/GStreamer workers.
+        self._owner_refresh_lock = threading.Lock()
+        self._owner_refresh_pending = False
+        self._owner_refresh_draining = False
+        self._owner_refresh_requested.connect(
+            self._drain_owner_refresh, Qt.QueuedConnection
+        )
         recorder.subscribe(self._on_source_changed)
+        subscribe_delivery = getattr(
+            output_session, "subscribe_signal_truth_delivery", None
+        )
+        if callable(subscribe_delivery):
+            subscribe_delivery(self._on_source_changed)
         output_changed = getattr(output_bridge, "state_changed", None)
         if output_changed is not None:
             output_changed.connect(self._on_source_changed)
@@ -208,19 +241,74 @@ class SignalPathBridge(QObject):
         if processing_changed is not None:
             processing_changed.connect(self._on_source_changed)
         self._rebuild()
+        self._apply_f03_semantics()
+        self._apply_output_owner_truth()
+        self._publish_truth_frame()
+        self._project_f05_capabilities()
 
     def dispose(self) -> None:
-        if self._disposed:
-            return
-        self._disposed = True
+        # The Qt owner invalidates queued work before detaching the producer.
+        with self._owner_refresh_lock:
+            if self._disposed:
+                return
+            self._disposed = True
+            self._owner_refresh_pending = False
         self._recorder.unsubscribe(self._on_source_changed)
+        self._ui_projection_meter.retire()
+        unsubscribe_delivery = getattr(
+            self._output_session, "unsubscribe_signal_truth_delivery", None
+        )
+        if callable(unsubscribe_delivery):
+            unsubscribe_delivery(self._on_source_changed)
 
+    @Slot()
     def _on_source_changed(self) -> None:
-        if self._disposed:
-            return
-        self._generation += 1
-        self._rebuild()
-        self.state_changed.emit()
+        # Direct recorder callbacks may run on a worker: only request refresh.
+        with self._owner_refresh_lock:
+            if self._disposed or self._owner_refresh_pending:
+                return
+            self._owner_refresh_pending = True
+
+        try:
+            if (
+                QThread.currentThread() == self.thread()
+                and not self._owner_refresh_draining
+            ):
+                self._drain_owner_refresh()
+            else:
+                # Single queued wakeup; the owner reads the newest source state.
+                self._owner_refresh_requested.emit()
+        except RuntimeError:
+            # A concurrent QObject teardown can invalidate its signal wrapper.
+            with self._owner_refresh_lock:
+                self._owner_refresh_pending = False
+
+    @Slot()
+    def _drain_owner_refresh(self) -> None:
+        with self._owner_refresh_lock:
+            if self._disposed:
+                self._owner_refresh_pending = False
+                return
+            if not self._owner_refresh_pending:
+                return
+            self._owner_refresh_pending = False
+
+        self._owner_refresh_draining = True
+        try:
+            # Measurement is on the queued Qt owner, NEVER an audio callback.
+            started_ns = perf_counter_ns()
+            self._generation += 1
+            self._rebuild()
+            self._apply_f03_semantics()
+            self._apply_output_owner_truth()
+            self._publish_truth_frame()
+            self._project_f05_capabilities()
+            self._ui_projection_meter.observe(
+                frame=self._projection, elapsed_ns=perf_counter_ns() - started_ns
+            )
+            self.state_changed.emit()
+        finally:
+            self._owner_refresh_draining = False
 
     # ------------------------------------------------------------------
     # projection
@@ -252,27 +340,18 @@ class SignalPathBridge(QObject):
             }
         return diagnostics
 
-    def _snapshot_choice(self):
-        """Choose ONE evidence source and label its temporal status.
-
-        ACTIVE and HISTORICAL are mutually exclusive. A candidate is PENDING:
-        it is not a completed execution and can never publish ACTIVE proof.
-        """
-        active = self._recorder.active_snapshot
+    def _snapshot_choice(self, capture: RecorderCaptureState):
+        """Choose status from the ONE capture for this projection frame."""
+        active = capture.active
         if active is not None:
             transport = self._transport_status()
             if transport in {"stopped", "idle", "no_media"}:
                 return active, "HISTORICAL"
             return active, "ACTIVE"
-        try:
-            candidate = self._recorder.candidate_snapshot
-        except RuntimeError:
-            candidate = None
-        if candidate is not None:
-            return candidate, "PENDING"
-        last = self._recorder.last_snapshot
-        if last is not None:
-            return last, "HISTORICAL"
+        if capture.candidate is not None:
+            return capture.candidate, "PENDING"
+        if capture.last_committed is not None:
+            return capture.last_committed, "HISTORICAL"
         return None, "NONE"
 
     def _transport_status(self) -> str:
@@ -291,40 +370,54 @@ class SignalPathBridge(QObject):
 
     def _processing_event_for(
         self,
+        events: tuple[ProcessingTruthEvent, ...],
         identity: dict[str, Any],
         effective_plan_id: str,
+        effective_revision: int,
     ) -> tuple[bool, object | None]:
-        """Correlate the processing receipt with this exact output pipeline.
+        """Find only the latest causally applicable DSP receipt.
 
-        The processing plan id and the output plan id belong to different
-        authorities and are never equal. The durable link is the pipeline
-        generation the processing child observed when it committed. Return
-        ``(events_available, event)`` so callers can distinguish "no evidence
-        stream" (legacy/test doubles) from "a receipt that belongs elsewhere".
+        Output plan IDs and processing plan IDs are different namespaces.
+        The latest state for the same pipeline wins; an unscoped negative
+        receipt cannot be used to resurrect an older EFFECTIVE event.
         """
-        try:
-            events = tuple(self._recorder.processing_events)
-        except Exception:  # noqa: BLE001 - projection failure is not runtime truth
-            return False, None
         if not events:
             return False, None
+
         port_generation = int(
             identity.get("port_generation") or identity.get("execution_generation") or 0
         )
-        if port_generation <= 0:
+        if port_generation <= 0 or effective_revision <= 0 or not effective_plan_id:
             return True, None
+
         for event in reversed(events):
             state = getattr(event, "state", None)
-            state_value = str(getattr(state, "value", state) or "")
-            if state_value != "effective":
-                continue
-            if not bool(getattr(event, "readback_proven", False)):
-                continue
-            if str(getattr(event, "plan_id", None) or "") != effective_plan_id:
-                continue
+            state_value = str(getattr(state, "value", state) or "").casefold()
             pipeline_generation = int(getattr(event, "pipeline_generation", 0) or 0)
-            if pipeline_generation == port_generation:
-                return True, event
+
+            if pipeline_generation != port_generation:
+                if pipeline_generation:
+                    # Explicitly belongs to a different pipeline.
+                    continue
+                if state_value != "effective":
+                    # Unscoped terminal/transition cannot establish that an
+                    # old effective receipt remains current: fail closed.
+                    return True, None
+                continue
+
+            # This is the most recent receipt for the current pipeline.
+            if state_value != "effective":
+                return True, None
+            if not bool(getattr(event, "readback_proven", False)):
+                return True, None
+            if str(getattr(event, "plan_id", None) or "") != effective_plan_id:
+                return True, None
+            if int(getattr(event, "processing_generation", 0) or 0) != (
+                effective_revision
+            ):
+                return True, None
+            return True, event
+
         return True, None
 
     def _device_display_name(self, stable_device_id: str) -> str:
@@ -404,7 +497,12 @@ class SignalPathBridge(QObject):
         return decorated
 
     def _rebuild(self) -> None:
-        snapshot, temporal_status = self._snapshot_choice()
+        # Never mix recorder lifecycle revision A with DSP stream revision B.
+        # Other owners remain separately correlated by identity/readback.
+        capture = self._recorder.read_capture_state()
+        self._capture_revision = capture.revision
+        snapshot, temporal_status = self._snapshot_choice(capture)
+        self._f03_snapshot = snapshot
         diagnostics = self._snapshot_diagnostics(snapshot)
         truth = self._processing_truth()
         output_label = str(self._output_value("signalTruthLabel", "") or "")
@@ -558,22 +656,17 @@ class SignalPathBridge(QObject):
         effective_state = str(truth.get("effective_state", "unknown"))
         effective_plan_id = str(truth.get("effective_plan_id") or "")
         snapshot_plan_id = str(identity.get("plan_id") or "")
-        events_available, processing_event = self._processing_event_for(
-            identity, effective_plan_id
+        _, processing_event = self._processing_event_for(
+            capture.processing_events,
+            identity,
+            effective_plan_id,
+            int(truth.get("effective_revision") or 0),
         )
-        if events_available:
-            processing_matches = bool(
-                effective_state == "effective" and processing_event is not None
-            )
-        else:
-            # Compatibility for read-model doubles that publish the processing
-            # truth without a recorder event stream.
-            processing_matches = bool(
-                effective_state == "effective"
-                and effective_plan_id
-                and snapshot_plan_id
-                and effective_plan_id == snapshot_plan_id
-            )
+        # An unavailable receipt or missing event stream never proves that
+        # DSP is effective, even when output/DSP plan IDs happen to match.
+        processing_matches = bool(
+            effective_state == "effective" and processing_event is not None
+        )
         engine_graph_factories = [
             str(item) for item in engine.get("graph_factories", []) or []
         ]
@@ -907,7 +1000,119 @@ class SignalPathBridge(QObject):
             "configurationActions": actions,
         }
 
+    def _apply_f03_semantics(self) -> None:
+        """Reconcile with the EXISTING F03 owner before family decoration.
+
+        F03's four PCM nodes never certify DoP/Native/Managed execution:
+        those owners must provide a current execution association instead.
+        """
+        current_family = getattr(self._output_session, "current_family", None)
+        current_family = str(
+            getattr(current_family, "value", current_family) or ""
+        ).lower()
+        if current_family and current_family != "pcm_direct":
+            self._projection = mask_unlinked_output_family(self._projection)
+            return
+        # A15: one recorder capture is the source of BOTH lifecycle and DSP
+        # receipts. Re-reading here would mix two epochs; the revision stored
+        # by _rebuild is the capture this projection consumes.
+        observed_revision = self._capture_revision
+        self._projection = reconcile_f03_semantics(
+            self._projection,
+            self._f03_snapshot,
+            capture_revision=self._capture_revision,
+            observed_revision=observed_revision,
+            projector=self._f03_projector.project,
+        )
+
+    def _apply_output_owner_truth(self) -> None:
+        """Connect the A36 family overlay to the EXISTING Qt owner projection.
+
+        A recorder callback may come from a worker, but this method is called
+        only from construction or the queued owner-thread drain. Failure to
+        correlate never means DSP/DoP/Native is confirmed.
+        """
+        if self._output_session is None:
+            return
+        # Direct/Shared are governed by F03/DAC, not the four-family ledger.
+        # Never erase valid Direct readbacks merely because this adapter does
+        # not cover those families.
+        current_family = getattr(self._output_session, "current_family", None)
+        current_family = str(
+            getattr(current_family, "value", current_family) or ""
+        ).lower()
+        if current_family in {"pcm_direct", "shared"}:
+            return
+        frame = dict(self._projection)
+        frame["captureRevision"] = self._capture_revision
+        ledger = getattr(self._output_session, "signal_truth_publication_ledger", None)
+        try:
+            resolved = overlay_from_output_session(
+                frame_payload=frame,
+                recorder=self._recorder,
+                output_session=self._output_session,
+                f05_truth_reader=self._processing_truth,
+                ledger=ledger,
+            )
+        except Exception:
+            logger.warning("Signal Truth owner overlay unavailable")
+            resolved = dict(frame)
+            resolved.update(
+                {
+                    "familyEvidenceState": "UNOBSERVED",
+                    "familyEvidenceText": "Evidencia de salida no disponible",
+                    "dspExecutionState": "UNOBSERVED",
+                    "dspExecutionText": "DSP no confirmado para esta ejecución",
+                    "presentationWarning": "ST_A37_OVERLAY_FAILURE",
+                }
+            )
+        # A preexisting F11 heuristic cannot promote transformed to effective
+        # unless OutputSession+F05 proved adoption for THIS execution.
+        if resolved.get("dspExecutionState") != "CURRENT_EXECUTION_CONFIRMED":
+            stages = [dict(s) for s in resolved.get("stages", ())]
+            for row in stages:
+                if row.get("id") == "processing" and row.get("state") == "transformed":
+                    row["state"] = "unknown"
+                    row["summary"] = str(
+                        resolved.get("dspExecutionText")
+                        or "DSP pendiente de confirmación"
+                    )
+                    row["detail"] = row["summary"]
+            resolved["stages"] = stages
+            if resolved.get("indicatorState") == "transformed":
+                resolved["indicatorState"] = "unknown"
+                resolved["indicatorTooltip"] = "Signal Truth: DSP no correlacionado"
+        if resolved.get("status") == "ACTIVE" and resolved.get(
+            "familyEvidenceState"
+        ) not in {"RUNNING_REPORTED", "READY_REPORTED"}:
+            if resolved.get("pathProofState") == "verified":
+                resolved["pathProofState"] = "partially_verified"
+                resolved["pathProofLabel"] = "Observación parcial"
+            resolved["qualityAccessibleText"] = (
+                "Evidencia de ejecución no verificada; "
+                + str(resolved.get("qualityAccessibleText") or "")
+            )
+        self._projection = resolved
+
     # ------------------------------------------------------------------
+    def _publish_truth_frame(self) -> None:
+        """One Qt owner publishes the safe A42 read model to every consumer.
+
+        Preserve existing non-truth UI fields until D19 compatibility review;
+        all F03, stage, family and proof fields take values from this one frame.
+        """
+        # The frame normalizer rejects a missing revision as invalid. The
+        # bridge owns the recorder revision even when a legacy projection
+        # branch does not copy it into its own dictionary.
+        self._projection["captureRevision"] = self._capture_revision
+        try:
+            frame = publish_truth_frame(self._projection)
+        except Exception:
+            logger.warning("Signal Truth read-model refused unsafe payload")
+            frame = publish_truth_frame({"status": "NOT_ACTIVE", "captureRevision": 0})
+        self._truth_frame = frame
+        self._projection.update(frame)
+
     # QML properties / slots
     # ------------------------------------------------------------------
     def _get(self, key: str, fallback: Any = None) -> Any:
@@ -1000,6 +1205,64 @@ class SignalPathBridge(QObject):
     @Property("QVariantList", notify=state_changed)
     def configurationActions(self) -> list[str]:
         return list(self._get("configurationActions", []))
+
+    @Property(str, notify=state_changed)
+    def audioFamily(self) -> str:
+        return str(self._get("audioFamily", "unknown"))
+
+    @Property(str, notify=state_changed)
+    def familyEvidenceState(self) -> str:
+        return str(self._get("familyEvidenceState", "UNOBSERVED"))
+
+    @Property(str, notify=state_changed)
+    def familyEvidenceText(self) -> str:
+        return str(self._get("familyEvidenceText", ""))
+
+    @Property(str, notify=state_changed)
+    def dspExecutionState(self) -> str:
+        return str(self._get("dspExecutionState", "UNOBSERVED"))
+
+    @Property(str, notify=state_changed)
+    def dspExecutionText(self) -> str:
+        return str(self._get("dspExecutionText", ""))
+
+    @Property(str, notify=state_changed)
+    def presentationWarning(self) -> str:
+        return str(self._get("presentationWarning", ""))
+
+    def _project_f05_capabilities(self) -> None:
+        try:
+            truth = self._processing_truth()
+            can_apply = getattr(self._processing, "canApply", False) is True
+            self._projection["capabilityItems"] = project_f05_capabilities(
+                truth, quick_eq_can_apply=can_apply
+            )
+        except (AttributeError, TypeError, ValueError, RuntimeError):
+            self._projection["capabilityItems"] = []
+
+    @Property("QVariantList", notify=state_changed)
+    def capabilityItems(self) -> list[dict[str, Any]]:
+        return list(self._get("capabilityItems", []))
+
+    @Property("QVariantList", notify=state_changed)
+    def metricItems(self) -> list[dict[str, Any]]:
+        return self._ui_projection_meter.items(temporal_status=self.status)
+
+    @Property("QVariantMap", notify=state_changed)
+    def truthFrame(self) -> dict:
+        return deepcopy(getattr(self, "_truth_frame", {}))
+
+    @Property(str, notify=state_changed)
+    def canonicalF03State(self) -> str:
+        return str(self._get("canonicalF03State", "NO_CAPTURE"))
+
+    @Property("QVariantList", notify=state_changed)
+    def canonicalF03Nodes(self) -> list[dict[str, str]]:
+        return list(self._get("canonicalF03Nodes", []))
+
+    @Property(str, notify=state_changed)
+    def canonicalF03Reason(self) -> str:
+        return str(self._get("canonicalF03Reason", ""))
 
     @Slot(str)
     def request_configuration(self, action: str) -> None:

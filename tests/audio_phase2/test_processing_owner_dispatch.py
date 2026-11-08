@@ -40,6 +40,22 @@ class _QtSubscriber(QObject):
         self.states.append("changed")
 
 
+def _qt_application():
+    """Prefer a GUI application; fall back on minimal headless hosts.
+
+    The full suite must never install a bare QCoreApplication as the process
+    singleton: a later QQuickView or QGuiApplication bootstrap cannot upgrade
+    it. Minimal CI jobs without libEGL still need the QtCore-only fallback.
+    """
+    try:
+        from PySide6.QtWidgets import QApplication
+    except ImportError:
+        from PySide6.QtCore import QCoreApplication
+
+        return QCoreApplication.instance() or QCoreApplication([])
+    return QApplication.instance() or QApplication([])
+
+
 def _pump(app: QCoreApplication, predicate, timeout: float = 8.0) -> bool:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -51,7 +67,7 @@ def _pump(app: QCoreApplication, predicate, timeout: float = 8.0) -> bool:
 
 
 def test_truth_and_completion_are_delivered_on_the_qt_owner_thread() -> None:
-    app = QCoreApplication.instance() or QCoreApplication([])
+    app = _qt_application()
     assert app is not None
     owner_thread = threading.get_ident()
     executor = QtAsyncCallExecutor()
@@ -106,7 +122,7 @@ def test_truth_and_completion_are_delivered_on_the_qt_owner_thread() -> None:
 
 
 def test_no_presentation_event_after_shutdown() -> None:
-    app = QCoreApplication.instance() or QCoreApplication([])
+    app = _qt_application()
     from michi.domain.signal_truth import SignalTruthRecorder
 
     recorder = SignalTruthRecorder()

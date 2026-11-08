@@ -56,6 +56,13 @@ from michi.application.dsd_policy_service import (
 from michi.application.dsd_source_characterizer import DsdSourceStatus
 from michi.application.dsd_to_pcm_plan import DsdToPcmPlan, DsdToPcmPlanner
 from michi.application.ports import SharedOutputTransaction
+from michi.application.signal_truth_delivery import (
+    DisplayClaim,
+    PublicationKey,
+    PublicationLedger,
+    project_family_delivery,
+    publish_family_fact,
+)
 from michi.domain.audio_device import BindingKind
 from michi.domain.audio_engine import AudioEngineId
 from michi.domain.audio_evidence import PcmTuple, SourceFileFacts
@@ -1111,6 +1118,8 @@ class OutputSessionService:
         self._managed_invalidate_processing = managed_invalidate_processing
         # ADDITIVE: the ONE canonical recorder (never a second one).
         self._truth_recorder = truth_recorder
+        # Passive delivery ledger, not a second recorder or output authority.
+        self._signal_truth_delivery = PublicationLedger(capacity=64)
         self._last_release_evidence: dict | None = None
         self._execution_instance_epoch = next(_EXECUTION_INSTANCE_SEQ)
         self._async_prepare_generation = 0
@@ -3233,29 +3242,27 @@ class OutputSessionService:
         *,
         detail: str | None = None,
     ) -> None:
-        recorder = self._truth_recorder
-        if recorder is None:
-            return
         current = prepared or self._native_dsd_prepared
         plan = current.plan if current is not None else self._native_dsd_plan
         if plan is None:
             return
-        with suppress(Exception):
-            recorder.record_output_family_event(
-                OutputFamilyEvent(
-                    family="native_dsd",
-                    state=state,
-                    device_id=plan.stable_device_id,
-                    execution_id=current.execution_id if current else None,
-                    processing_plan_id=None,
-                    transform_policy=("native_dsd",),
-                    runtime_identity=(
-                        dict(current.runtime_identity) if current is not None else {}
-                    ),
-                    bit_perfect=None,
-                    detail=detail,
-                )
-            )
+        self._publish_signal_truth_family(
+            family="native_dsd",
+            execution_id=current.execution_id if current else None,
+            build_event=lambda: OutputFamilyEvent(
+                family="native_dsd",
+                state=state,
+                device_id=plan.stable_device_id,
+                execution_id=current.execution_id if current else None,
+                processing_plan_id=None,
+                transform_policy=("native_dsd",),
+                runtime_identity=(
+                    dict(current.runtime_identity) if current is not None else {}
+                ),
+                bit_perfect=None,
+                detail=detail,
+            ),
+        )
 
     def _prepare_native_dsd_request(self, path: Path, request: OutputRequest) -> str:
         plan = request.native_dsd_plan
@@ -3842,9 +3849,6 @@ class OutputSessionService:
         *,
         detail: str | None = None,
     ) -> None:
-        recorder = self._truth_recorder
-        if recorder is None:
-            return
         current = prepared or self._dsd_pcm_prepared
         plan = current.plan if current is not None else self._dsd_pcm_plan
         if plan is None:
@@ -3866,26 +3870,25 @@ class OutputSessionService:
                     ),
                     runtime_identity=runtime_identity,
                 ).to_dict()
-        with suppress(Exception):
-            recorder.record_output_family_event(
-                OutputFamilyEvent(
-                    family="dsd_pcm",
-                    state=state,
-                    device_id=(
-                        current.stable_device_id
-                        if current is not None
-                        else self._selected_device_id
-                    ),
-                    execution_id=(
-                        current.execution_id if current is not None else None
-                    ),
-                    processing_plan_id=None,
-                    transform_policy=("dsd_to_pcm",),
-                    runtime_identity=runtime_identity,
-                    bit_perfect=False,
-                    detail=detail,
-                )
-            )
+        self._publish_signal_truth_family(
+            family="dsd_pcm",
+            execution_id=current.execution_id if current else None,
+            build_event=lambda: OutputFamilyEvent(
+                family="dsd_pcm",
+                state=state,
+                device_id=(
+                    current.stable_device_id
+                    if current is not None
+                    else self._selected_device_id
+                ),
+                execution_id=(current.execution_id if current is not None else None),
+                processing_plan_id=None,
+                transform_policy=("dsd_to_pcm",),
+                runtime_identity=runtime_identity,
+                bit_perfect=False,
+                detail=detail,
+            ),
+        )
 
     def _record_dop_family(
         self,
@@ -3894,29 +3897,27 @@ class OutputSessionService:
         *,
         detail: str | None = None,
     ) -> None:
-        recorder = self._truth_recorder
-        if recorder is None:
-            return
         current = prepared or self._dop_prepared
         plan = current.plan if current is not None else self._dop_plan
         if plan is None:
             return
-        with suppress(Exception):
-            recorder.record_output_family_event(
-                OutputFamilyEvent(
-                    family="dop",
-                    state=state,
-                    device_id=plan.stable_device_id,
-                    execution_id=current.execution_id if current else None,
-                    processing_plan_id=None,
-                    transform_policy=("dop",),
-                    runtime_identity=(
-                        dict(current.runtime_identity) if current is not None else {}
-                    ),
-                    bit_perfect=None,
-                    detail=detail,
-                )
-            )
+        self._publish_signal_truth_family(
+            family="dop",
+            execution_id=current.execution_id if current else None,
+            build_event=lambda: OutputFamilyEvent(
+                family="dop",
+                state=state,
+                device_id=plan.stable_device_id,
+                execution_id=current.execution_id if current else None,
+                processing_plan_id=None,
+                transform_policy=("dop",),
+                runtime_identity=(
+                    dict(current.runtime_identity) if current is not None else {}
+                ),
+                bit_perfect=None,
+                detail=detail,
+            ),
+        )
 
     def _release_incompatible_before_prepare(self, target: str) -> None:
         """Destructive predecessor release must precede the target PREPARE."""
@@ -4452,6 +4453,89 @@ class OutputSessionService:
             OutputFamilyState.UNAVAILABLE, prepared, detail=str(reason)
         )
 
+    @property
+    def signal_truth_publication_ledger(self) -> PublicationLedger:
+        """Passive publication health. Never implies audio / DAC proof."""
+        return self._signal_truth_delivery
+
+    def subscribe_signal_truth_delivery(self, callback: Callable[[], None]) -> None:
+        """Callbacks may run on an output worker, never update Qt directly."""
+        self._signal_truth_delivery.subscribe(callback)
+
+    def unsubscribe_signal_truth_delivery(self, callback: Callable[[], None]) -> None:
+        self._signal_truth_delivery.unsubscribe(callback)
+
+    def read_current_family_delivery(self) -> DisplayClaim:
+        """Positive only for the owner CURRENT execution and retained receipt.
+
+        Double-read the output owner: a terminal/handover during the recorder
+        read must not keep a former RUNNING event visible as current.
+        """
+        try:
+            first = self.transition_snapshot()
+            current_id = self.active_execution_id
+            family = {
+                AudioFamily.PCM_MANAGED: "managed",
+                AudioFamily.NATIVE_DSD: "native_dsd",
+                AudioFamily.DOP: "dop",
+                AudioFamily.DSD_TO_PCM: "dsd_pcm",
+            }.get(first.get("family"))
+            epoch = first.get("generation")
+            if (
+                family is None
+                or first.get("state") not in {"ready", "running"}
+                or type(epoch) is not int
+                or epoch <= 0
+                or not isinstance(current_id, str)
+                or not current_id
+                or first.get("execution_id") != current_id
+            ):
+                return DisplayClaim.UNVERIFIED
+            claim = project_family_delivery(
+                self._signal_truth_delivery,
+                recorder=self._truth_recorder,
+                family=family,
+                execution_id=current_id,
+                owner_epoch=epoch,
+            )
+            if (
+                first != self.transition_snapshot()
+                or current_id != self.active_execution_id
+            ):
+                return DisplayClaim.UNVERIFIED
+            return claim
+        except Exception:
+            return DisplayClaim.UNVERIFIED
+
+    def _publish_signal_truth_family(
+        self,
+        *,
+        family: str,
+        execution_id: str | None,
+        build_event: Callable[[], OutputFamilyEvent],
+    ) -> None:
+        """Publish four output-family receipts without blocking audio on truth.
+
+        The Output owner provides its own epoch. None-returning recorder writes
+        are not ACKs: A26 checks a coherent post-write recorder revision.
+        """
+        try:
+            if self._generation <= 0:
+                return  # No real owner epoch: do not manufacture a proof.
+            publish_family_fact(
+                ledger=self._signal_truth_delivery,
+                key=PublicationKey(family, execution_id, self._generation),
+                recorder=self._truth_recorder,
+                build_event=build_event,
+            )
+        except Exception:
+            # A failed observation cannot interrupt audio, but must revoke
+            # the last positive output claim even if ledger.begin() failed.
+            with suppress(Exception):
+                # Owner readback still refuses mismatched scope.
+                self._signal_truth_delivery.invalidate_family(family)
+            logger.warning("Signal Truth output-family publication unverified")
+
     def _record_output_family(
         self,
         state: OutputFamilyState,
@@ -4459,29 +4543,27 @@ class OutputSessionService:
         *,
         detail: str | None = None,
     ) -> None:
-        recorder = self._truth_recorder
-        if recorder is None:
-            return
         current = prepared or self._managed_prepared
         plan = current.plan if current is not None else self._managed_plan
         if plan is None:
             return
         runtime = dict(current.runtime_identity) if current is not None else {}
-        with suppress(Exception):
-            recorder.record_output_family_event(
-                OutputFamilyEvent(
-                    family="managed",
-                    state=state,
-                    device_id=plan.stable_device_id,
-                    execution_id=current.execution_id if current else None,
-                    processing_plan_id=plan.processing_plan_id,
-                    transform_policy=plan.transform_policy,
-                    runtime_identity=runtime,
-                    # Never a Direct preservation proof: tri-state, not True.
-                    bit_perfect=None,
-                    detail=detail,
-                )
-            )
+        self._publish_signal_truth_family(
+            family="managed",
+            execution_id=current.execution_id if current else None,
+            build_event=lambda: OutputFamilyEvent(
+                family="managed",
+                state=state,
+                device_id=plan.stable_device_id,
+                execution_id=current.execution_id if current else None,
+                processing_plan_id=plan.processing_plan_id,
+                transform_policy=plan.transform_policy,
+                runtime_identity=runtime,
+                # Never a Direct preservation proof: tri-state, not True.
+                bit_perfect=None,
+                detail=detail,
+            ),
+        )
 
     def _discard_measurements(self, execution_id: str) -> None:
         """Retire the execution's measurement fence AND its history."""

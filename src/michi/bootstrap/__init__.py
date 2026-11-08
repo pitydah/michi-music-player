@@ -2287,6 +2287,7 @@ class ApplicationContainer:
             graph.signal_truth,
             aob,
             apb,
+            output_session=graph.output_session,
             playback_path_provider=lambda: (
                 str(playback.state.file_path) if playback.state.file_path else ""
             ),

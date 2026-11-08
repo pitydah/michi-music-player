@@ -1,0 +1,46 @@
+name: AP2-F11 lifecycle race regressions
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "tests/audio_phase2/test_signal_truth_lifecycle_interleavings.py"
+      - "src/michi/domain/signal_truth.py"
+      - ".github/workflows/f11-truth-lifecycle-regressions.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lifecycle-races:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install project test dependencies
+        run: python -m pip install -e ".[test]"
+      - name: Run lifecycle and preexisting Signal Truth regression suite
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          set -euo pipefail
+          python -m pytest \
+            tests/audio_phase2/test_signal_truth_lifecycle_interleavings.py \
+            tests/audio_phase2/test_truth_capture_bundle.py \
+            tests/audio_phase2/test_signal_truth_concurrency.py \
+            tests/dac/test_v35_070_signal_truth.py \
+            -v --tb=short
+      - name: Check recorder and regression-test style
+        run: |
+          set -euo pipefail
+          ruff check \
+            src/michi/domain/signal_truth.py \
+            tests/audio_phase2/test_signal_truth_lifecycle_interleavings.py \
+            tests/audio_phase2/test_truth_capture_bundle.py
+          ruff format --check \
+            src/michi/domain/signal_truth.py \
+            tests/audio_phase2/test_signal_truth_lifecycle_interleavings.py \
+            tests/audio_phase2/test_truth_capture_bundle.py

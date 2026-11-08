@@ -1,0 +1,667 @@
+{
+  "schema": "michi.signal_truth.p0.acceptance.v1",
+  "phase": "AP2-F11",
+  "github_write_policy": "NO_REMOTE_MUTATION",
+  "basis": "PR245_SHA_d32228fbcc49c4f107e4295b1a70e31fde4d9b07",
+  "status": "P0_SPECIFICATIONS_COMPLETE_CANDIDATE__PRODUCT_NO_GO",
+  "local_synthetic_pass_is_not_product_pass": true,
+  "gates": [
+    {
+      "id": "P0-ARCH",
+      "owner": "F03/F05/OutputSession/F11 owners",
+      "contract": "single recorder, canonical F03 projection, immutable owner Qt adapter, latest causal DSP revocation",
+      "synthetic_test": "tests/audio_phase2/test_michi_truth_p0_contract_a47.py",
+      "product_test": [
+        "test_signal_path_service.py",
+        "test_f11_signal_path_bridge.py",
+        "test_signal_truth_concurrency.py",
+        "test_processing_owner_dispatch.py"
+      ],
+      "dependency_files": [
+        "AGENTS.md",
+        "F11_VR_CONTRACTS.md",
+        "DAC V3.5",
+        "PHASE2_STATE.json"
+      ],
+      "acceptance": [
+        "No second authority",
+        "A-B-A, owner thread, dispatch failure, F05/output plan distinct, latest-event wins"
+      ],
+      "specification_status": "DESIGNED_AND_VALIDATED_OFFLINE",
+      "gate_status": "NOT_RUN_FULL_PRODUCT",
+      "evidence": null,
+      "exact_sha_ci": null,
+      "hardware": null
+    },
+    {
+      "id": "P0-SCHEMA",
+      "owner": "F03 domain + F11 read model",
+      "contract": "versioned identity/family/operation/evidence boundary/reason model; fail closed for unknowns",
+      "synthetic_test": "tests/audio_phase2/test_michi_truth_p0_contract_a47.py",
+      "product_test": [
+        "test_signal_truth_semantic_gate_a38.py",
+        "test_signal_truth_frame_a42.py"
+      ],
+      "dependency_files": [
+        "signal_truth.py",
+        "signal_path_service.py",
+        "signal_truth_frame.py"
+      ],
+      "acceptance": [
+        "All reasons mapped 1:1",
+        "old snapshot migration",
+        "no invalid positive claim"
+      ],
+      "specification_status": "DESIGNED_AND_VALIDATED_OFFLINE",
+      "gate_status": "NOT_RUN_FULL_PRODUCT",
+      "evidence": null,
+      "exact_sha_ci": null,
+      "hardware": null
+    },
+    {
+      "id": "P0-OPS",
+      "owner": "F05/GStreamer F03 projection",
+      "contract": "repeatable operation IDs with DAG edges only on observed producer order; missing adoption unknown",
+      "synthetic_test": "tests/audio_phase2/test_michi_truth_p0_contract_a47.py",
+      "product_test": [
+        "test_f11_signal_path_bridge.py",
+        "test_signal_truth_dynamic_stages_a46.py"
+      ],
+      "dependency_files": [
+        "audio_processing_service.py",
+        "signal_path_bridge.py"
+      ],
+      "acceptance": [
+        "two SRC/PEQ/FIR",
+        "cycles and unknown order",
+        "no factory=effective"
+      ],
+      "specification_status": "DESIGNED_AND_VALIDATED_OFFLINE",
+      "gate_status": "NOT_RUN_FULL_PRODUCT",
+      "evidence": null,
+      "exact_sha_ci": null,
+      "hardware": null
+    },
+    {
+      "id": "P0-FAMILIES",
+      "owner": "OutputSession + DAC V3.5 + F09/F10",
+      "contract": "six-family matrix, no DoP PCM-content or fake Native decode, shared unknown ALSA",
+      "synthetic_test": "tests/audio_phase2/test_michi_truth_p0_contract_a47.py",
+      "product_test": [
+        "test_dsd_pcm_paused_eos.py",
+        "test_signal_truth_real_recorder_c6_a35.py",
+        "test_signal_truth_output_owner_a37.py"
+      ],
+      "dependency_files": [
+        "output_session_service.py",
+        "direct_output_executor.py",
+        "F09/F10",
+        "DAC V3.5"
+      ],
+      "acceptance": [
+        "PCM Direct/Managed/Shared and DSD->PCM/Native/DoP",
+        "stop/hotplug",
+        "DAC capability skips separate"
+      ],
+      "specification_status": "DESIGNED_AND_VALIDATED_OFFLINE",
+      "gate_status": "NOT_RUN_FULL_PRODUCT",
+      "evidence": null,
+      "exact_sha_ci": null,
+      "hardware": null
+    },
+    {
+      "id": "P0-FIDELITY",
+      "owner": "M11.5 owner (not F11)",
+      "contract": "exact all-channel digital-tap coverage; no analog claim from writer or USB ACK",
+      "synthetic_test": "tests/audio_phase2/test_michi_truth_p0_contract_a47.py",
+      "product_test": [
+        "M11.5 conformance suite",
+        "physical opt-in only where supported"
+      ],
+      "dependency_files": [
+        "DAC V3.5",
+        "SignalTruthRecorder",
+        "M11.5"
+      ],
+      "acceptance": [
+        "full interval and channels",
+        "zero drops",
+        "mismatch",
+        "different domains",
+        "scope boundary"
+      ],
+      "specification_status": "DESIGNED_AND_VALIDATED_OFFLINE",
+      "gate_status": "NOT_RUN_FULL_PRODUCT",
+      "evidence": null,
+      "exact_sha_ci": null,
+      "hardware": null
+    },
+    {
+      "id": "P0-CERT",
+      "owner": "AP2-F11 QA owner",
+      "contract": "requirements->oracles->fixtures->PASS/FAIL/SKIP/NOT_RUN with exact SHA",
+      "synthetic_test": "tests/audio_phase2/test_michi_truth_p0_contract_a47.py",
+      "product_test": [
+        "50 R15C tests plus F03/F05/F09/F10/Qt/DAC",
+        "p99-XRUN in P1"
+      ],
+      "dependency_files": [
+        "F11_CLOSURE_READINESS.md",
+        "PHASE2_STATE.json",
+        "R15C matrix"
+      ],
+      "acceptance": [
+        "No invented PASS",
+        "0 unknown mandatory skips",
+        "DAC claim limited to scoped physical evidence"
+      ],
+      "specification_status": "DESIGNED_AND_VALIDATED_OFFLINE",
+      "gate_status": "NOT_RUN_FULL_PRODUCT",
+      "evidence": null,
+      "exact_sha_ci": null,
+      "hardware": null
+    },
+    {
+      "id": "P0-DELIVERY",
+      "owner": "AP2-F11 release owner",
+      "contract": "sequenced isolated workpackages; reversible and contract-gated no autopatch",
+      "synthetic_test": "scripts/verify_michi_truth_p0_contract.py",
+      "product_test": [
+        "git apply --check full checkout",
+        "alignment gates",
+        "exact SHA CI"
+      ],
+      "dependency_files": [
+        "AGENTS.md",
+        "R11-F11",
+        "DAC V3.5"
+      ],
+      "acceptance": [
+        "Head pin",
+        "preimage hash",
+        "separate governance migration approval",
+        "rollback",
+        "no GitHub mutation"
+      ],
+      "specification_status": "DESIGNED_AND_VALIDATED_OFFLINE",
+      "gate_status": "NOT_RUN_FULL_PRODUCT",
+      "evidence": null,
+      "exact_sha_ci": null,
+      "hardware": null
+    }
+  ],
+  "r15c": [
+    {
+      "id": "R15C-01",
+      "stimulus": "Missing Quality",
+      "oracle": "Un campo quality ausente produce UNKNOWN, no inactive; el badge desaparece si no hay identidad activa.",
+      "primary_p0_gate": "P0-ARCH",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-02",
+      "stimulus": "Missing IsClipping",
+      "oracle": "Clipping ausente produce UNKNOWN con boundary; false solo con observación válida.",
+      "primary_p0_gate": "P0-ARCH",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-03",
+      "stimulus": "DSP ACK sin readback",
+      "oracle": "ACK exitoso y readback undefined debe quedar INCONCLUSIVE y no EFFECTIVE.",
+      "primary_p0_gate": "P0-ARCH",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-04",
+      "stimulus": "Dos endpoints en una zona",
+      "oracle": "Configurar EQ de endpoint A no valida B aunque `outputs[0]` apunte A.",
+      "primary_p0_gate": "P0-ARCH",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-05",
+      "stimulus": "OID reciclado tras reconnect",
+      "oracle": "No mezclar etapas ni valores de sesiones distintas.",
+      "primary_p0_gate": "P0-ARCH",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-06",
+      "stimulus": "Track A waveform en B",
+      "oracle": "Rechazar medidas con media_epoch antiguo aun si llega graph PUSH reciente.",
+      "primary_p0_gate": "P0-ARCH",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-07",
+      "stimulus": "ACK de A con B actual",
+      "oracle": "El readback por predicado requiere track/route/revision coincidente.",
+      "primary_p0_gate": "P0-OPS",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-08",
+      "stimulus": "Handshake fragmentado",
+      "oracle": "Ni evento de estado ni atributo hasta completar frame válido.",
+      "primary_p0_gate": "P0-ARCH",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-09",
+      "stimulus": "RPC tras cierre",
+      "oracle": "Cancelar pendientes y rechazar callbacks tardíos sin recurso/Qt leak.",
+      "primary_p0_gate": "P0-OPS",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-10",
+      "stimulus": "Nulos en payload",
+      "oracle": "Null de tasa, clipping o Quality no se convierte en zero/false seguro.",
+      "primary_p0_gate": "P0-ARCH",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-11",
+      "stimulus": "AAC passthrough",
+      "oracle": "Mostrar SOURCE_LOSSY + DECODED_UNCHANGED, sin adjudicar SOURCE_LOSSLESS.",
+      "primary_p0_gate": "P0-ARCH",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-12",
+      "stimulus": "FLAC 96→44.1 con bitPerfect true documental",
+      "oracle": "Contrato de Michi rechaza o reclasifica contradicción entre SRC y samples exactos.",
+      "primary_p0_gate": "P0-ARCH",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-13",
+      "stimulus": "FFmpeg autoaresample con EQ",
+      "oracle": "Etapa observada por backend o UNKNOWN; nunca \"no resampler\" por cadena explícita vacía.",
+      "primary_p0_gate": "P0-OPS",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-14",
+      "stimulus": "Dos sesiones mismo perfil",
+      "oracle": "Ningún campo de sesión A se mezcla con B; identidad exacta sobre heurísticas de tasa.",
+      "primary_p0_gate": "P0-ARCH",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-15",
+      "stimulus": "Medidor lento/spectrum",
+      "oracle": "Frames de análisis se descartan; no XRUN nuevo ni bloqueo de consumidor audio.",
+      "primary_p0_gate": "P0-ARCH",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-16",
+      "stimulus": "Tasa fuente conocida tarde",
+      "oracle": "El plan ejecutado y causa SRC reflejan que la decisión se tomó sin fuente nativa disponible.",
+      "primary_p0_gate": "P0-OPS",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-17",
+      "stimulus": "20 spans comparados 100 omitidos",
+      "oracle": "Reportar MATCH_PARTIAL y cobertura, no total ni DAC_VERIFIED.",
+      "primary_p0_gate": "P0-OPS",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-18",
+      "stimulus": "Más de 2 canales",
+      "oracle": "No aplicar oráculo estéreo al resto; coverage per-channel explícita.",
+      "primary_p0_gate": "P0-OPS",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-19",
+      "stimulus": "Muestras float/DSD",
+      "oracle": "No invocar hash de frames int32 como oráculo universal.",
+      "primary_p0_gate": "P0-OPS",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-20",
+      "stimulus": "Swap/polarity",
+      "oracle": "Distinguir preservación reversible de identidad sample-by-sample.",
+      "primary_p0_gate": "P0-OPS",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-21",
+      "stimulus": "Rates unknown=0",
+      "oracle": "No declarar `pure` como comprobación de hardware por ausencia de transformación detectada.",
+      "primary_p0_gate": "P0-FAMILIES",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-22",
+      "stimulus": "PEQ de ganancia 0 con lowpass",
+      "oracle": "Detectar alteración de muestra, no guiarse solo por gain=0.",
+      "primary_p0_gate": "P0-FAMILIES",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-23",
+      "stimulus": "Mutex callback bajo carga",
+      "oracle": "Medir callback p99 + XRUN; análisis no empeora plazo ni contención.",
+      "primary_p0_gate": "P0-FAMILIES",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-24",
+      "stimulus": "Crossfade: medidor del player principal",
+      "oracle": "El reporte evidencia límite de cobertura e independencia de ventanas.",
+      "primary_p0_gate": "P0-FAMILIES",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-25",
+      "stimulus": "Latencia de rack vs DAC",
+      "oracle": "No sumar latencia DSP como si midiera USB/analógico.",
+      "primary_p0_gate": "P0-FIDELITY",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-26",
+      "stimulus": "Diferencia S24-in-32 vs S32",
+      "oracle": "Mostrar bits significativos separados del contenedor.",
+      "primary_p0_gate": "P0-OPS",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-27",
+      "stimulus": "No HwParams",
+      "oracle": "Format DAC unknown, `bitPerfect` no es verificación DAC.",
+      "primary_p0_gate": "P0-OPS",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-28",
+      "stimulus": "Future retorna tras cambio de pista",
+      "oracle": "Descartar resultado de epoch anterior, sin UI stale.",
+      "primary_p0_gate": "P0-OPS",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-29",
+      "stimulus": "plughw/shared OS mixer",
+      "oracle": "No trasladar ruta directa como bitperfect tras fallback.",
+      "primary_p0_gate": "P0-FAMILIES",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-30",
+      "stimulus": "Engine bitperfect vs endpoint not",
+      "oracle": "Publicar dos veredictos separados y frontera última verificada.",
+      "primary_p0_gate": "P0-FAMILIES",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-31",
+      "stimulus": "USB Android atributos rechazados",
+      "oracle": "Bajar a mixed sin sello DAC, registrar razón exacta.",
+      "primary_p0_gate": "P0-FAMILIES",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-32",
+      "stimulus": "browser rate cambia",
+      "oracle": "Indicar formato observado y transformación downstream no observable.",
+      "primary_p0_gate": "P0-FAMILIES",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-33",
+      "stimulus": "tasa distinta sin etapa SRC recibida",
+      "oracle": "No nombrar exact driver de SRC desde solo rate mismatch.",
+      "primary_p0_gate": "P0-FAMILIES",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-34",
+      "stimulus": "SRC target 96 / runtime 44.1 / ALSA 48",
+      "oracle": "Marcar contradicción y procedencia triple; no usar target en headline efectivo.",
+      "primary_p0_gate": "P0-OPS",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-35",
+      "stimulus": "Write PCM 6ch parcial",
+      "oracle": "Contar frames/bytes correctamente por formato y canales; no interpretar ACK como DAC.",
+      "primary_p0_gate": "P0-FAMILIES",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-36",
+      "stimulus": "DSD/DoP raw passthrough",
+      "oracle": "No analizar portadora como PCM ni aplicar gain por error.",
+      "primary_p0_gate": "P0-FAMILIES",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-37",
+      "stimulus": "QPC versus AudioContext",
+      "oracle": "Medición rechazada por clock-domain mismatch sin calibración.",
+      "primary_p0_gate": "P0-FIDELITY",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-38",
+      "stimulus": "Endpoint DSP after RAAT",
+      "oracle": "Paso remoto marcado REMOTE_REPORTED, no MUSE_LOCAL.",
+      "primary_p0_gate": "P0-FAMILIES",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-39",
+      "stimulus": "MUSE clipping single sample",
+      "oracle": "No equiparar clipping digital con truepeak ni con pico de muestra fuente.",
+      "primary_p0_gate": "P0-FIDELITY",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-40",
+      "stimulus": "Dos outputs en grupo",
+      "oracle": "Dos rutas/receipts; nunca un equipo arbitrario por nombre.",
+      "primary_p0_gate": "P0-FAMILIES",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-41",
+      "stimulus": "Play accepted vs audio effective",
+      "oracle": "No declarar PLAYING/bitperfect desde aceptación de comando.",
+      "primary_p0_gate": "P0-FAMILIES",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-42",
+      "stimulus": "Pending vs historical",
+      "oracle": "Candidate no se presenta ACTIVE, last no se usa como salida viva.",
+      "primary_p0_gate": "P0-ARCH",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-43",
+      "stimulus": "Identidad DSP plan desigual",
+      "oracle": "Processing unknown con razón tipada, sin sumar filtro de rev antigua.",
+      "primary_p0_gate": "P0-ARCH",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-44",
+      "stimulus": "20 stages / 200% DPI",
+      "oracle": "Focus, desplazamiento, lectura y anchuras sin colapsar NowPlayingBar.",
+      "primary_p0_gate": "P0-CERT",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-45",
+      "stimulus": "1.000 updates por segundo",
+      "oracle": "Snapshots coherentes, coalescing UI, sin blocking audio.",
+      "primary_p0_gate": "P0-CERT",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-46",
+      "stimulus": "Exportar reporte con pistas y tokens",
+      "oracle": "Todos los datos privados omitidos o anonimizados; técnica conserva provenance.",
+      "primary_p0_gate": "P0-CERT",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-47",
+      "stimulus": "Remote receipt duplicado/replay",
+      "oracle": "Secuencia/endpoint/epoch validan frescura; replay rechazado.",
+      "primary_p0_gate": "P0-ARCH",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-48",
+      "stimulus": "USB ack sin hardware measure",
+      "oracle": "Boundary SUBMITTED/ACK; jamás ANALOG_VERIFIED.",
+      "primary_p0_gate": "P0-FAMILIES",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-49",
+      "stimulus": "DoP encoded vs PCM format",
+      "oracle": "Mostrar carrier PCM y payload DSD como dominios distintos.",
+      "primary_p0_gate": "P0-FAMILIES",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    },
+    {
+      "id": "R15C-50",
+      "stimulus": "No DAC conectado",
+      "oracle": "Pruebas físicas NOT_RUN, unit gates independientes, sin CLAIM PASS.",
+      "primary_p0_gate": "P0-FAMILIES",
+      "product_status": "NOT_RUN",
+      "evidence": null,
+      "source": "RESEARCH_V1.5_R15C"
+    }
+  ],
+  "completion_definition": {
+    "plan_p0": "seven contracts, tests, owners and STOP clauses present",
+    "product_p0": "all seven product gates PASS exact source revision; applicability and evidence",
+    "physical": "per DAC/family only; unsupported hardware allowed as scoped SKIP, never PASS"
+  },
+  "remaining_p1": [
+    "UI_UX_FINAL",
+    "ADVANCED_TELEMETRY",
+    "RT_PERFORMANCE_BASELINES",
+    "PRIVACY_DIAGNOSTIC_EXPORT",
+    "KWIN_A11Y_VISUAL",
+    "REMOTE_CONTRACT_FUTURE_ONLY"
+  ],
+  "remaining_p0_product": [
+    "REAL_CHECKOUT",
+    "F03_F05_OUTPUT_WIRING",
+    "FAMILY_RUNTIME",
+    "M11_5_SAMPLE_ORACLE",
+    "R15C_PRODUCT_SUITE",
+    "EXACT_SHA_CI",
+    "DAC_CAPABILITY_MATRIX"
+  ]
+}
