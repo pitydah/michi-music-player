@@ -1,0 +1,181 @@
+{
+  "R15C-01": [
+    "tests/audio_phase2/test_f11_signal_path_bridge.py::test_quality_badge_fields_are_typed_and_never_parsed_from_labels",
+    "tests/audio_phase2/test_signal_truth_semantic_gate_a38.py::test_no_capture_returns_no_positive_claim"
+  ],
+  "R15C-02": [
+    "tests/audio_phase2/test_true_peak_analysis.py::test_truncated_capture_never_claims_absence_of_clipping",
+    "tests/audio_phase2/test_michi_truth_p1_a48.py::test_metrics_unknown_without_producer"
+  ],
+  "R15C-03": [
+    "tests/audio_phase2/test_signal_truth_causal_a26.py::test_unproven_event_readback_is_not_confirmed",
+    "tests/audio_phase2/test_michi_truth_p1_a48.py::test_capabilities_effective_requires_matching_execution"
+  ],
+  "R15C-04": [
+    "tests/audio_phase2/test_productive_output_resolver.py::test_ambiguous_alsa_endpoints_are_still_rejected_for_managed",
+    "tests/audio_phase2/test_signal_truth_output_owner_a37.py::test_owner_real_recorder_running_receipt_is_current_scope_only[managed]"
+  ],
+  "R15C-05": [
+    "tests/audio_phase2/test_signal_truth_causal_a26.py::test_host_restart_with_reused_pipeline_rejected",
+    "tests/audio_phase2/test_signal_truth_causal_a26.py::test_same_textual_plan_with_new_execution_not_enough"
+  ],
+  "R15C-06": [
+    "tests/audio_phase2/test_signal_truth_dynamic_stages_a46.py::test_noncurrent_capture_does_not_inherit_live_transformations[PENDING]",
+    "tests/audio_phase2/test_michi_truth_p1_a48.py::test_coalescer_cross_epoch_and_stale_denied"
+  ],
+  "R15C-07": [
+    "tests/audio_phase2/test_signal_truth_causal_a26.py::test_stale_latest_runtime_id_is_not_confirmed",
+    "tests/audio_phase2/test_signal_truth_owner_bridge_a36.py::test_owner_changes_between_reads_are_rejected"
+  ],
+  "R15C-08": [
+    "tests/audio_phase2/test_michi_truth_p1_a48.py::test_coalescer_overflow_forces_full_resnapshot",
+    "tests/audio_phase2/test_michi_truth_p1_a48.py::test_coalescer_rejects_malformed[bad0]"
+  ],
+  "R15C-09": [
+    "tests/audio_phase2/test_signal_truth_output_owner_a37.py::test_owner_ledger_subscription_is_unsubscribable",
+    "tests/audio_phase2/test_signal_truth_causal_a26.py::test_wrong_event_epoch_rejects_positive",
+    "tests/audio_phase2/test_signal_truth_causal_a26.py::test_event_order_reversed_rejects_positive"
+  ],
+  "R15C-10": [
+    "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_negative_malformed_empty_scope_inconclusive",
+    "tests/audio_phase2/test_michi_truth_p1_a48.py::test_metrics_negative_values[bad0]"
+  ],
+  "R15C-11": [
+    "tests/audio_phase2/test_f11_signal_path_bridge.py::test_dsd_and_lossy_are_distinct_quality_classes",
+    "tests/audio_phase2/test_f11_signal_path_bridge.py::test_hires_quality_requires_more_than_sixteen_bits_or_48_khz"
+  ],
+  "R15C-12": [
+    "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_positive_fidelity_claim_rejected_without_m115",
+    "tests/audio_phase2/test_signal_truth_dynamic_stages_a46.py::test_src_and_remix_keep_reported_transformation_but_not_pcm_bitperfect"
+  ],
+  "R15C-13": [
+    "tests/dac/test_v35_070r21_transform_semantics.py::test_r21_25_26_unknown_transform_state_makes_signal_truth_unknown[evidence1-ST_RESAMPLER_STATE_UNKNOWN]",
+    "tests/audio_phase2/test_signal_truth_dynamic_stages_a46.py::test_fir_is_not_promoted_by_graph_presence_without_adoption_proof"
+  ],
+  "R15C-14": [
+    "tests/audio_phase2/test_signal_truth_owner_bridge_a36.py::test_same_output_plan_multiple_live_executions_refuses_inheritance",
+    "tests/audio_phase2/test_signal_truth_causal_a26.py::test_independent_owner_rev_changes_fail_even_with_same_identity"
+  ],
+  "R15C-15": [
+    "tests/audio_phase2/test_michi_truth_p1_a48.py::test_high_frequency_ui_observations_coalesce_to_one_noncritical",
+    "tests/audio_phase2/test_michi_truth_p1_a48.py::test_high_frequency_metric_samples_remain_bounded",
+    "tests/audio_phase2/test_michi_truth_a49_owner_metrics.py::test_bounded_cpu_readout_and_ranked_p99"
+  ],
+  "R15C-16": [
+    "tests/audio_phase2/test_signal_path_service.py::test_late_source_facts_do_not_claim_a_native_path"
+  ],
+  "R15C-17": [
+    "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_partial_single_frame_not_complete",
+    "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_complete_coverage_digital_scope_only"
+  ],
+  "R15C-18": [
+    "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_partial_missing_lfe_channel",
+    "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_mismatch_third_channel_detected"
+  ],
+  "R15C-19": [
+    "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_non_pcm_unsupported",
+    "tests/dac/test_v35_070r2_runtime_evidence.py::test_r2_08_float_formats_are_unknown[F32LE]"
+  ],
+  "R15C-21": [
+    "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_zero_rate_rejected",
+    "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_schema_not_certification"
+  ],
+  "R15C-22": [
+    "tests/audio_phase2/test_processing_compiler.py::test_gainless_lowpass_band_still_changes_sample_values"
+  ],
+  "R15C-25": [
+    "tests/audio_phase2/test_michi_truth_p1_a48.py::test_metrics_latency_percentiles_and_counter_not_summed",
+    "tests/audio_phase2/test_michi_truth_a49_owner_metrics.py::test_local_metric_does_not_generate_audio_dac_xrun_claims"
+  ],
+  "R15C-26": [
+    "tests/dac/test_v35_070r2_runtime_evidence.py::test_r2_05_twenty_four_in_thirty_two_container_is_unknown[S24_32LE]",
+    "tests/dac/test_v35_070r1_provenance.py::test_st70r1_08_s32_alone_never_proves_32_significant_bits"
+  ],
+  "R15C-27": [
+    "tests/dac/test_v35_070_alsa_runtime.py::test_st70_38_closed_or_malformed_hw_params_is_missing_evidence",
+    "tests/dac/test_v35_070_productive_signal_truth.py::test_st70_42_missing_alsa_readback_stays_unknown"
+  ],
+  "R15C-28": [
+    "tests/audio_phase2/test_signal_truth_causal_a26.py::test_wrong_event_epoch_rejects_positive",
+    "tests/audio_phase2/test_signal_truth_dynamic_stages_a46.py::test_noncurrent_capture_does_not_inherit_live_transformations[PENDING]"
+  ],
+  "R15C-29": [
+    "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_shared_hwparams_without_source_receipt_rejected",
+    "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_six_family_modes_have_contract[shared_pcm-PCM-PCM]"
+  ],
+  "R15C-30": [
+    "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_complete_coverage_digital_scope_only",
+    "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_analog_claim_rejected"
+  ],
+  "R15C-33": [
+    "tests/dac/test_v35_070r21_transform_semantics.py::test_r21_25_26_unknown_transform_state_makes_signal_truth_unknown[evidence1-ST_RESAMPLER_STATE_UNKNOWN]",
+    "tests/audio_phase2/test_signal_truth_dynamic_stages_a46.py::test_src_and_remix_keep_reported_transformation_but_not_pcm_bitperfect"
+  ],
+  "R15C-34": [
+    "tests/audio_phase2/test_signal_path_service.py::test_three_rate_provenance_is_a_contradiction_not_a_target_claim"
+  ],
+  "R15C-35": [
+    "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_partial_missing_lfe_channel",
+    "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_declared_drops_not_complete"
+  ],
+  "R15C-36": [
+    "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_dop_pcm_fabrication_refused",
+    "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_six_family_modes_have_contract[dop-DSD-DSD]"
+  ],
+  "R15C-38": [
+    "tests/audio_phase2/test_michi_truth_p1_a48.py::test_remote_report_never_physical_even_authenticated",
+    "tests/audio_phase2/test_michi_truth_p1_a48.py::test_remote_terminal_is_remote_only"
+  ],
+  "R15C-39": [
+    "tests/audio_phase2/test_true_peak_analysis.py::test_truncated_capture_never_claims_absence_of_clipping",
+    "tests/audio_phase2/test_true_peak_analysis.py::test_over_full_scale_is_reported_as_detected_clipping"
+  ],
+  "R15C-40": [
+    "tests/audio_phase2/test_signal_truth_owner_bridge_a36.py::test_same_output_plan_multiple_live_executions_refuses_inheritance",
+    "tests/audio_phase2/test_signal_truth_owner_bridge_a36.py::test_plan_from_other_owner_must_not_link"
+  ],
+  "R15C-41": [
+    "tests/audio_phase2/test_signal_truth_causal_a26.py::test_absent_event_is_not_effective",
+    "tests/audio_phase2/test_signal_truth_real_recorder_c6_a35.py::test_real_recorder_delivery_joins_family_but_not_dsp_without_adoption"
+  ],
+  "R15C-42": [
+    "tests/audio_phase2/test_f11_signal_path_bridge.py::test_candidate_snapshot_is_pending_not_effective",
+    "tests/audio_phase2/test_f11_signal_path_bridge.py::test_historical_snapshot_is_never_presented_as_active",
+    "tests/audio_phase2/test_michi_truth_a49_owner_metrics.py::test_nonactive_f03_drops_metric[PENDING]"
+  ],
+  "R15C-43": [
+    "tests/audio_phase2/test_signal_truth_causal_a26.py::test_stale_latest_dsp_revision_is_not_confirmed",
+    "tests/audio_phase2/test_signal_truth_frame_a42.py::test_changed_revision_fails_closed"
+  ],
+  "R15C-44": [
+    "tests/test_f11_qml_contract.py::test_signal_path_view_accepts_twenty_stages_and_popup_has_scroll_contract"
+  ],
+  "R15C-45": [
+    "tests/audio_phase2/test_michi_truth_p1_a48.py::test_high_frequency_ui_observations_coalesce_to_one_noncritical",
+    "tests/audio_phase2/test_michi_truth_p1_a48.py::test_high_frequency_metric_samples_remain_bounded",
+    "tests/audio_phase2/test_michi_truth_p1_a48.py::test_coalescer_overflow_forces_full_resnapshot"
+  ],
+  "R15C-46": [
+    "tests/audio_phase2/test_signal_truth_frame_a42.py::test_unknown_ui_actions_and_source_path_not_exported",
+    "tests/audio_phase2/test_michi_truth_p1_a48.py::test_diagnostics_no_leaks_and_bounded_allowlist",
+    "tests/audio_phase2/test_michi_truth_p1_a48.py::test_large_foreign_diagnostic_fields_are_not_exported"
+  ],
+  "R15C-47": [
+    "tests/audio_phase2/test_michi_truth_p1_a48.py::test_remote_replay_stress_never_changes_boundary_to_dac",
+    "tests/audio_phase2/test_michi_truth_p1_a48.py::test_remote_expiry_and_future_skew_and_owner_cap"
+  ],
+  "R15C-48": [
+    "tests/audio_phase2/test_michi_truth_a49_owner_metrics.py::test_all_six_dac_families_require_observed_capability_receipts",
+    "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_analog_claim_rejected",
+    "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_ack_without_owner_running_not_eligible"
+  ],
+  "R15C-49": [
+    "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_six_family_modes_have_contract[dop-DSD-DSD]",
+    "tests/audio_phase2/test_michi_truth_p0_contract_a47.py::test_dop_pcm_fabrication_refused"
+  ],
+  "R15C-50": [
+    "tests/audio_phase2/test_michi_truth_a49_owner_metrics.py::test_dac_qualification_is_not_inferred_from_seemingly_positive_receipt",
+    "tests/audio_phase2/test_michi_truth_a49_owner_metrics.py::test_all_six_dac_families_require_observed_capability_receipts",
+    "tests/audio_phase2/test_michi_truth_a49_owner_metrics.py::test_r15c_missing_checkout_gives_stop"
+  ]
+}

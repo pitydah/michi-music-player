@@ -1,0 +1,558 @@
+{
+  "schema": "michi.ap2.f11.r15c.coverage.v1",
+  "research_source": "MICHI_SIGNAL_TRUTH_INVESTIGACION_MAESTRA_ACUMULATIVA_V1_5_2026-11-05.md",
+  "research_status": "50_DESIGNED_ZERO_EXECUTED_AT_SOURCE_CUT",
+  "candidate_patch": "A46",
+  "external_test_certification": false,
+  "hardware_qualification": false,
+  "cases": [
+    {
+      "id": "R15C-01",
+      "source_pattern": "Deep Roon MCP",
+      "stimulus": "Missing Quality",
+      "oracle": "Un campo quality ausente produce UNKNOWN, no inactive; el badge desaparece si no hay identidad activa.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-02",
+      "source_pattern": "Deep Roon MCP",
+      "stimulus": "Missing IsClipping",
+      "oracle": "Clipping ausente produce UNKNOWN con boundary; false solo con observación válida.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-03",
+      "source_pattern": "Deep Roon MCP",
+      "stimulus": "DSP ACK sin readback",
+      "oracle": "ACK exitoso y readback undefined debe quedar INCONCLUSIVE y no EFFECTIVE.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-04",
+      "source_pattern": "Deep Roon MCP",
+      "stimulus": "Dos endpoints en una zona",
+      "oracle": "Configurar EQ de endpoint A no valida B aunque `outputs[0]` apunte A.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-05",
+      "source_pattern": "Deep Roon MCP",
+      "stimulus": "OID reciclado tras reconnect",
+      "oracle": "No mezclar etapas ni valores de sesiones distintas.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-06",
+      "source_pattern": "Deep Roon MCP",
+      "stimulus": "Track A waveform en B",
+      "oracle": "Rechazar medidas con media_epoch antiguo aun si llega graph PUSH reciente.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-07",
+      "source_pattern": "roon-library-controls",
+      "stimulus": "ACK de A con B actual",
+      "oracle": "El readback por predicado requiere track/route/revision coincidente.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-08",
+      "source_pattern": "Arthur protocol",
+      "stimulus": "Handshake fragmentado",
+      "oracle": "Ni evento de estado ni atributo hasta completar frame válido.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-09",
+      "source_pattern": "Arthur protocol",
+      "stimulus": "RPC tras cierre",
+      "oracle": "Cancelar pendientes y rechazar callbacks tardíos sin recurso/Qt leak.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-10",
+      "source_pattern": "Arthur protocol",
+      "stimulus": "Nulos en payload",
+      "oracle": "Null de tasa, clipping o Quality no se convierte en zero/false seguro.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-11",
+      "source_pattern": "Sonn",
+      "stimulus": "AAC passthrough",
+      "oracle": "Mostrar SOURCE_LOSSY + DECODED_UNCHANGED, sin adjudicar SOURCE_LOSSLESS.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-12",
+      "source_pattern": "Sonn",
+      "stimulus": "FLAC 96→44.1 con bitPerfect true documental",
+      "oracle": "Contrato de Michi rechaza o reclasifica contradicción entre SRC y samples exactos.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-13",
+      "source_pattern": "Sonn",
+      "stimulus": "FFmpeg autoaresample con EQ",
+      "oracle": "Etapa observada por backend o UNKNOWN; nunca \"no resampler\" por cadena explícita vacía.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [
+        "tests/audio_phase2/test_signal_truth_dynamic_stages_a46.py"
+      ],
+      "scope": "SYNTHETIC_PROJECTION_PARTIAL; PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-14",
+      "source_pattern": "Sonn",
+      "stimulus": "Dos sesiones mismo perfil",
+      "oracle": "Ningún campo de sesión A se mezcla con B; identidad exacta sobre heurísticas de tasa.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-15",
+      "source_pattern": "Sonn",
+      "stimulus": "Medidor lento/spectrum",
+      "oracle": "Frames de análisis se descartan; no XRUN nuevo ni bloqueo de consumidor audio.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-16",
+      "source_pattern": "Sonn",
+      "stimulus": "Tasa fuente conocida tarde",
+      "oracle": "El plan ejecutado y causa SRC reflejan que la decisión se tomó sin fuente nativa disponible.",
+      "integration_status": "PASS",
+      "evidence": {
+        "kind": "SOFTWARE_TEST",
+        "node": "tests/audio_phase2/test_signal_path_service.py::test_late_source_facts_do_not_claim_a_native_path",
+        "result": "PASS"
+      },
+      "candidate_tests": [
+        "tests/audio_phase2/test_signal_path_service.py::test_late_source_facts_do_not_claim_a_native_path"
+      ],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-17",
+      "source_pattern": "audiolaz",
+      "stimulus": "20 spans comparados 100 omitidos",
+      "oracle": "Reportar MATCH_PARTIAL y cobertura, no total ni DAC_VERIFIED.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-18",
+      "source_pattern": "audiolaz",
+      "stimulus": "Más de 2 canales",
+      "oracle": "No aplicar oráculo estéreo al resto; coverage per-channel explícita.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-19",
+      "source_pattern": "audiolaz",
+      "stimulus": "Muestras float/DSD",
+      "oracle": "No invocar hash de frames int32 como oráculo universal.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-20",
+      "source_pattern": "audiolaz",
+      "stimulus": "Swap/polarity",
+      "oracle": "Distinguir preservación reversible de identidad sample-by-sample.",
+      "integration_status": "NOT_RUN",
+      "evidence": {
+        "kind": "EXTERNAL_JUSTIFICATION",
+        "reason": "REQUIRES_DSP_POLARITY_IMPLEMENTATION_NOT_PRESENT_IN_PRODUCT"
+      },
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-21",
+      "source_pattern": "EKO",
+      "stimulus": "Rates unknown=0",
+      "oracle": "No declarar `pure` como comprobación de hardware por ausencia de transformación detectada.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-22",
+      "source_pattern": "EKO",
+      "stimulus": "PEQ de ganancia 0 con lowpass",
+      "oracle": "Detectar alteración de muestra, no guiarse solo por gain=0.",
+      "integration_status": "PASS",
+      "evidence": {
+        "kind": "SOFTWARE_TEST",
+        "node": "tests/audio_phase2/test_processing_compiler.py::test_gainless_lowpass_band_still_changes_sample_values",
+        "result": "PASS"
+      },
+      "candidate_tests": [
+        "tests/audio_phase2/test_processing_compiler.py::test_gainless_lowpass_band_still_changes_sample_values"
+      ],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-23",
+      "source_pattern": "EKO",
+      "stimulus": "Mutex callback bajo carga",
+      "oracle": "Medir callback p99 + XRUN; análisis no empeora plazo ni contención.",
+      "integration_status": "NOT_RUN",
+      "evidence": {
+        "kind": "EXTERNAL_JUSTIFICATION",
+        "reason": "REQUIRES_REAL_TIME_AUDIO_CALLBACK_AND_XRUN_MEASUREMENT"
+      },
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-24",
+      "source_pattern": "Aurora",
+      "stimulus": "Crossfade: medidor del player principal",
+      "oracle": "El reporte evidencia límite de cobertura e independencia de ventanas.",
+      "integration_status": "NOT_RUN",
+      "evidence": {
+        "kind": "EXTERNAL_JUSTIFICATION",
+        "reason": "REQUIRES_PLAYER_CROSSFADE_RUNTIME_WINDOWS"
+      },
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-25",
+      "source_pattern": "Aurora",
+      "stimulus": "Latencia de rack vs DAC",
+      "oracle": "No sumar latencia DSP como si midiera USB/analógico.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-26",
+      "source_pattern": "Aurora",
+      "stimulus": "Diferencia S24-in-32 vs S32",
+      "oracle": "Mostrar bits significativos separados del contenedor.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-27",
+      "source_pattern": "Riflay",
+      "stimulus": "No HwParams",
+      "oracle": "Format DAC unknown, `bitPerfect` no es verificación DAC.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-28",
+      "source_pattern": "Riflay",
+      "stimulus": "Future retorna tras cambio de pista",
+      "oracle": "Descartar resultado de epoch anterior, sin UI stale.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-29",
+      "source_pattern": "Riflay",
+      "stimulus": "plughw/shared OS mixer",
+      "oracle": "No trasladar ruta directa como bitperfect tras fallback.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-30",
+      "source_pattern": "Lyrion mobile",
+      "stimulus": "Engine bitperfect vs endpoint not",
+      "oracle": "Publicar dos veredictos separados y frontera última verificada.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-31",
+      "source_pattern": "Lyrion mobile",
+      "stimulus": "USB Android atributos rechazados",
+      "oracle": "Bajar a mixed sin sello DAC, registrar razón exacta.",
+      "integration_status": "NOT_RUN",
+      "evidence": {
+        "kind": "EXTERNAL_JUSTIFICATION",
+        "reason": "REQUIRES_ANDROID_USB_HARDWARE"
+      },
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-32",
+      "source_pattern": "Lyrion web",
+      "stimulus": "browser rate cambia",
+      "oracle": "Indicar formato observado y transformación downstream no observable.",
+      "integration_status": "NOT_RUN",
+      "evidence": {
+        "kind": "EXTERNAL_JUSTIFICATION",
+        "reason": "REQUIRES_BROWSER_RUNTIME_NOT_A_MICHI_SURFACE"
+      },
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-33",
+      "source_pattern": "Lyrion Core",
+      "stimulus": "tasa distinta sin etapa SRC recibida",
+      "oracle": "No nombrar exact driver de SRC desde solo rate mismatch.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-34",
+      "source_pattern": "SROVA",
+      "stimulus": "SRC target 96 / runtime 44.1 / ALSA 48",
+      "oracle": "Marcar contradicción y procedencia triple; no usar target en headline efectivo.",
+      "integration_status": "PASS",
+      "evidence": {
+        "kind": "SOFTWARE_TEST",
+        "node": "tests/audio_phase2/test_signal_path_service.py::test_three_rate_provenance_is_a_contradiction_not_a_target_claim",
+        "result": "PASS"
+      },
+      "candidate_tests": [
+        "tests/audio_phase2/test_signal_path_service.py::test_three_rate_provenance_is_a_contradiction_not_a_target_claim"
+      ],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-35",
+      "source_pattern": "minervarr",
+      "stimulus": "Write PCM 6ch parcial",
+      "oracle": "Contar frames/bytes correctamente por formato y canales; no interpretar ACK como DAC.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-36",
+      "source_pattern": "minervarr",
+      "stimulus": "DSD/DoP raw passthrough",
+      "oracle": "No analizar portadora como PCM ni aplicar gain por error.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-37",
+      "source_pattern": "Astra",
+      "stimulus": "QPC versus AudioContext",
+      "oracle": "Medición rechazada por clock-domain mismatch sin calibración.",
+      "integration_status": "NOT_RUN",
+      "evidence": {
+        "kind": "EXTERNAL_JUSTIFICATION",
+        "reason": "REQUIRES_WINDOWS_QPC_AUDIOCONTEXT_HARDWARE"
+      },
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-38",
+      "source_pattern": "Roon official",
+      "stimulus": "Endpoint DSP after RAAT",
+      "oracle": "Paso remoto marcado REMOTE_REPORTED, no MUSE_LOCAL.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-39",
+      "source_pattern": "Roon official",
+      "stimulus": "MUSE clipping single sample",
+      "oracle": "No equiparar clipping digital con truepeak ni con pico de muestra fuente.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-40",
+      "source_pattern": "Roon group",
+      "stimulus": "Dos outputs en grupo",
+      "oracle": "Dos rutas/receipts; nunca un equipo arbitrario por nombre.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-41",
+      "source_pattern": "Official API remotes",
+      "stimulus": "Play accepted vs audio effective",
+      "oracle": "No declarar PLAYING/bitperfect desde aceptación de comando.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-42",
+      "source_pattern": "Michi bridge",
+      "stimulus": "Pending vs historical",
+      "oracle": "Candidate no se presenta ACTIVE, last no se usa como salida viva.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [
+        "tests/audio_phase2/test_signal_truth_dynamic_stages_a46.py"
+      ],
+      "scope": "SYNTHETIC_NONCURRENT_PARTIAL; PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-43",
+      "source_pattern": "Michi bridge",
+      "stimulus": "Identidad DSP plan desigual",
+      "oracle": "Processing unknown con razón tipada, sin sumar filtro de rev antigua.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [
+        "tests/audio_phase2/test_signal_truth_dynamic_stages_a46.py"
+      ],
+      "scope": "SYNTHETIC_DSP_FENCE_PARTIAL; PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-44",
+      "source_pattern": "Michi UI",
+      "stimulus": "20 stages / 200% DPI",
+      "oracle": "Focus, desplazamiento, lectura y anchuras sin colapsar NowPlayingBar.",
+      "integration_status": "PASS",
+      "evidence": {
+        "kind": "SOFTWARE_TEST",
+        "node": "tests/test_f11_qml_contract.py::test_signal_path_view_accepts_twenty_stages_and_popup_has_scroll_contract",
+        "result": "PASS"
+      },
+      "candidate_tests": [
+        "tests/test_f11_qml_contract.py::test_signal_path_view_accepts_twenty_stages_and_popup_has_scroll_contract"
+      ],
+      "scope": "STATIC_ONLY; QML_KWIN_NOT_RUN"
+    },
+    {
+      "id": "R15C-45",
+      "source_pattern": "Michi telemetry",
+      "stimulus": "1.000 updates por segundo",
+      "oracle": "Snapshots coherentes, coalescing UI, sin blocking audio.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "QML_KWIN_NOT_RUN"
+    },
+    {
+      "id": "R15C-46",
+      "source_pattern": "Michi privacy",
+      "stimulus": "Exportar reporte con pistas y tokens",
+      "oracle": "Todos los datos privados omitidos o anonimizados; técnica conserva provenance.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-47",
+      "source_pattern": "Michi remote",
+      "stimulus": "Remote receipt duplicado/replay",
+      "oracle": "Secuencia/endpoint/epoch validan frescura; replay rechazado.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-48",
+      "source_pattern": "Michi DAC",
+      "stimulus": "USB ack sin hardware measure",
+      "oracle": "Boundary SUBMITTED/ACK; jamás ANALOG_VERIFIED.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-49",
+      "source_pattern": "Michi DSD",
+      "stimulus": "DoP encoded vs PCM format",
+      "oracle": "Mostrar carrier PCM y payload DSD como dominios distintos.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    },
+    {
+      "id": "R15C-50",
+      "source_pattern": "Michi compliance",
+      "stimulus": "No DAC conectado",
+      "oracle": "Pruebas físicas NOT_RUN, unit gates independientes, sin CLAIM PASS.",
+      "integration_status": "NOT_RUN",
+      "evidence": null,
+      "candidate_tests": [],
+      "scope": "PRODUCT_NOT_EXECUTED"
+    }
+  ]
+}

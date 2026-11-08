@@ -366,6 +366,47 @@ def test_rate_mismatch_without_resampler_is_contradicted() -> None:
     assert "ST_RATE_MISMATCH" in engine.reason_codes
 
 
+def test_late_source_facts_do_not_claim_a_native_path() -> None:
+    identity = _identity()
+    source_pcm = _pcm(rate=44100)
+    engine_pcm = _pcm(rate=96000)
+    snapshot = _classified(
+        identity=identity,
+        plan=_plan(identity, engine_pcm),
+        source=None,
+        decoded=_decoded(identity, source_pcm),
+        engine=_engine(identity, engine_pcm, resampling_observed=True),
+        alsa=_alsa(identity, engine_pcm),
+    )
+    assert snapshot.verdict is SignalTruthVerdict.RESAMPLED
+    projection = _project(snapshot)
+    assert projection.verdict == "resampled"
+    source = _node(projection, "source")
+    assert source.state is SignalPathNodeState.NOT_OBSERVED
+    assert "ST_RESAMPLER_PRESENT" in _node(projection, "engine").reason_codes
+
+
+def test_three_rate_provenance_is_a_contradiction_not_a_target_claim() -> None:
+    identity = _identity()
+    target_pcm = _pcm(rate=96000)
+    decoded_pcm = _pcm(rate=44100)
+    runtime_pcm = _pcm(rate=48000)
+    snapshot = _classified(
+        identity=identity,
+        plan=_plan(identity, target_pcm),
+        source=_source(identity, decoded_pcm),
+        decoded=_decoded(identity, decoded_pcm),
+        engine=_engine(identity, runtime_pcm),
+        alsa=_alsa(identity, runtime_pcm),
+    )
+    assert snapshot.verdict is SignalTruthVerdict.CONTRADICTED
+    projection = _project(snapshot)
+    assert projection.verdict == "contradicted"
+    assert "ST_RATE_MISMATCH" in _node(projection, "engine").reason_codes
+    assert dict(_node(projection, "engine").requested)["rate_hz"] == 96000
+    assert dict(_node(projection, "engine").effective)["rate_hz"] == 48000
+
+
 def test_missing_evidence_nodes_stay_explicit() -> None:
     snapshot = _unknown()
     projection = _project(snapshot)

@@ -539,3 +539,15 @@ def test_compiler_and_effective_modules_are_pure_and_factory_free() -> None:
             "audioresample",
         ):
             assert forbidden not in source, (module.name, forbidden)
+
+
+def test_gainless_lowpass_band_still_changes_sample_values() -> None:
+    band = PeqBand(
+        band_id="lowpass",
+        filter_type=BiquadType.LOW_PASS,
+        frequency_hz=1000.0,
+        q=0.707,
+        gain_db=0.0,
+    )
+    plan = _compile(_graph(_peq(band)))
+    assert plan.changes_sample_values is True

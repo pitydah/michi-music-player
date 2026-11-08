@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -26,6 +27,9 @@ def seeded(repo: Path) -> tuple[Path, str]:
     git(repo, "config", "user.name", "Michi Test")
     git(repo, "config", "user.email", "fixture@example.invalid")
     specs = {
+        "src/michi/__init__.py": "",
+        "src/michi/domain/__init__.py": "",
+        "src/michi/application/__init__.py": "",
         "src/michi/domain/" + mig.OLD_SNAKE + ".py": "class Signal"
         + "PathNodeKind: pass\nclass Signal"
         + "PathSnapshot: pass\n",
@@ -118,12 +122,38 @@ def test_rename_is_semantic_and_no_alias_survives(tmp_path):
     assert "signalTruth'" in (repo / "src/michi/bootstrap/__init__.py").read_text()
     assert "historical" in (repo / "docs/audio/phase2/PHASE2_STATE.json").read_text()
     assert mig.NEW_BIBLE in (repo / "docs/audio/phase2/PHASE2_STATE.json").read_text()
+    service = (
+        repo / "src/michi/application/signal_truth_projection_service.py"
+    ).read_text()
+    assert "from michi.domain.truth_graph import" in service
+    assert "from michi.domain." + mig.OLD_SNAKE not in service
+    imported = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import michi.application.signal_truth_projection_service as m;"
+            "print(m.__file__)",
+        ],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        env={"PATH": os.environ.get("PATH", ""), "PYTHONPATH": str(repo / "src")},
+    )
+    assert imported.returncode == 0, imported.stderr
+    assert str(repo / "src") in imported.stdout
     for root in ("src", "tests", "AGENTS.md", ".github"):
         pp = repo / root
         files = pp.rglob("*") if pp.is_dir() else (pp,)
         for p in files:
-            if p.is_file():
+            if p.is_file() and "__pycache__" not in p.parts and p.suffix != ".pyc":
                 assert not mig.RESTRICTED.search(p.read_text()), p
+
+
+def test_second_apply_refuses_instead_of_rewriting_twice(tmp_path):
+    repo, head = seeded(tmp_path / "r")
+    mig.apply(repo, mig.plan(repo, expected_head=head))
+    with pytest.raises(mig.Refusal, match="missing or linked file"):
+        mig.plan(repo, expected_head=head)
 
 
 def test_refuses_wrong_head(tmp_path):

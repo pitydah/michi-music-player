@@ -28,10 +28,14 @@ ColumnLayout {
     }
 
     MichiSignalPathView {
+        objectName: "signalTruthPanelPath"
         Layout.fillWidth: true
         stages: root.stages
         expandedStageId: root.expandedStageId
         compact: true
+        onExpansionRequested: stageId => {
+            root.expandedStageId = stageId
+        }
         onConfigurationRequested: root.expandedStageId = ""
     }
 

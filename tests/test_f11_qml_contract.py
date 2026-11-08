@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import QMetaObject, QObject, QUrl
+from PySide6.QtCore import Property, QMetaObject, QObject, QUrl, Signal, Slot
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 from PySide6.QtTest import QTest
@@ -80,6 +80,81 @@ def _layout(block: str, key: str) -> int:
     match = re.search(rf"Layout\.{key}:\s*(\d+)", block)
     assert match is not None, f"Layout.{key} missing in {block[:120]}"
     return int(match.group(1))
+
+
+class _FakeTruthBridge(QObject):
+    """Minimal immutable read model for the popup's canonical/legacy split."""
+
+    changed = Signal()
+
+    def __init__(self, canonical, legacy):
+        super().__init__()
+        self._canonical = canonical
+        self._legacy = legacy
+
+    @Property("QVariantMap", notify=changed)
+    def truthFrame(self):
+        return {"stages": self._canonical} if self._canonical is not None else {}
+
+    @Property("QVariantList", notify=changed)
+    def stages(self):
+        return self._legacy
+
+    @Property("QVariantList", notify=changed)
+    def metricItems(self):
+        return []
+
+    @Property(int, notify=changed)
+    def generation(self):
+        return 1
+
+    @Property(str, notify=changed)
+    def headline(self):
+        return "Direct"
+
+    @Property(str, notify=changed)
+    def status(self):
+        return "ACTIVE"
+
+    @Property(str, notify=changed)
+    def statusLabel(self):
+        return "ACTIVE"
+
+    @Property(str, notify=changed)
+    def proofLevel(self):
+        return "software"
+
+    @Property(str, notify=changed)
+    def pathProofState(self):
+        return "verified"
+
+    @Property(str, notify=changed)
+    def pathProofLabel(self):
+        return "software path"
+
+    @Property(str, notify=changed)
+    def sourceFormatLabel(self):
+        return "FLAC"
+
+    @Property(str, notify=changed)
+    def sourceRateDepthLabel(self):
+        return "96 kHz / 24 bit"
+
+    @Property(str, notify=changed)
+    def sourceQualityClass(self):
+        return "hires"
+
+    @Property(str, notify=changed)
+    def indicatorState(self):
+        return "active"
+
+    @Property(str, notify=changed)
+    def indicatorTooltip(self):
+        return "Signal Truth"
+
+    @Slot(str)
+    def request_configuration(self, action):
+        self.requested = action
 
 
 @pytest.fixture(scope="module")
@@ -510,3 +585,75 @@ def test_signal_truth_popup_never_claims_unproven_truth(qapp):
         assert "openerY - signalTruthPopup.height" in now_playing
     finally:
         popup.deleteLater()
+
+
+def test_signal_truth_popup_prefers_canonical_stages_and_keeps_legacy_fallback(
+    qapp,
+):
+    canonical = [{"id": "device", "title": "Device"}]
+    legacy = [{"id": "source", "title": "Source"}]
+    bridge = _FakeTruthBridge(canonical, legacy)
+    popup = _instantiate(QML_DIR / "player" / "SignalTruthPopup.qml", 440, 620)
+    try:
+        popup.setProperty("signalPathBridge", bridge)
+        QTest.qWait(100)
+        assert [stage["id"] for stage in popup.property("stages")] == ["device"]
+        view = _named(popup, "signalTruthStageView")
+        assert [stage["id"] for stage in view.property("stages")] == ["device"]
+
+        bridge._canonical = []
+        bridge.changed.emit()
+        QTest.qWait(100)
+        assert [stage["id"] for stage in popup.property("stages")] == ["source"]
+        assert [stage["id"] for stage in view.property("stages")] == ["source"]
+    finally:
+        popup.deleteLater()
+
+
+def test_signal_path_view_accepts_twenty_stages_and_popup_has_scroll_contract(
+    qapp,
+):
+    stages = [
+        {
+            "id": f"stage-{index}",
+            "title": f"Stage {index}",
+            "summary": "bounded stage",
+            "detail": "detail " * 4,
+            "expandable": True,
+        }
+        for index in range(20)
+    ]
+    view = _instantiate(QML_DIR / "components" / "MichiSignalPathView.qml", 480, 900)
+    try:
+        view.setProperty("stages", stages)
+        QTest.qWait(100)
+        assert len(view.property("stages")) == 20
+        assert "model: root.stages" in (
+            QML_DIR / "components" / "MichiSignalPathView.qml"
+        ).read_text(encoding="utf-8")
+        popup = (QML_DIR / "player" / "SignalTruthPopup.qml").read_text(
+            encoding="utf-8"
+        )
+        assert "interactive: contentHeight > height + 1" in popup
+        assert "stageViewportLimit" in popup
+    finally:
+        view.deleteLater()
+
+
+def test_signal_truth_panel_consumes_expansion_request(qapp):
+    panel = _instantiate(QML_DIR / "components" / "SignalTruthPanel.qml", 420, 400)
+    try:
+        panel.setProperty(
+            "stages",
+            [{"id": "source", "title": "Source", "expandable": True}],
+        )
+        QTest.qWait(100)
+        view = _named(panel, "signalTruthPanelPath")
+        view.expansionRequested.emit("source")
+        QTest.qWait(50)
+        assert panel.property("expandedStageId") == "source"
+        view.expansionRequested.emit("")
+        QTest.qWait(50)
+        assert panel.property("expandedStageId") == ""
+    finally:
+        panel.deleteLater()
