@@ -14,17 +14,30 @@ ColumnLayout {
     property bool configurationEnabled: !compact
     spacing: 0
     signal configurationRequested(string action)
+    signal expansionRequested(string stageId)
+
+    // Use the Repeater API: children also includes non-delegate QML objects.
+    function stageItem(stageId) {
+        for (let index = 0; index < stageRepeater.count; index += 1) {
+            const item = stageRepeater.itemAt(index)
+            if (item && item.objectName === "signalStage_" + stageId)
+                return item
+        }
+        return null
+    }
 
     function focusFirstStage() {
-        for (let index = 0; index < children.length; index += 1) {
-            if (children[index].activeFocusOnTab) {
-                children[index].forceActiveFocus()
+        for (let index = 0; index < stageRepeater.count; index += 1) {
+            const item = stageRepeater.itemAt(index)
+            if (item && item.activeFocusOnTab) {
+                item.forceActiveFocus()
                 return
             }
         }
     }
 
     Repeater {
+        id: stageRepeater
         model: root.stages
         delegate: MichiSignalNode {
             required property var modelData
@@ -58,8 +71,9 @@ ColumnLayout {
                 ? (modelData.configAction || "NONE") : "NONE"
             stageState: modelData.state || "unknown"
             onToggleRequested: {
-                root.expandedStageId = root.expandedStageId === modelData.id
-                    ? "" : modelData.id
+                // The Popup owns expandedStageId; do not destroy its binding.
+                root.expansionRequested(root.expandedStageId === modelData.id
+                    ? "" : modelData.id)
             }
             onConfigurationRequested: action => {
                 root.configurationRequested(action)

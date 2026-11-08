@@ -1,0 +1,93 @@
+{
+  "schema": "michi.f11.a49.product_acceptance.v1",
+  "version": "A49",
+  "git_reference": "d32228fbcc49c4f107e4295b1a70e31fde4d9b07",
+  "github_mutations": false,
+  "google_drive_artifacts_replaced_in_place": true,
+  "gate": "NO_GO",
+  "candidate_focused_tests": {
+    "pass": 110,
+    "fail": 0,
+    "environment": "SYNTHETIC_FIXTURE_ONLY"
+  },
+  "product_tests": {
+    "status": "NOT_RUN",
+    "reason": "CHECKOUT_DOWNLOAD_DNS_FAILED_AND_NO_QT_KWIN_DAC"
+  },
+  "r15c": {
+    "pass": 0,
+    "not_run": 50,
+    "fail": 0
+  },
+  "dac_physical": "NOT_RUN",
+  "kwin": "NOT_RUN",
+  "qt_live": "NOT_RUN",
+  "remote_ci_exact_sha": "NOT_RUN",
+  "permissions": {
+    "folder": "anyone:writer",
+    "plan": "anyone:writer",
+    "patch": "anyone:writer",
+    "changed": false
+  },
+  "tasks": [
+    {
+      "number": 1,
+      "priority": "P0",
+      "candidate_state": "PR245_SOURCE_REVIEWED",
+      "product_state": "NO_FULL_CHECKOUT",
+      "open_id": "OPEN-P0-01"
+    },
+    {
+      "number": 2,
+      "priority": "P1",
+      "candidate_state": "QML_WIRED_CANDIDATE",
+      "product_state": "KWIN_QML_NOT_RUN",
+      "open_id": "OPEN-P1-01"
+    },
+    {
+      "number": 3,
+      "priority": "P1",
+      "candidate_state": "QT_PROJECTION_METER_CANDIDATE",
+      "product_state": "QT_APP_NOT_RUN",
+      "open_id": "OPEN-P1-02"
+    },
+    {
+      "number": 4,
+      "priority": "P1",
+      "candidate_state": "OS_EXTERNAL_BENCH_EXECUTABLE",
+      "product_state": "REAL_PLAYER_DSP_AI_NOT_RUN",
+      "open_id": "OPEN-P1-03"
+    },
+    {
+      "number": 5,
+      "priority": "P1",
+      "candidate_state": "F05_READONLY_CAPABILITIES_WIRED",
+      "product_state": "SETTINGS_FIR_READBACK_NOT_RUN",
+      "open_id": "OPEN-P1-05"
+    },
+    {
+      "number": 6,
+      "priority": "P0",
+      "candidate_state": "R15C_RUNNER_AND_DAC_RECEIPT_INSPECTOR",
+      "product_state": "R15C_0_50_CI_NOT_RUN",
+      "open_id": "OPEN-P0-06"
+    },
+    {
+      "number": 7,
+      "priority": "GOV",
+      "candidate_state": "DRIVE_FOLDER_AND_FILES_ACL_AUDITED",
+      "product_state": "ROLE_CHANGE_NOT_AUTHORIZED",
+      "open_id": "OPEN-GOV-01"
+    }
+  ],
+  "baseline_blobs": {
+    "signal_truth.py": "8859d9c6519807f20551a0f5650b40bcd277465a",
+    "signal_path_service.py": "5f35b803efc8e40291b91fc19afa7dc4aaf7f3a8",
+    "audio_processing_service.py": "f11e76c39acfd708cc978235f98fbfa4cfa5d70e",
+    "output_session_service.py": "db3228bdc9d385fb46f022a22a714ca92e0dc158",
+    "signal_path_bridge.py": "70970e00cf163af27c5e91da27ab4294b6dba6cb",
+    "SignalTruthPopup.qml": "3ad6080b48d3f953a21b4d353592255d48f0db33",
+    "MichiSignalPathView.qml": "34ff5875051c7d1345cf32d98d61a3b049c1023f",
+    "bootstrap/__init__.py": "bf6b63179cb1d33ba195ddc56d68afc17381163e"
+  }
+}

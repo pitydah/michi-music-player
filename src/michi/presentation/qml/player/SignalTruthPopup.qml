@@ -15,7 +15,16 @@ Popup {
     property var focusReturnTarget: null
     signal configurationAction(string action)
 
-    readonly property var stages: signalPathBridge ? signalPathBridge.stages : []
+    readonly property var canonicalTruthFrame: signalPathBridge
+        && signalPathBridge.truthFrame ? signalPathBridge.truthFrame : ({})
+    // Prefer the canonical F03/owner frame; legacy projections without one
+    // keep the established bridge stages instead of collapsing the popup.
+    readonly property var stages: {
+        const canonicalStages = canonicalTruthFrame.stages
+        if (canonicalStages && canonicalStages.length > 0)
+            return canonicalStages
+        return signalPathBridge ? signalPathBridge.stages : []
+    }
     readonly property string headline: signalPathBridge
         ? signalPathBridge.headline : qsTr("No active path")
     readonly property string proofLevel: signalPathBridge
@@ -30,6 +39,11 @@ Popup {
         : signalPathBridge.status === "PENDING" ? qsTr("PREPARING")
         : qsTr("NOT ACTIVE")
         : qsTr("NOT ACTIVE")
+    readonly property string familyEvidenceText: canonicalTruthFrame.familyEvidenceText || ""
+    readonly property string dspExecutionText: canonicalTruthFrame.dspExecutionText || ""
+    readonly property string familyEvidenceState: canonicalTruthFrame.familyEvidenceState || "UNOBSERVED"
+    readonly property var metricItems: signalPathBridge
+        ? signalPathBridge.metricItems : []
     readonly property string proofState: signalPathBridge
         ? signalPathBridge.pathProofState : "no_path"
     readonly property string proofLabel: signalPathBridge
@@ -63,7 +77,9 @@ Popup {
         maxPopupHeight > 0 ? maxPopupHeight : safeOverlayHeight)
     // Header + summary card + headline + footer + spacing. The stage area is
     // the only region allowed to shrink; the footer must stay visible.
-    readonly property real chromeHeight: compactDensity ? 220 : 252
+    readonly property real chromeHeight: (compactDensity ? 220 : 252)
+        + (temporalStatus === "ACTIVE" && familyEvidenceText !== "" ? 30 : 0)
+        + (temporalStatus === "ACTIVE" && metricItems && metricItems.length > 0 ? 32 : 0)
     readonly property real stageViewportLimit: Math.max(120,
         stageAvailableHeight - chromeHeight)
     // Deterministic content budget from the stage view's intrinsic height.
@@ -130,16 +146,12 @@ Popup {
     }
 
     function revealStage(stageId) {
-        for (let index = 0; index < stageView.children.length; index += 1) {
-            const child = stageView.children[index]
-            if (child.objectName === "signalStage_" + stageId) {
-                const limit = Math.max(0,
-                    stageView.implicitHeight - stagesViewport.height)
-                stagesViewport.contentY = Math.max(0,
-                    Math.min(child.y - MichiSpacing.sm, limit))
-                return
-            }
-        }
+        const stage = stageView.stageItem(stageId)
+        if (!stage) return
+        const limit = Math.max(0,
+            stageView.implicitHeight - stagesViewport.height)
+        stagesViewport.contentY = Math.max(0,
+            Math.min(stage.y - MichiSpacing.sm, limit))
     }
 
     contentItem: ColumnLayout {
@@ -218,6 +230,30 @@ Popup {
                         wrapMode: Text.WordWrap
                     }
                 }
+
+                MichiText {
+                    visible: root.temporalStatus === "ACTIVE"
+                        && root.familyEvidenceText !== ""
+                    text: root.familyEvidenceText
+                    role: "caption"
+                    color: root.familyEvidenceState === "CONFLICTED"
+                        ? MichiPalette.error : MichiPalette.textSecondary
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    Accessible.name: root.familyEvidenceText
+                }
+
+                // A49: a bounded owner-thread projection timing disclosure;
+                // NOT an audio callback latency or a DAC/bit-perfect claim.
+                MichiSignalTruthMetrics {
+                    objectName: "signalTruthMetricsDisclosure"
+                    Layout.fillWidth: true
+                    compact: root.compactDensity
+                    temporalStatus: root.temporalStatus
+                    metricItems: root.metricItems
+                    visible: root.temporalStatus === "ACTIVE"
+                        && root.metricItems && root.metricItems.length > 0
+                }
             }
         }
 
@@ -247,6 +283,7 @@ Popup {
                 configurationEnabled: true
                 stages: root.stages
                 expandedStageId: root.expandedStageId
+                onExpansionRequested: stageId => { root.expandedStageId = stageId }
                 onConfigurationRequested: action => {
                     root.close()
                     if (root.signalPathBridge)

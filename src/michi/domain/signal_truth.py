@@ -7,8 +7,10 @@ and consults no other authority.
 
 from __future__ import annotations
 
+import json
+import math
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from contextlib import suppress
 from dataclasses import dataclass, replace
 from enum import Enum, StrEnum
@@ -787,6 +789,143 @@ class OutputFamilyState(StrEnum):
     RELEASED = "released"
 
 
+# AP2-F11 ST-02/A20. Output family receipts are historical facts. A dict
+# subclass is not safe: dict.__setitem__ bypasses Python overrides. Store
+# immutable, detached, finite, bounded, JSON-compatible evidence instead.
+# Public Mapping semantics intentionally support bridge dict(...) and .get().
+class _FrozenRuntimeFact(Mapping):
+    __slots__ = ("_pairs",)
+
+    def __init__(self, pairs):
+        object.__setattr__(self, "_pairs", tuple(pairs))
+
+    def __setattr__(self, _name, _value):
+        raise TypeError("Signal Truth runtime evidence is immutable")
+
+    def __delattr__(self, _name):
+        raise TypeError("Signal Truth runtime evidence is immutable")
+
+    def __getitem__(self, key):
+        for name, value in self._pairs:
+            if name == key:
+                return value
+        raise KeyError(key)
+
+    def __iter__(self):
+        return (key for key, _ in self._pairs)
+
+    def __len__(self):
+        return len(self._pairs)
+
+    def __eq__(self, other):
+        if isinstance(other, Mapping):
+            return dict(self.items()) == dict(other.items())
+        return NotImplemented
+
+    def __repr__(self):
+        # Runtime may contain private identifiers: never dump it via repr.
+        return f"_FrozenRuntimeFact(<{len(self)} keys>)"
+
+    def __deepcopy__(self, memo):
+        # dataclasses.asdict(event) calls deepcopy for unknown object types.
+        # Return a DETACHED, JSON-ready mapping at that explicit boundary.
+        from copy import deepcopy
+
+        return {deepcopy(k, memo): deepcopy(v, memo) for k, v in self._pairs}
+
+    @staticmethod
+    def _readonly(*_args, **_kwargs):
+        raise TypeError("Signal Truth runtime evidence is immutable")
+
+    __setitem__ = _readonly
+    __delitem__ = _readonly
+    update = _readonly
+    clear = _readonly
+    pop = _readonly
+    popitem = _readonly
+    setdefault = _readonly
+    __ior__ = _readonly
+
+    def __reduce__(self):
+        # Pickled receipts reconstruct the immutable Mapping, not a dict.
+        return (type(self), (self._pairs,))
+
+
+def _freeze_output_runtime_fact(raw):
+    """Detach and validate all runtime facts (never freeze caller-owned data).
+
+    The producer-facing payload is JSON-shaped; StrEnum values from the
+    DSD-to-PCM conversion evidence are supported as strings. Bounded freezing
+    MUST NOT run from the realtime audio callback.
+    """
+    max_depth = 16
+    max_nodes = 2048
+    max_key_length = 256
+    max_string_length = 4096
+    max_json_bytes = 65536
+    active = set()
+    nodes = 0
+
+    def visit(value, depth):
+        nonlocal nodes
+        nodes += 1
+        if nodes > max_nodes:
+            raise ValueError("runtime evidence exceeds node limit")
+        if depth > max_depth:
+            raise ValueError("runtime evidence exceeds depth limit")
+        if value is None or isinstance(value, bool):
+            return value
+        if type(value) is int:
+            return value
+        if type(value) is float:
+            if not math.isfinite(value):
+                raise ValueError("runtime evidence requires finite numeric values")
+            return value
+        if isinstance(value, str):
+            if len(value) > max_string_length:
+                raise ValueError("runtime evidence string too long")
+            # StrEnum is used in DSD conversion nodes; convert to standard
+            # string so the stored tree is made of immutable JSON primitives.
+            return str(value)
+        if isinstance(value, Mapping):
+            marker = id(value)
+            if marker in active:
+                raise ValueError("cyclic runtime evidence")
+            active.add(marker)
+            try:
+                pairs = []
+                for key, member in value.items():
+                    if type(key) is not str or len(key) > max_key_length:
+                        raise ValueError("runtime evidence keys must be short strings")
+                    pairs.append((key, visit(member, depth + 1)))
+                return _FrozenRuntimeFact(pairs)
+            finally:
+                active.remove(marker)
+        if isinstance(value, (list, tuple)):
+            marker = id(value)
+            if marker in active:
+                raise ValueError("cyclic runtime evidence")
+            active.add(marker)
+            try:
+                return tuple(visit(member, depth + 1) for member in value)
+            finally:
+                active.remove(marker)
+        raise TypeError(
+            f"unsupported mutable runtime evidence field: {type(value).__name__}"
+        )
+
+    result = visit(raw, 0)
+    if not isinstance(result, _FrozenRuntimeFact):
+        raise TypeError("runtime identity must be a mapping")
+    # Budget the encoded boundary, not just input node count.
+    from copy import deepcopy
+
+    wire = json.dumps(deepcopy(result), allow_nan=False, separators=(",", ":"))
+    if len(wire.encode("utf-8")) > max_json_bytes:
+        raise ValueError("runtime evidence exceeds JSON byte limit")
+    return result
+
+
 @dataclass(frozen=True, slots=True)
 class OutputFamilyEvent:
     """One output-family convergence event on the canonical recorder.
@@ -802,9 +941,37 @@ class OutputFamilyEvent:
     execution_id: str | None = None
     processing_plan_id: str | None = None
     transform_policy: tuple[str, ...] = ()
-    runtime_identity: dict | None = None
+    runtime_identity: Mapping[str, object] | None = None
     bit_perfect: bool | None = None
     detail: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.runtime_identity is not None:
+            object.__setattr__(
+                self,
+                "runtime_identity",
+                _freeze_output_runtime_fact(self.runtime_identity),
+            )
+
+    def __deepcopy__(self, memo):
+        # __deepcopy__ of the *Mapping* intentionally returns a detached dict
+        # for dataclasses.asdict(). Deepcopy of the receipt must instead run
+        # the OutputFamilyEvent constructor so that its proof is frozen again.
+        from copy import deepcopy
+
+        clone = type(self)(
+            family=self.family,
+            state=self.state,
+            device_id=self.device_id,
+            execution_id=self.execution_id,
+            processing_plan_id=self.processing_plan_id,
+            transform_policy=deepcopy(self.transform_policy, memo),
+            runtime_identity=deepcopy(self.runtime_identity, memo),
+            bit_perfect=self.bit_perfect,
+            detail=self.detail,
+        )
+        memo[id(self)] = clone
+        return clone
 
 
 @dataclass(frozen=True, slots=True)
@@ -842,6 +1009,12 @@ class RecorderCaptureState:
     processing_events: tuple[ProcessingTruthEvent, ...]
     output_family_events: tuple[OutputFamilyEvent, ...]
     processing_measurements: tuple[ProcessingMeasurement, ...]
+    # Recorder-local append/eviction counters. These DO NOT certify that a
+    # producer emitted every event (e.g. a failed terminal notification).
+    output_event_sequence: int = 0
+    processing_event_sequence: int = 0
+    output_evicted_count: int = 0
+    processing_evicted_count: int = 0
 
 
 class SignalTruthRecorder:
@@ -858,6 +1031,10 @@ class SignalTruthRecorder:
         # never substituting) the DAC Signal Truth verdict.
         self._processing_events: list[ProcessingTruthEvent] = []
         self._output_family_events: list[OutputFamilyEvent] = []
+        self._output_event_sequence = 0
+        self._processing_event_sequence = 0
+        self._output_evicted_count = 0
+        self._processing_evicted_count = 0
         self._processing_measurements: list[ProcessingMeasurement] = []
         #: Fence: only ACTIVE execution instances may publish measurements.
         self._active_executions: dict[str, str] = {}
@@ -880,6 +1057,10 @@ class SignalTruthRecorder:
                 processing_events=tuple(self._processing_events),
                 output_family_events=tuple(self._output_family_events),
                 processing_measurements=tuple(self._processing_measurements),
+                output_event_sequence=self._output_event_sequence,
+                processing_event_sequence=self._processing_event_sequence,
+                output_evicted_count=self._output_evicted_count,
+                processing_evicted_count=self._processing_evicted_count,
             )
 
     @property
@@ -893,15 +1074,58 @@ class SignalTruthRecorder:
             return tuple(self._processing_measurements)
 
     def activate_execution(self, execution_id: str, *, plan_id: str) -> None:
-        """Register the CURRENT execution instance (fence for publication)."""
-        if not execution_id.strip():
+        """Register the output owner's execution binding for measurement fences.
+
+        This is not an audio commit. A new binding invalidates previous read
+        models even when it publishes no processing measurement.
+        """
+        if not isinstance(execution_id, str) or not execution_id.strip():
             raise ValueError("an execution identity is required")
+        if not isinstance(plan_id, str) or not plan_id.strip():
+            raise ValueError("an output plan identity is required")
         with self._lock:
+            changed = self._active_executions.get(execution_id) != plan_id
             self._active_executions[execution_id] = plan_id
+            if changed:
+                self._capture_revision += 1
+        if changed:
+            self._publish()
+
+    def resolve_active_execution_link(
+        self,
+        snapshot: SignalTruthSnapshot,
+        *,
+        execution_id: str | None,
+        output_plan_id: str | None,
+    ) -> str | None:
+        """Resolve an existing owner-issued binding, not a guessed plan join.
+
+        OutputSession must have called activate_execution for the exact ID.
+        Ambiguous reuse of the same output plan across multiple live execution
+        bindings is refused (e.g. an A->B->A transition with stale cleanup).
+        The OutputSession RUNNING and generation fences are checked separately.
+        """
+        if not execution_id or not output_plan_id:
+            return None
+        with self._lock:
+            active = self._active
+            if active is None or active is not snapshot:
+                return None
+            if active.identity.plan_id != output_plan_id:
+                return None
+            if self._active_executions.get(execution_id) != output_plan_id:
+                return None
+            owners = [
+                eid
+                for eid, plan in self._active_executions.items()
+                if plan == output_plan_id
+            ]
+            return execution_id if owners == [execution_id] else None
 
     def retire_execution(self, execution_id: str) -> int:
         """Retire an execution: later measurements can never be accepted."""
         with self._lock:
+            was_active = execution_id in self._active_executions
             self._active_executions.pop(execution_id, None)
             retained = [
                 item
@@ -910,10 +1134,10 @@ class SignalTruthRecorder:
             ]
             discarded = len(self._processing_measurements) - len(retained)
             self._processing_measurements = retained
-            if discarded:
+            if discarded or was_active:
                 self._capture_revision += 1
-        if discarded:
-            # A retired execution invalidates a visible DSP measurement.
+        if discarded or was_active:
+            # A retirement revokes the binding even with zero measurements.
             self._publish()
         return discarded
 
@@ -970,8 +1194,11 @@ class SignalTruthRecorder:
             raise ValueError("output-family evidence requires a family")
         with self._lock:
             self._output_family_events.append(event)
+            self._output_event_sequence += 1
             if len(self._output_family_events) > 64:
-                del self._output_family_events[:-64]
+                evicted = len(self._output_family_events) - 64
+                del self._output_family_events[:evicted]
+                self._output_evicted_count += evicted
             self._capture_revision += 1
         self._publish()
 
@@ -981,8 +1208,11 @@ class SignalTruthRecorder:
             raise ValueError("processing evidence can never prove bit-perfect")
         with self._lock:
             self._processing_events.append(event)
+            self._processing_event_sequence += 1
             if len(self._processing_events) > 64:
-                del self._processing_events[:-64]
+                evicted = len(self._processing_events) - 64
+                del self._processing_events[:evicted]
+                self._processing_evicted_count += evicted
             self._capture_revision += 1
         self._publish()
 
