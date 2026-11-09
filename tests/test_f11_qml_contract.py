@@ -794,10 +794,20 @@ def test_signal_truth_stage_keyboard_expands_and_focus_ring_visible(qapp):
         assert _wait_until(lambda: node.property("activeFocus") is True)
         assert _named(node, "stageFocusRing") is not None
 
-        before = node.property("height")
+        before = node.property("implicitHeight")
         QTest.keyClick(popup._f11_window, Qt.Key_Return)
         assert _wait_until(lambda: popup.property("expandedStageId") == "source")
-        assert _wait_until(lambda: node.property("height") > before)
+        assert _wait_until(
+            lambda: (
+                node.property("expanded") is True
+                and node.property("implicitHeight") > before
+            )
+        ), (
+            node.property("expanded"),
+            before,
+            node.property("implicitHeight"),
+            node.property("detail"),
+        )
 
         QTest.keyClick(popup._f11_window, Qt.Key_Return)
         assert _wait_until(lambda: popup.property("expandedStageId") == "")

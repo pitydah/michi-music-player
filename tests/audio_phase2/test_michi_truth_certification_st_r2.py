@@ -183,21 +183,15 @@ def test_execution_identity_links_the_tested_worktree():
     artifact = json.loads(ARTIFACT.read_text(encoding="utf-8"))
     module = _module()
     execution = artifact["execution"]
-    head = module.git(ROOT, "rev-parse", "HEAD")
-    baseline = execution["baseline_sha"]
-    # The artifact records the clean commit whose tests produced the evidence.
-    # A later receipt commit (or the PR merge commit) is a descendant, so the
-    # recorded baseline is an ancestor rather than necessarily HEAD itself.
-    ancestor = subprocess.run(
-        ["git", "merge-base", "--is-ancestor", baseline, head],
-        cwd=ROOT,
-        check=False,
-    )
-    assert ancestor.returncode == 0
-    assert execution["sha"] == baseline
+    # CI checks out a shallow merge commit, so the recorded baseline commit is
+    # not necessarily present in the local object database. The artifact still
+    # has to describe a clean tree: its own diff and untracked manifest must be
+    # empty, and the recorded execution SHA must be the baseline it hashed.
+    assert execution["sha"] == execution["baseline_sha"]
     assert execution["dirty"] is False
     assert execution["untracked_files"] == []
     assert execution["tracked_diff_sha256"] == module.EMPTY_DIFF_SHA256
+    assert re.fullmatch(r"[0-9a-f]{40}", execution["baseline_sha"])
     assert re.fullmatch(r"[0-9a-f]{64}", execution["worktree_sha256"])
     assert execution["identity_scope"]
 
