@@ -96,6 +96,94 @@ def load_json(path: Path) -> dict:
 
 EMPTY_DIFF_SHA256 = hashlib.sha256(b"").hexdigest()
 
+PRODUCT_ROOTS = ("src", "tests", "scripts", "pyproject.toml")
+
+
+def product_tree_sha256(root: Path, out_path: Path) -> str:
+    """Hash the productive tree that a certification receipt actually covers.
+
+    Git ancestry alone cannot prove that no productive change happened after a
+    receipt was generated. This content hash binds the artifact to the exact
+    source, tests and benchmark scripts, including untracked product files.
+    Documentation-only commits do not change it.
+    """
+    artifact = out_path.resolve()
+    proc = subprocess.run(
+        [
+            "git",
+            "ls-files",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+            "--",
+            *PRODUCT_ROOTS,
+        ],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    digest = hashlib.sha256()
+    for relative in sorted(set(proc.stdout.splitlines())):
+        path = root / relative
+        resolved = path.resolve()
+        if resolved == artifact or not path.is_file():
+            continue
+        data = path.read_bytes()
+        digest.update(f"{relative}\0{hashlib.sha256(data).hexdigest()}\n".encode())
+    return digest.hexdigest()
+
+
+def receipt_binding(root: Path, code_sha: str | None) -> dict:
+    """Describe whether a claimed receipt still covers the current product tree.
+
+    A missing commit is a normal shallow-clone condition; it is reported as
+    unavailable instead of pretending the receipt is current.
+    """
+    if not code_sha:
+        return {
+            "sha": None,
+            "ancestor_of_head": None,
+            "product_tree_unchanged": None,
+            "state": "MISSING_SHA",
+        }
+    exists = (
+        subprocess.run(
+            ["git", "cat-file", "-e", f"{code_sha}^{{commit}}"],
+            cwd=root,
+            capture_output=True,
+        ).returncode
+        == 0
+    )
+    if not exists:
+        return {
+            "sha": code_sha,
+            "ancestor_of_head": None,
+            "product_tree_unchanged": None,
+            "state": "HISTORY_UNAVAILABLE",
+        }
+    ancestor = (
+        subprocess.run(
+            ["git", "merge-base", "--is-ancestor", code_sha, "HEAD"],
+            cwd=root,
+            capture_output=True,
+        ).returncode
+        == 0
+    )
+    changed = git(
+        root, "diff", "--name-only", code_sha, "HEAD", "--", *PRODUCT_ROOTS
+    ).splitlines()
+    productive = [path for path in changed if path]
+    return {
+        "sha": code_sha,
+        "ancestor_of_head": ancestor,
+        "changed_product_paths": productive,
+        "product_tree_unchanged": ancestor and not productive,
+        "state": (
+            "CURRENT" if ancestor and not productive else "STALE_PRODUCTIVE_CHANGE"
+        ),
+    }
+
 
 def worktree_identity(root: Path, out_path: Path) -> dict:
     """Hash the exact tracked diff and untracked files that were executed.
@@ -321,8 +409,10 @@ def build_artifact(
     dirty = identity["tracked_diff_sha256"] != EMPTY_DIFF_SHA256 or bool(
         identity["untracked_files"]
     )
+    product_tree = product_tree_sha256(root, out_path)
     receipt = load_json(HISTORICAL_RECEIPT)
     historical = load_json(HISTORICAL_COVERAGE)
+    historical_binding = receipt_binding(root, receipt.get("code_sha"))
     historical_counts = Counter(
         case.get("integration_status", "NOT_RUN") for case in historical["cases"]
     )
@@ -338,6 +428,13 @@ def build_artifact(
             "tracked_diff_sha256": identity["tracked_diff_sha256"],
             "untracked_files": identity["untracked_files"],
             "identity_scope": identity["identity_scope"],
+            "product_tree_sha256": product_tree,
+            "receipt_binding": {
+                "kind": "PRODUCT_TREE_SHA256",
+                "code_sha": head,
+                "product_tree_sha256": product_tree,
+                "covers": "src, tests, scripts and pyproject.toml",
+            },
             "ci_run": ci_run or "NOT_RUN",
             "ci_status": "NOT_RUN" if not ci_run else "RECORDED_NOT_VERIFIED_HERE",
             "phase2_spec_sha256": sha256(SPEC),
@@ -359,6 +456,8 @@ def build_artifact(
                 "code_sha": receipt.get("code_sha"),
                 "merge_sha": merge_sha or receipt.get("merge_sha"),
                 "ci_run": receipt.get("ci", {}).get("run_id"),
+                "used_as_current_evidence": False,
+                "binding": historical_binding,
             },
         },
         "cases": cases,
@@ -424,6 +523,22 @@ def build_artifact(
     }
 
 
+def certification_exit_code(artifact: dict) -> int:
+    """Return success only for the explicitly accepted partial software state.
+
+    A zero fail count is not enough: SKIP, NOT_RUN, BLOCKED or any unexpected
+    special status makes the run incomplete and therefore non-successful.
+    """
+    summary = artifact.get("summary", {})
+    software = artifact.get("certification", {}).get("software_oracle")
+    hard_counts = ("fail", "error", "skip", "not_run", "blocked")
+    if software not in {"PASS", "PARTIAL"}:
+        return 1
+    if any(summary.get(key, 0) != 0 for key in hard_counts):
+        return 1
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--ci-run", default=None)
@@ -433,7 +548,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.check_only:
         artifact = load_json(args.out)
-        problems = check_artifact(artifact)
+        problems = check_artifact(artifact, ROOT)
         for problem in problems:
             print(f"[FAIL] {problem}")
         if not problems:
@@ -446,10 +561,10 @@ def main(argv: list[str] | None = None) -> int:
     print(json.dumps(artifact["summary"], indent=2))
     for case in artifact["cases"]:
         print(f"{case['id']} {case['status']} {case['category']}")
-    return 0 if artifact["summary"]["fail"] == 0 else 1
+    return certification_exit_code(artifact)
 
 
-def check_artifact(artifact: dict) -> list[str]:
+def check_artifact(artifact: dict, root: Path | None = None) -> list[str]:
     problems: list[str] = []
     cases = artifact.get("cases", [])
     if len(cases) != 50:
@@ -468,6 +583,16 @@ def check_artifact(artifact: dict) -> list[str]:
         problems.append("execution identity is missing identity_scope")
     if not isinstance(execution.get("untracked_files"), list):
         problems.append("execution identity untracked_files must be a list")
+    product_tree = execution.get("product_tree_sha256")
+    if not product_tree:
+        problems.append("execution identity is missing product_tree_sha256")
+    elif root is not None:
+        current_tree = product_tree_sha256(root, OUTPUT)
+        if current_tree != product_tree:
+            problems.append(
+                "product tree changed after certification execution "
+                f"({product_tree} != {current_tree})"
+            )
     special_statuses = {
         "BLOCKED_NOT_IMPLEMENTED",
         "EXTERNAL_VALIDATION_REQUIRED",
@@ -501,6 +626,31 @@ def check_artifact(artifact: dict) -> list[str]:
                 "classify the obligation explicitly"
             )
     summary = artifact.get("summary", {})
+    actual_counts = Counter(case.get("status") for case in cases)
+    expected_summary = {
+        "pass": "PASS",
+        "partial": "PARTIAL",
+        "fail": "FAIL",
+        "error": "ERROR",
+        "skip": "SKIP",
+        "not_run": "NOT_RUN",
+        "blocked": "BLOCKED",
+        "blocked_not_implemented": "BLOCKED_NOT_IMPLEMENTED",
+        "external_validation_required": "EXTERNAL_VALIDATION_REQUIRED",
+        "blocked_runtime": "BLOCKED_RUNTIME",
+        "out_of_scope_desktop": "OUT_OF_SCOPE_DESKTOP",
+        "out_of_scope_current_platform": "OUT_OF_SCOPE_CURRENT_PLATFORM",
+    }
+    for key, status in expected_summary.items():
+        if summary.get(key) != actual_counts.get(status, 0):
+            problems.append(
+                f"summary.{key} does not match individual cases "
+                f"({summary.get(key)} != {actual_counts.get(status, 0)})"
+            )
+    if summary.get("total") != len(cases):
+        problems.append("summary.total does not match the number of cases")
+    if summary.get("status_counts") != dict(sorted(actual_counts.items())):
+        problems.append("status_counts does not match individual cases")
     if len(cases) == 50 and sum(summary.get("status_counts", {}).values()) != 50:
         problems.append("status_counts does not add up to 50")
     historical = artifact.get("sources", {}).get("historical_coverage", {})
@@ -508,6 +658,18 @@ def check_artifact(artifact: dict) -> list[str]:
         problems.append("historical coverage is not marked historical")
     if historical.get("status_counts") != {"NOT_RUN": 46, "PASS": 4}:
         problems.append("historical coverage status counts changed")
+    historical_receipt = artifact.get("sources", {}).get("historical_receipt", {})
+    if historical_receipt.get("used_as_current_evidence") is not False:
+        problems.append("historical receipt is presented as current evidence")
+    binding = historical_receipt.get("binding")
+    if not isinstance(binding, dict) or not binding.get("state"):
+        problems.append("historical receipt has no explicit code binding")
+    elif binding.get("state") == "STALE_PRODUCTIVE_CHANGE" and (
+        historical_receipt.get("used_as_current_evidence")
+    ):
+        # Stale is allowed only because the receipt is explicitly historical;
+        # it must never be promoted to current evidence.
+        problems.append("stale historical receipt is used as current evidence")
     return problems
 
 

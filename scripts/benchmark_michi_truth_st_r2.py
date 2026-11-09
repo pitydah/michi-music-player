@@ -21,6 +21,22 @@ sys.path.insert(0, str(ROOT / "src"))
 from michi.application.signal_truth_frame import TruthFrame, publish_truth_frame  # noqa: E402
 
 STAGES = ("source", "decode", "processing", "output", "device")
+DYNAMIC_STAGES = ("resample", "channel-remap", "fir")
+CANONICAL_COUNTS = (5, 8)
+QML_STRESS_COUNTS = (5, 10, 20)
+
+
+def canonical_stage_ids(count: int) -> tuple[str, ...]:
+    """Return a canonical TruthFrame stage sequence.
+
+    The canonical read model has five anchors plus at most the three dynamic
+    IDs resample, channel-remap and fir. Twenty canonical stages are impossible;
+    that count belongs only to the synthetic QML presentation stress test.
+    """
+    if not 5 <= count <= 8:
+        raise ValueError(f"canonical TruthFrame supports 5..8 stages, received {count}")
+    dynamic = DYNAMIC_STAGES[: count - 5]
+    return ("source", "decode", "processing", *dynamic, "output", "device")
 
 
 def _base() -> dict:
@@ -94,25 +110,35 @@ def _measure_publish(iterations: int) -> dict:
     return _percentiles(samples)
 
 
-def _measure_stages(count: int, iterations: int) -> dict:
-    frame = _base()
-    frame["stages"] = [
+def _stage_payload(count: int, revision: int = 0) -> list[dict]:
+    return [
         {
-            "id": f"stage-{index}",
-            "title": f"Stage {index}",
+            "id": stage_id,
+            "title": stage_id,
             "state": "observed",
-            "summary": "observed",
+            "summary": f"observed {revision}",
             "detailRows": [["Fact", "Observed"]],
             "reasonCodes": ["ST_F03"],
         }
-        for index in range(count)
+        for stage_id in canonical_stage_ids(count)
     ]
+
+
+def _measure_stages(count: int, iterations: int) -> dict:
+    frame = _base()
+    frame["stages"] = _stage_payload(count)
+    projected = TruthFrame.from_reconciled(frame).to_qml()
+    if len(projected.get("stages", ())) != count:
+        raise RuntimeError(
+            f"canonical projection rejected {count} stages; "
+            f"got {len(projected.get('stages', ()))}"
+        )
     samples: list[float] = []
     for _ in range(iterations):
         started = time.perf_counter()
         TruthFrame.from_reconciled(frame).to_qml()
         samples.append(time.perf_counter() - started)
-    return _percentiles(samples)
+    return {"stage_count": count, **_percentiles(samples)}
 
 
 def _measure_burst(batch: int, iterations: int) -> dict:
@@ -135,11 +161,11 @@ def _measure_burst(batch: int, iterations: int) -> dict:
 
 def _measure_qml() -> dict:
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-    from PySide6.QtCore import QCoreApplication, QUrl
+    from PySide6.QtCore import QCoreApplication, QEvent, QUrl
     from PySide6.QtGui import QGuiApplication
     from PySide6.QtQml import QQmlComponent, QQmlEngine
 
-    app = QGuiApplication.instance() or QGuiApplication([])
+    QGuiApplication.instance() or QGuiApplication([])
     engine = QQmlEngine()
     engine.addImportPath(str(ROOT / "src/michi/presentation/qml"))
     component = QQmlComponent(
@@ -168,6 +194,12 @@ def _measure_qml() -> dict:
             for index in range(count)
         ]
 
+    def flush_deferred_delete() -> None:
+        """Deliver Qt's DeferredDelete events before sampling RSS or reuse."""
+        for _ in range(3):
+            QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+            QCoreApplication.processEvents()
+
     def qml_percentiles(samples: list[float]) -> dict:
         ordered = sorted(samples)
 
@@ -186,7 +218,7 @@ def _measure_qml() -> dict:
     results: dict[str, dict] = {}
     outer_cycles = 10
     updates_per_cycle = 10
-    for count in (5, 10, 20):
+    for count in QML_STRESS_COUNTS:
         created: list[float] = []
         property_set: list[float] = []
         event_loop: list[float] = []
@@ -223,7 +255,8 @@ def _measure_qml() -> dict:
                 QCoreApplication.processEvents()
                 unchanged.append(time.perf_counter() - started)
             item.deleteLater()
-            QCoreApplication.processEvents()
+            flush_deferred_delete()
+            del item
         results[str(count)] = {
             "create": qml_percentiles(created),
             "property_set": qml_percentiles(property_set),
@@ -234,23 +267,50 @@ def _measure_qml() -> dict:
             "update_unchanged_control": qml_percentiles(unchanged),
         }
 
+    # Warm up the engine before sampling RSS, and prove deletion is delivered
+    # rather than merely queued.
+    warmup = component.create()
+    warmup.setProperty("stages", stages(20, 0))
+    flush_deferred_delete()
+    warmup.deleteLater()
+    flush_deferred_delete()
+    del warmup
+
     create_delete: list[float] = []
+    destroyed = 0
+
+    def count_destroyed() -> None:
+        nonlocal destroyed
+        destroyed += 1
+
     before_rss = _rss_kib()
     for _ in range(10):
         started = time.perf_counter()
         item = component.create()
+        item.destroyed.connect(count_destroyed)
         item.setProperty("stages", stages(20, 0))
-        QCoreApplication.processEvents()
+        flush_deferred_delete()
         item.deleteLater()
-        QCoreApplication.processEvents()
+        flush_deferred_delete()
         create_delete.append(time.perf_counter() - started)
+        del item
     after_rss = _rss_kib()
-    app.processEvents()
     return {
         "status": "MEASURED",
         "stages": results,
+        "stage_model": {
+            "qml_counts": list(QML_STRESS_COUNTS),
+            "scope": "SYNTHETIC_PRESENTATION_STRESS_ONLY",
+        },
+        "canonical_projection": {
+            "stage_counts": list(CANONICAL_COUNTS),
+            "scope": "FIVE_ANCHORS_PLUS_THREE_DYNAMIC_IDS",
+        },
         "create_delete_20_stages": {
             "cycles": 10,
+            "destroyed_objects": destroyed,
+            "destruction_verified": destroyed == 10,
+            "deferred_delete_flushed": True,
             "total": qml_percentiles(create_delete),
             "rss_before_kib": before_rss,
             "rss_after_kib": after_rss,
@@ -261,7 +321,9 @@ def _measure_qml() -> dict:
             "Repeater delegates once per popup opening. update_changed_steady "
             "mutates those stable objects, so a content-only update does not "
             "rebuild the delegate list. event_loop covers queued polish and "
-            "layout. This is presentation construction, not DAC latency or XRUN."
+            "layout. The 5/10/20-stage QML counts are synthetic presentation "
+            "stress; canonical TruthFrame measurements are limited to 5-8 "
+            "valid stage IDs. This is not DAC latency or XRUN."
         ),
     }
 
@@ -271,8 +333,7 @@ def main() -> int:
     before_rss = _rss_kib()
     started = time.perf_counter()
     publish = _measure_publish(20_000)
-    stages_20 = _measure_stages(20, 2_000)
-    stages_5 = _measure_stages(5, 2_000)
+    canonical = [_measure_stages(count, 2_000) for count in CANONICAL_COUNTS]
     bursts = [_measure_burst(batch, 400) for batch in (1, 10, 100)]
     current, peak = tracemalloc.get_traced_memory()
     tracemalloc.stop()
@@ -288,8 +349,7 @@ def main() -> int:
         },
         "measurements": {
             "publish_truth_frame_5_stages": publish,
-            "truth_frame_5_stages": stages_5,
-            "truth_frame_20_stages": stages_20,
+            "truth_frame_canonical_stages": canonical,
             "bursts": bursts,
             "qml": qml,
             "rss_kib_before": before_rss,

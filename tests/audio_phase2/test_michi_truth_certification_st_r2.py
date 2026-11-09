@@ -133,6 +133,76 @@ def test_partial_without_missing_evidence_is_rejected():
     )
 
 
+def test_exit_code_rejects_any_incomplete_status():
+    module = _module()
+    base = {
+        "certification": {"software_oracle": "PARTIAL"},
+        "summary": {"fail": 0, "error": 0, "skip": 0, "not_run": 0, "blocked": 0},
+    }
+    assert module.certification_exit_code(base) == 0
+    for key in ("fail", "error", "skip", "not_run", "blocked"):
+        incomplete = {
+            "certification": {"software_oracle": "PARTIAL"},
+            "summary": {**base["summary"], key: 1},
+        }
+        assert module.certification_exit_code(incomplete) == 1, key
+
+
+def test_exit_code_rejects_no_go_software_state():
+    module = _module()
+    artifact = {
+        "certification": {"software_oracle": "NO_GO"},
+        "summary": {"fail": 0, "error": 0, "skip": 0, "not_run": 0, "blocked": 0},
+    }
+    assert module.certification_exit_code(artifact) == 1
+
+
+def test_summary_counters_must_match_individual_cases():
+    module = _module()
+    artifact = {
+        "cases": [
+            {"id": "R15C-01", "status": "PASS", "evidence": [{"result": "PASS"}]},
+            {"id": "R15C-02", "status": "PASS", "evidence": [{"result": "PASS"}]},
+            {"id": "R15C-03", "status": "PARTIAL", "missing": "x", "evidence": []},
+        ],
+        "summary": {
+            "total": 3,
+            "pass": 1,
+            "partial": 2,
+            "fail": 0,
+            "error": 0,
+            "skip": 0,
+            "not_run": 0,
+            "blocked": 0,
+            "status_counts": {"PASS": 2, "PARTIAL": 1},
+        },
+    }
+    problems = module.check_artifact(artifact)
+    assert any("summary.pass does not match" in item for item in problems)
+    assert any("summary.partial does not match" in item for item in problems)
+
+
+def test_product_tree_hash_is_the_receipt_binding():
+    artifact = json.loads(ARTIFACT.read_text(encoding="utf-8"))
+    module = _module()
+    execution = artifact["execution"]
+    current = module.product_tree_sha256(ROOT, ARTIFACT)
+    assert execution["product_tree_sha256"] == current
+    assert execution["receipt_binding"] == {
+        "kind": "PRODUCT_TREE_SHA256",
+        "code_sha": execution["sha"],
+        "product_tree_sha256": current,
+        "covers": "src, tests, scripts and pyproject.toml",
+    }
+    historical = artifact["sources"]["historical_receipt"]
+    assert historical["used_as_current_evidence"] is False
+    assert historical["binding"]["state"] in {
+        "CURRENT",
+        "STALE_PRODUCTIVE_CHANGE",
+        "HISTORY_UNAVAILABLE",
+    }
+
+
 def test_missing_or_unexecuted_nodes_never_pass():
     module = _module()
     blocked = module.classify_case("R15C-01", ["tests/x.py::test_x"], set(), {})
