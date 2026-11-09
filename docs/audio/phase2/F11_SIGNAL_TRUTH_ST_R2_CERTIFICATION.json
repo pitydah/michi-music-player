@@ -1,15 +1,22 @@
 {
   "schema": "michi.ap2.f11.st_r2_certification.v1",
   "phase": "AP2-F11",
-  "generated_at": "2026-11-09T01:15:32.210275+00:00",
+  "generated_at": "2026-11-09T02:41:26.007992+00:00",
   "execution": {
-    "sha": "18b58b8a76127263ddb1c8fb435e53a11f99408d",
-    "baseline_sha": "18b58b8a76127263ddb1c8fb435e53a11f99408d",
+    "sha": "e566bcab648556cf0a9fe1ff2a0febec20384586",
+    "baseline_sha": "e566bcab648556cf0a9fe1ff2a0febec20384586",
     "dirty": false,
     "worktree_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "untracked_files": [],
     "identity_scope": "git diff --binary HEAD plus SHA-256 of every untracked product file, excluding .serena/ and the output artifact",
+    "product_tree_sha256": "66e03611303d352315719b769aba3e7034fd646694fcb2aba013f1615128c446",
+    "receipt_binding": {
+      "kind": "PRODUCT_TREE_SHA256",
+      "code_sha": "e566bcab648556cf0a9fe1ff2a0febec20384586",
+      "product_tree_sha256": "66e03611303d352315719b769aba3e7034fd646694fcb2aba013f1615128c446",
+      "covers": "src, tests, scripts and pyproject.toml"
+    },
     "ci_run": "NOT_RUN",
     "ci_status": "NOT_RUN",
     "phase2_spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12"
@@ -32,8 +39,29 @@
       "path": "docs/audio/phase2/F11_SIGNAL_TRUTH_ST_R1_RECEIPT.json",
       "sha256": "d23b54909f6a78e94af5090bc7d314e6f74f4c5006327c9a25962b0d388e2869",
       "code_sha": "40bffa0e056072530fc0cee777cbcb86f64a1ab0",
-      "merge_sha": null,
-      "ci_run": 42494741939
+      "merge_sha": "31dd609c68764e66473a3006652d1836611e6a33",
+      "ci_run": 42494741939,
+      "used_as_current_evidence": false,
+      "binding": {
+        "sha": "40bffa0e056072530fc0cee777cbcb86f64a1ab0",
+        "ancestor_of_head": true,
+        "changed_product_paths": [
+          "pyproject.toml",
+          "scripts/benchmark_michi_truth_st_r2.py",
+          "scripts/migrate_michi_truth_names_a41.py",
+          "scripts/verify_michi_truth_certification_st_r2.py",
+          "src/michi/presentation/qml/components/MichiSignalNode.qml",
+          "src/michi/presentation/qml/components/MichiSignalPathView.qml",
+          "src/michi/presentation/qml/components/MichiSignalStageData.qml",
+          "src/michi/presentation/qml/player/SignalTruthPopup.qml",
+          "tests/audio_phase2/test_michi_truth_certification_st_r2.py",
+          "tests/audio_phase2/test_michi_truth_naming_migration_a41.py",
+          "tests/audio_phase2/test_michi_truth_st_r2_benchmark.py",
+          "tests/test_f11_qml_contract.py"
+        ],
+        "product_tree_unchanged": false,
+        "state": "STALE_PRODUCTIVE_CHANGE"
+      }
     }
   },
   "cases": [
