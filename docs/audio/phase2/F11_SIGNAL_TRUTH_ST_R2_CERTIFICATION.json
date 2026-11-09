@@ -1,35 +1,14 @@
 {
   "schema": "michi.ap2.f11.st_r2_certification.v1",
   "phase": "AP2-F11",
-  "generated_at": "2026-11-08T20:08:27.940538+00:00",
+  "generated_at": "2026-11-09T01:15:32.210275+00:00",
   "execution": {
-    "sha": "31dd609c68764e66473a3006652d1836611e6a33",
-    "baseline_sha": "31dd609c68764e66473a3006652d1836611e6a33",
-    "dirty": true,
-    "worktree_sha256": "51463216f461127ea1a93b51e963ace38599fce13c90ce0595db589f84a7f951",
-    "tracked_diff_sha256": "739a091a9ba6b5487408925a1c018fed97c4d28d747a18cdaeb6b602e7c73305",
-    "untracked_files": [
-      {
-        "path": "docs/audio/phase2/F11_SIGNAL_TRUTH_ST_R2_PERFORMANCE.json",
-        "sha256": "410ec4b1302cf6a51a673f92ff78c8012d16ca3c670c40f4e74defb024b9d320"
-      },
-      {
-        "path": "scripts/benchmark_michi_truth_st_r2.py",
-        "sha256": "c11ae7335f6e806d6a9625e920e91013c4e2425885876ccdc7d22a3081563627"
-      },
-      {
-        "path": "scripts/verify_michi_truth_certification_st_r2.py",
-        "sha256": "8ac61c5f53b492a2b7d849c36127668b16b11ebe717f59f0f87ae1ec6ca269cc"
-      },
-      {
-        "path": "src/michi/presentation/qml/components/MichiSignalStageData.qml",
-        "sha256": "56f0786c8df811e094538cffd8ac557138ace9d5ae0eb1464062b1ea463af8ad"
-      },
-      {
-        "path": "tests/audio_phase2/test_michi_truth_certification_st_r2.py",
-        "sha256": "39caf6b61270fe0e06ec4b4e76184eca4e1fd0c973e2c411439a0f5fff5033d7"
-      }
-    ],
+    "sha": "18b58b8a76127263ddb1c8fb435e53a11f99408d",
+    "baseline_sha": "18b58b8a76127263ddb1c8fb435e53a11f99408d",
+    "dirty": false,
+    "worktree_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "untracked_files": [],
     "identity_scope": "git diff --binary HEAD plus SHA-256 of every untracked product file, excluding .serena/ and the output artifact",
     "ci_run": "NOT_RUN",
     "ci_status": "NOT_RUN",
@@ -53,7 +32,7 @@
       "path": "docs/audio/phase2/F11_SIGNAL_TRUTH_ST_R1_RECEIPT.json",
       "sha256": "d23b54909f6a78e94af5090bc7d314e6f74f4c5006327c9a25962b0d388e2869",
       "code_sha": "40bffa0e056072530fc0cee777cbcb86f64a1ab0",
-      "merge_sha": "31dd609c68764e66473a3006652d1836611e6a33",
+      "merge_sha": null,
       "ci_run": 42494741939
     }
   },
