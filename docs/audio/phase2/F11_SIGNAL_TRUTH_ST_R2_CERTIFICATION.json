@@ -1,10 +1,10 @@
 {
   "schema": "michi.ap2.f11.st_r2_certification.v1",
   "phase": "AP2-F11",
-  "generated_at": "2026-11-09T02:41:26.007992+00:00",
+  "generated_at": "2026-11-09T03:16:17.236679+00:00",
   "execution": {
-    "sha": "e566bcab648556cf0a9fe1ff2a0febec20384586",
-    "baseline_sha": "e566bcab648556cf0a9fe1ff2a0febec20384586",
+    "sha": "7ef09280143cdc1c2bb1155d1bcf68390a91f1c5",
+    "baseline_sha": "7ef09280143cdc1c2bb1155d1bcf68390a91f1c5",
     "dirty": false,
     "worktree_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -13,12 +13,12 @@
     "product_tree_sha256": "66e03611303d352315719b769aba3e7034fd646694fcb2aba013f1615128c446",
     "receipt_binding": {
       "kind": "PRODUCT_TREE_SHA256",
-      "code_sha": "e566bcab648556cf0a9fe1ff2a0febec20384586",
+      "code_sha": "7ef09280143cdc1c2bb1155d1bcf68390a91f1c5",
       "product_tree_sha256": "66e03611303d352315719b769aba3e7034fd646694fcb2aba013f1615128c446",
       "covers": "src, tests, scripts and pyproject.toml"
     },
-    "ci_run": "NOT_RUN",
-    "ci_status": "NOT_RUN",
+    "ci_run": "42552365360",
+    "ci_status": "RECORDED_NOT_VERIFIED_HERE",
     "phase2_spec_sha256": "4f0e41eb6570527d40e2a40dff29e31214488efa8aed53d079320513122c6d12"
   },
   "sources": {
@@ -39,7 +39,7 @@
       "path": "docs/audio/phase2/F11_SIGNAL_TRUTH_ST_R1_RECEIPT.json",
       "sha256": "d23b54909f6a78e94af5090bc7d314e6f74f4c5006327c9a25962b0d388e2869",
       "code_sha": "40bffa0e056072530fc0cee777cbcb86f64a1ab0",
-      "merge_sha": "31dd609c68764e66473a3006652d1836611e6a33",
+      "merge_sha": null,
       "ci_run": 42494741939,
       "used_as_current_evidence": false,
       "binding": {
