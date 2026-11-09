@@ -462,8 +462,12 @@ def check_artifact(artifact: dict) -> list[str]:
         "untracked_files",
         "identity_scope",
     ):
-        if not execution.get(key):
+        if key not in execution:
             problems.append(f"execution identity is missing {key}")
+    if not execution.get("identity_scope"):
+        problems.append("execution identity is missing identity_scope")
+    if not isinstance(execution.get("untracked_files"), list):
+        problems.append("execution identity untracked_files must be a list")
     special_statuses = {
         "BLOCKED_NOT_IMPLEMENTED",
         "EXTERNAL_VALIDATION_REQUIRED",
