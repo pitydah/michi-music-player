@@ -793,24 +793,26 @@ def test_signal_truth_stage_keyboard_expands_and_focus_ring_visible(qapp):
         node.forceActiveFocus()
         assert _wait_until(lambda: node.property("activeFocus") is True)
         assert _named(node, "stageFocusRing") is not None
+        detail = _named(node, "stageDetailText")
+        assert detail is not None
+        assert detail.property("visible") is False
 
-        before = node.property("implicitHeight")
         QTest.keyClick(popup._f11_window, Qt.Key_Return)
         assert _wait_until(lambda: popup.property("expandedStageId") == "source")
         assert _wait_until(
             lambda: (
-                node.property("expanded") is True
-                and node.property("implicitHeight") > before
+                node.property("expanded") is True and detail.property("visible") is True
             )
         ), (
             node.property("expanded"),
-            before,
-            node.property("implicitHeight"),
+            detail.property("visible"),
             node.property("detail"),
         )
+        assert detail.property("text") == "detail"
 
         QTest.keyClick(popup._f11_window, Qt.Key_Return)
         assert _wait_until(lambda: popup.property("expandedStageId") == "")
+        assert _wait_until(lambda: detail.property("visible") is False)
     finally:
         popup.close()
         popup.deleteLater()

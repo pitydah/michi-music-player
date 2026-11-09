@@ -231,6 +231,7 @@ Item {
             }
 
             MichiText {
+                objectName: "stageDetailText"
                 visible: root.expanded && root.detail !== ""
                 text: root.detail
                 role: "secondary"
