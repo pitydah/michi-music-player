@@ -94,21 +94,34 @@ def load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+EMPTY_DIFF_SHA256 = hashlib.sha256(b"").hexdigest()
+
+
 def worktree_identity(root: Path, out_path: Path) -> dict:
     """Hash the exact tracked diff and untracked files that were executed.
 
     The output artifact itself is excluded because its bytes are written after
     the run; `.serena/` is local tooling state and is not part of the product.
     """
+    artifact = out_path.resolve()
+    artifact_pathspec = artifact.relative_to(root.resolve()).as_posix()
     diff = subprocess.run(
-        ["git", "diff", "--binary", "HEAD"],
+        [
+            "git",
+            "diff",
+            "--binary",
+            "HEAD",
+            "--",
+            ".",
+            f":(exclude){artifact_pathspec}",
+        ],
         cwd=root,
         check=True,
         capture_output=True,
     ).stdout
     untracked = git(root, "ls-files", "--others", "--exclude-standard").splitlines()
     serena_root = (root / ".serena").resolve()
-    excluded = {out_path.resolve(), serena_root}
+    excluded = {artifact, serena_root}
     entries: list[dict[str, str]] = []
     for relative in sorted(untracked):
         path = root / relative
@@ -304,8 +317,10 @@ def build_artifact(
     ]
     counts = Counter(case["status"] for case in cases)
     head = git(root, "rev-parse", "HEAD")
-    status = git(root, "status", "--porcelain")
     identity = worktree_identity(root, out_path)
+    dirty = identity["tracked_diff_sha256"] != EMPTY_DIFF_SHA256 or bool(
+        identity["untracked_files"]
+    )
     receipt = load_json(HISTORICAL_RECEIPT)
     historical = load_json(HISTORICAL_COVERAGE)
     historical_counts = Counter(
@@ -318,7 +333,7 @@ def build_artifact(
         "execution": {
             "sha": head,
             "baseline_sha": identity["baseline_sha"],
-            "dirty": bool(status),
+            "dirty": dirty,
             "worktree_sha256": identity["worktree_sha256"],
             "tracked_diff_sha256": identity["tracked_diff_sha256"],
             "untracked_files": identity["untracked_files"],

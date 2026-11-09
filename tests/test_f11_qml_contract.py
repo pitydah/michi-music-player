@@ -9,6 +9,7 @@ import json
 import os
 import re
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -737,6 +738,20 @@ def test_signal_truth_panel_consumes_expansion_request(qapp):
         panel.deleteLater()
 
 
+def _wait_until(predicate, *, timeout_ms: int = 3000) -> bool:
+    """Pump the Qt event loop until a UI state settles.
+
+    QML layout and key delivery are asynchronous. A fixed sleep is not a
+    deterministic contract on slower (or faster) CI hosts.
+    """
+    deadline = time.monotonic() + timeout_ms / 1000
+    while time.monotonic() < deadline:
+        if predicate():
+            return True
+        QTest.qWait(25)
+    return predicate()
+
+
 def _stage(stage_id: str, *, detail: str = "detail") -> dict:
     return {
         "id": stage_id,
@@ -776,19 +791,16 @@ def test_signal_truth_stage_keyboard_expands_and_focus_ring_visible(qapp):
         node = _stage_item(popup, "source")
         assert node is not None
         node.forceActiveFocus()
-        QTest.qWait(60)
-        assert node.property("activeFocus") is True
+        assert _wait_until(lambda: node.property("activeFocus") is True)
         assert _named(node, "stageFocusRing") is not None
 
         before = node.property("height")
         QTest.keyClick(popup._f11_window, Qt.Key_Return)
-        QTest.qWait(120)
-        assert popup.property("expandedStageId") == "source"
-        assert node.property("height") > before
+        assert _wait_until(lambda: popup.property("expandedStageId") == "source")
+        assert _wait_until(lambda: node.property("height") > before)
 
         QTest.keyClick(popup._f11_window, Qt.Key_Return)
-        QTest.qWait(120)
-        assert popup.property("expandedStageId") == ""
+        assert _wait_until(lambda: popup.property("expandedStageId") == "")
     finally:
         popup.close()
         popup.deleteLater()

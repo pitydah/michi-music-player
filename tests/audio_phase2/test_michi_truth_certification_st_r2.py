@@ -183,16 +183,23 @@ def test_execution_identity_links_the_tested_worktree():
     artifact = json.loads(ARTIFACT.read_text(encoding="utf-8"))
     module = _module()
     execution = artifact["execution"]
-    assert execution["baseline_sha"] == module.git(ROOT, "rev-parse", "HEAD")
+    head = module.git(ROOT, "rev-parse", "HEAD")
+    baseline = execution["baseline_sha"]
+    # The artifact records the clean commit whose tests produced the evidence.
+    # A later receipt commit (or the PR merge commit) is a descendant, so the
+    # recorded baseline is an ancestor rather than necessarily HEAD itself.
+    ancestor = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", baseline, head],
+        cwd=ROOT,
+        check=False,
+    )
+    assert ancestor.returncode == 0
+    assert execution["sha"] == baseline
+    assert execution["dirty"] is False
+    assert execution["untracked_files"] == []
+    assert execution["tracked_diff_sha256"] == module.EMPTY_DIFF_SHA256
     assert re.fullmatch(r"[0-9a-f]{64}", execution["worktree_sha256"])
-    assert re.fullmatch(r"[0-9a-f]{64}", execution["tracked_diff_sha256"])
     assert execution["identity_scope"]
-    paths = {entry["path"] for entry in execution["untracked_files"]}
-    assert "scripts/verify_michi_truth_certification_st_r2.py" in paths
-    assert all(".serena/" not in path for path in paths)
-    assert not any(path.endswith("ST_R2_CERTIFICATION.json") for path in paths)
-    for entry in execution["untracked_files"]:
-        assert re.fullmatch(r"[0-9a-f]{64}", entry["sha256"])
 
 
 def test_every_mapped_node_is_collectable():
