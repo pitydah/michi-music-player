@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/sync-delta.schema.json",
+  "title": "SyncDelta",
+  "description": "Incremental sync delta response. Cursor is the official field; since/manifest_id are legacy.",
+  "type": "object",
+  "required": ["cursor", "added", "updated", "deleted", "playlists_updated"],
+  "additionalProperties": false,
+  "properties": {
+    "cursor": {
+      "type": "string",
+      "description": "Opaque cursor token for the next delta request",
+      "minLength": 1,
+      "examples": ["cursor_delta_001_a1b2c3d4"]
+    },
+    "added": {
+      "type": "array",
+      "description": "Entities added since the cursor",
+      "items": {
+        "type": "object",
+        "required": ["type", "id", "data"],
+        "additionalProperties": false,
+        "properties": {
+          "type": { "type": "string", "enum": ["track", "album", "artist", "playlist", "home", "device", "home_roster", "home_revocation"] },
+          "id": { "type": "string", "minLength": 1, "description": "Entity ID" },
+          "data": { "type": "object", "description": "Full entity data (free-form map)" }
+        }
+      }
+    },
+    "updated": {
+      "type": "array",
+      "description": "Entities modified since the cursor",
+      "items": {
+        "type": "object",
+        "required": ["type", "id", "data"],
+        "additionalProperties": false,
+        "properties": {
+          "type": { "type": "string", "enum": ["track", "album", "artist", "playlist", "home", "device", "home_roster", "home_revocation"] },
+          "id": { "type": "string", "minLength": 1, "description": "Entity ID" },
+          "data": { "type": "object", "description": "Updated entity data (free-form map)" }
+        }
+      }
+    },
+    "deleted": {
+      "type": "array",
+      "description": "Entities removed since the cursor",
+      "items": {
+        "type": "object",
+        "required": ["type", "id"],
+        "additionalProperties": false,
+        "properties": {
+          "type": { "type": "string", "enum": ["track", "album", "artist", "playlist", "home", "device", "home_roster", "home_revocation"] },
+          "id": { "type": "string", "minLength": 1, "description": "Removed entity ID" }
+        }
+      }
+    },
+    "playlists_updated": {
+      "type": "array",
+      "description": "Playlists whose track ordering changed",
+      "items": {
+        "type": "object",
+        "required": ["playlist_id"],
+        "additionalProperties": false,
+        "properties": {
+          "playlist_id": { "type": "string", "minLength": 1 },
+          "added": { "type": "array", "items": { "type": "string", "minLength": 1 }, "description": "Track IDs added" },
+          "removed": { "type": "array", "items": { "type": "string", "minLength": 1 }, "description": "Track IDs removed" }
+        }
+      }
+    }
+  }
+}

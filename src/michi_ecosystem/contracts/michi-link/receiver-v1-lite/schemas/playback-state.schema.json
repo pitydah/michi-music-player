@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/playback-state.schema.json",
+  "title": "PlaybackState",
+  "description": "Current playback state of a device or session",
+  "type": "object",
+  "required": ["state", "device_id", "session_id"],
+  "additionalProperties": false,
+  "properties": {
+    "state": {
+      "type": "string",
+      "description": "Current playback state",
+      "enum": ["playing", "paused", "stopped"]
+    },
+    "track_id": {
+      "type": "string",
+      "description": "Identifier of the currently loaded track",
+      "examples": ["track_9a8b7c6d"]
+    },
+    "track": {
+      "description": "Full track object of the currently loaded track",
+      "$ref": "track.schema.json"
+    },
+    "position_ms": {
+      "type": "integer",
+      "description": "Current playback position in milliseconds",
+      "minimum": 0,
+      "examples": [120000]
+    },
+    "duration_ms": {
+      "type": "integer",
+      "description": "Duration of the current track in milliseconds",
+      "minimum": 0,
+      "examples": [354000]
+    },
+    "volume": {
+      "type": "integer",
+      "description": "Volume level (0 = mute, 100 = maximum)",
+      "minimum": 0,
+      "maximum": 100,
+      "examples": [75]
+    },
+    "shuffle": {
+      "type": "boolean",
+      "description": "Whether shuffle mode is active"
+    },
+    "repeat": {
+      "type": "string",
+      "description": "Repeat mode",
+      "enum": ["off", "one", "all"]
+    },
+    "device_id": {
+      "type": "string",
+      "description": "Identifier of the device providing playback",
+      "minLength": 1
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Unique session identifier for this playback session",
+      "minLength": 1,
+      "examples": ["session_x1y2z3"]
+    }
+  }
+}

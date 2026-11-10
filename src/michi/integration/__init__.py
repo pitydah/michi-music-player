@@ -1,0 +1,1 @@
+"""Player integration adapters."""

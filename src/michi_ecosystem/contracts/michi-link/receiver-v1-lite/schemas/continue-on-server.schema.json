@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/continue-on-server.schema.json",
+  "title": "ContinueOnServerRequest",
+  "description": "Request payload for the Continue-on-Server handoff flow",
+  "type": "object",
+  "required": ["local_tracks", "queue", "current_index", "position_ms", "playing"],
+  "additionalProperties": false,
+  "properties": {
+    "local_tracks": {
+      "type": "array",
+      "description": "List of local track IDs to import/map before playback",
+      "items": {
+        "type": "object",
+        "required": ["local_track_id", "title", "artist"],
+        "additionalProperties": false,
+        "properties": {
+          "local_track_id": { "type": "string" },
+          "michi_track_id": { "type": "string" },
+          "content_hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+          "file_size": { "type": "integer", "minimum": 0 },
+          "duration_ms": { "type": "integer", "minimum": 0 },
+          "title": { "type": "string" },
+          "artist": { "type": "string" },
+          "album": { "type": "string" },
+          "track_number": { "type": "integer" },
+          "year": { "type": "integer" },
+          "format": { "type": "string" },
+          "bitrate": { "type": "integer" }
+        }
+      }
+    },
+    "queue": {
+      "type": "array",
+      "description": "Ordered list of local_track_id representing the playback queue",
+      "items": { "type": "string" }
+    },
+    "current_index": {
+      "type": "integer",
+      "description": "Current position in the queue (0-indexed)",
+      "minimum": 0
+    },
+    "position_ms": {
+      "type": "integer",
+      "description": "Current playback position in milliseconds",
+      "minimum": 0
+    },
+    "playing": {
+      "type": "boolean",
+      "description": "Whether playback was active at handoff time"
+    },
+    "volume": {
+      "type": "integer",
+      "description": "Volume level 0-100",
+      "minimum": 0,
+      "maximum": 100
+    }
+  }
+}

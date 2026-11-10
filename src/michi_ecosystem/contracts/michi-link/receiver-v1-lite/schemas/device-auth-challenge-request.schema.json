@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/device-auth-challenge-request.schema.json",
+  "title": "DeviceAuthChallengeRequest",
+  "description": "Request initiated by a client to obtain an authentication challenge from a receiver or server.",
+  "type": "object",
+  "required": [
+    "client_michi_id",
+    "client_public_key",
+    "home_id"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "client_michi_id": {
+      "type": "string",
+      "description": "Client device michi_id (43 chars base64url).",
+      "pattern": "^[A-Za-z0-9_-]{43}$"
+    },
+    "client_public_key": {
+      "type": "string",
+      "description": "Client device Ed25519 public key (43 chars base64url).",
+      "pattern": "^[A-Za-z0-9_-]{43}$"
+    },
+    "home_id": {
+      "type": "string",
+      "description": "Michi Home ID claimed by the client (43 chars base64url).",
+      "pattern": "^[A-Za-z0-9_-]{43}$"
+    }
+  }
+}

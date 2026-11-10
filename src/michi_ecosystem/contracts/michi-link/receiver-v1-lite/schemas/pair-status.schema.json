@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/pair-status.schema.json",
+  "title": "PairStatus",
+  "description": "Canonical response to GET /api/v1/pair/status?session_id=<uuid>. status can only be pending, confirmed, expired or locked.",
+  "type": "object",
+  "required": [
+    "session_id",
+    "status",
+    "expires_at",
+    "attempts_remaining"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "Pairing session identifier",
+      "format": "uuid",
+      "examples": [
+        "550e8400-e29b-41d4-a716-446655440001"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "description": "Pairing session status",
+      "enum": [
+        "pending",
+        "confirmed",
+        "expired",
+        "locked"
+      ],
+      "examples": [
+        "pending"
+      ]
+    },
+    "expires_at": {
+      "type": "string",
+      "description": "Session expiry timestamp (RFC 3339)",
+      "format": "date-time",
+      "examples": [
+        "2026-08-12T20:02:00Z"
+      ]
+    },
+    "attempts_remaining": {
+      "type": "integer",
+      "description": "PIN attempts remaining for this session (1..5)",
+      "minimum": 1,
+      "maximum": 5,
+      "examples": [
+        5
+      ]
+    }
+  }
+}

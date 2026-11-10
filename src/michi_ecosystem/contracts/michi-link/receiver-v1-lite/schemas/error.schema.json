@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/error.schema.json",
+  "title": "Error",
+  "description": "Standard error response payload. The full set of 20 canonical contract error codes.",
+  "type": "object",
+  "required": ["error"],
+  "additionalProperties": false,
+  "properties": {
+    "error": {
+      "type": "object",
+      "description": "Error envelope",
+      "required": ["code", "message"],
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Machine-readable error code",
+          "enum": ["INVALID_REQUEST", "UNAUTHORIZED", "FORBIDDEN", "NOT_FOUND", "CONFLICT", "RATE_LIMITED", "INTERNAL_ERROR", "NOT_IMPLEMENTED", "PAIRING_EXPIRED", "PAIRING_ATTEMPTS_EXCEEDED", "PAIRING_KEY_MISMATCH", "IDENTITY_CORRUPTED", "SIGNATURE_INVALID", "REPLAY_DETECTED", "IDEMPOTENCY_KEY_REUSE", "TRACK_NOT_FOUND", "IMPORT_SESSION_EXPIRED", "PAIRING_NOT_FOUND", "PAIRING_ALREADY_CONSUMED", "PAIRING_PIN_MISMATCH"],
+          "examples": ["INVALID_REQUEST", "NOT_FOUND", "UNAUTHORIZED"]
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable error description",
+          "minLength": 1,
+          "maxLength": 512,
+          "examples": ["The requested track was not found"]
+        },
+        "details": {
+          "type": "object",
+          "description": "Additional structured error context (free-form map)",
+          "additionalProperties": true,
+          "default": {},
+          "examples": [{ "field": "position_ms", "reason": "must be a non-negative integer" }]
+        },
+        "request_id": {
+          "type": "string",
+          "description": "Correlation ID for the failed request",
+          "format": "uuid",
+          "examples": ["a1b2c3d4-e5f6-7890-abcd-ef1234567890"]
+        }
+      }
+    }
+  }
+}

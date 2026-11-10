@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/import-preflight.schema.json",
+  "title": "ImportPreflight",
+  "description": "Preflight check before import to determine which tracks need upload, which already exist, and which have conflicts",
+  "type": "object",
+  "required": ["tracks"],
+  "additionalProperties": false,
+  "properties": {
+    "tracks": {
+      "type": "array",
+      "description": "List of tracks to check",
+      "items": {
+        "type": "object",
+        "required": ["title", "artist"],
+        "additionalProperties": false,
+        "properties": {
+          "michi_track_id": {
+            "type": "string",
+            "description": "Unified track ID from source device",
+            "format": "uuid"
+          },
+          "content_hash": {
+            "type": "string",
+            "description": "SHA-256 hash for exact matching",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "file_size": { "type": "integer", "minimum": 0 },
+          "duration_ms": { "type": "integer", "minimum": 0 },
+          "musicbrainz_track_id": { "type": "string" },
+          "title": { "type": "string", "minLength": 1 },
+          "artist": { "type": "string", "minLength": 1 },
+          "album": { "type": "string" },
+          "album_artist": { "type": "string" },
+          "track_number": { "type": "integer", "minimum": 0 },
+          "disc_number": { "type": "integer", "minimum": 1 },
+          "year": { "type": "integer" },
+          "genre": { "type": "string" },
+          "format": { "type": "string" },
+          "bitrate": { "type": "integer", "minimum": 0 },
+          "sample_rate": { "type": "integer", "minimum": 0 },
+          "channels": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "minItems": 1
+    }
+  }
+}

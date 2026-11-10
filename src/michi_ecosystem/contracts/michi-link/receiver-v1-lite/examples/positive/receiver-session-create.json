@@ -1,0 +1,12 @@
+{
+  "bit_depth": 16,
+  "buffer_ms": 120,
+  "channels": 2,
+  "codec": "pcm_s16le",
+  "packet_ms": 10,
+  "payload_type": 97,
+  "sample_rate": 48000,
+  "ssrc": 305419896,
+  "transport": "rtp_udp",
+  "volume": 70
+}

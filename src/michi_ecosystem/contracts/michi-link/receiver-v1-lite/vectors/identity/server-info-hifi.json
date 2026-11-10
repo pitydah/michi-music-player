@@ -1,0 +1,52 @@
+{
+  "api_version": "v1-lite",
+  "audio": {
+    "bit_depths": [
+      16
+    ],
+    "buffer_ms_max": 500,
+    "buffer_ms_min": 50,
+    "channels": [
+      2
+    ],
+    "codecs": [
+      "pcm_s16le"
+    ],
+    "packet_ms": [
+      10
+    ],
+    "payload_types": [
+      97
+    ],
+    "sample_rates": [
+      48000
+    ],
+    "transports": [
+      "rtp_udp"
+    ]
+  },
+  "auth": {
+    "required": true,
+    "strategy": "HOME_MEMBERSHIP",
+    "token_refresh": false
+  },
+  "features": {
+    "diagnostics": true,
+    "heartbeat": true,
+    "now_playing": true,
+    "ota": true,
+    "session": true,
+    "volume": true
+  },
+  "identity_scheme": "ed25519-blake3-v1",
+  "michi_home_id": "J0a0g8YkmJykqurslHUCq2bSPsFQDEoj4JJ7ovNn6_k",
+  "michi_id": "f2UwxQaeA6vA8LO7Cr1nGRr5MStned_Gbmc_ua48qUc",
+  "name": "Michi Stream Cocina",
+  "public_key": "RpHnJr9oP1DXBkPuIMuk0hJ2hAJ5SiWO2hAQVCMGREE",
+  "roles": [
+    "audio_receiver"
+  ],
+  "server_id": "550e8400-e29b-41d4-a716-446655440000",
+  "service": "michi-stream-hifi",
+  "version": "0.3.0"
+}

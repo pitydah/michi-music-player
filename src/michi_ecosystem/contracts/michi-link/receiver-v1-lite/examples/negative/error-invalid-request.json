@@ -1,0 +1,10 @@
+{
+  "error": {
+    "code": "INVALID_REQUEST",
+    "details": {
+      "field": "buffer_ms"
+    },
+    "message": "buffer_ms must be between 50 and 500",
+    "request_id": "550e8400-e29b-41d4-a716-446655440100"
+  }
+}

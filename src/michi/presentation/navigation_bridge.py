@@ -28,6 +28,8 @@ class NavigationBridge(QObject):
         super().__init__(parent)
         self._service = service
         self._coordinator = playlist_navigation
+        self._ecosystem_pages: dict[str, str] = {}
+        self._ecosystem_models: dict[str, dict[str, object]] = {}
         service.subscribe_changed(self._on_service_changed)
 
     def dispose(self) -> None:
@@ -45,6 +47,53 @@ class NavigationBridge(QObject):
         return self._service.state.playlist_id or ""
 
     playlistId = Property(str, _get_playlist_id, notify=route_changed)
+
+    def _get_ecosystem_route(self) -> str:
+        return self._service.state.ecosystem_route
+
+    # E14: sub-route identity inside the single ECOSYSTEM AppRoute. The page
+    # registry below is presentation-only; NavigationService stays the sole
+    # owner of which route is active.
+    ecosystemRoute = Property(str, _get_ecosystem_route, notify=route_changed)
+
+    def _get_ecosystem_page_source(self) -> str:
+        route = self._service.state.ecosystem_route
+        return self._ecosystem_pages.get(route, "")
+
+    ecosystemPageSource = Property(
+        str, _get_ecosystem_page_source, notify=route_changed
+    )
+
+    def register_ecosystem_route(self, route_id: str, source: str) -> None:
+        """Register the QML asset for one validated Ecosystem route."""
+        self._ecosystem_pages[route_id] = source
+        if route_id == self._service.state.ecosystem_route:
+            self.route_changed.emit()
+
+    def _get_ecosystem_model(self, route_id: str) -> dict[str, object]:
+        return dict(self._ecosystem_models.get(route_id, {}))
+
+    ecosystemServer = Property(
+        "QVariantMap",
+        lambda self: self._get_ecosystem_model("ecosystem/micro-server"),
+        notify=route_changed,
+    )
+    ecosystemLinkState = Property(
+        "QVariantMap",
+        lambda self: self._get_ecosystem_model("ecosystem/michi-link"),
+        notify=route_changed,
+    )
+    ecosystemMobile = Property(
+        "QVariantMap",
+        lambda self: self._get_ecosystem_model("ecosystem/mobile"),
+        notify=route_changed,
+    )
+
+    def set_ecosystem_model(self, route_id: str, model: dict[str, object]) -> None:
+        """Update one detail model without taking navigation ownership."""
+        self._ecosystem_models[route_id] = dict(model)
+        if route_id == self._service.state.ecosystem_route:
+            self.route_changed.emit()
 
     @Slot(str)
     def navigate(self, route_id: str) -> None:

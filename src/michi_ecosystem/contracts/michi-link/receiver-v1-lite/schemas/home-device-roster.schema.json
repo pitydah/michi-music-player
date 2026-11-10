@@ -1,0 +1,103 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/home-device-roster.schema.json",
+  "title": "HomeDeviceRoster",
+  "description": "Roster of all registered devices in a Michi Home.",
+  "type": "object",
+  "required": [
+    "version",
+    "home_id",
+    "devices",
+    "updated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "integer",
+      "description": "Roster schema version (always 1).",
+      "enum": [
+        1
+      ]
+    },
+    "home_id": {
+      "type": "string",
+      "description": "Michi Home ID (43 chars base64url).",
+      "pattern": "^[A-Za-z0-9_-]{43}$"
+    },
+    "devices": {
+      "type": "array",
+      "description": "List of devices active or known in the home.",
+      "items": {
+        "type": "object",
+        "required": [
+          "device_michi_id",
+          "device_name",
+          "device_type",
+          "roles",
+          "membership",
+          "status",
+          "last_seen_at"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "device_michi_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          },
+          "device_name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "device_type": {
+            "type": "string",
+            "enum": [
+              "player",
+              "server",
+              "stream",
+              "mobile"
+            ]
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "desktop_player",
+                "library_master",
+                "sync_host",
+                "music_server",
+                "library_host",
+                "playback_host",
+                "mobile_player",
+                "remote_controller",
+                "sync_client",
+                "audio_receiver"
+              ]
+            },
+            "minItems": 1
+          },
+          "membership": {
+            "$ref": "michi-membership.schema.json"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "online",
+              "offline",
+              "unreachable"
+            ]
+          },
+          "last_seen_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

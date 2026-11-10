@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/queue-transfer-response.schema.json",
+  "title": "QueueTransferResponse",
+  "description": "Response from queue transfer operation",
+  "type": "object",
+  "required": ["queue_id", "accepted", "items_count"],
+  "additionalProperties": false,
+  "properties": {
+    "queue_id": { "type": "string" },
+    "accepted": { "type": "boolean" },
+    "items_count": { "type": "integer", "minimum": 0 },
+    "current_index": { "type": "integer", "minimum": 0 },
+    "position_ms": { "type": "integer", "minimum": 0 }
+  }
+}

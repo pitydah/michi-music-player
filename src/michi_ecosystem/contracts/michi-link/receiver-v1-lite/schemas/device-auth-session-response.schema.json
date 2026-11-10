@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/device-auth-session-response.schema.json",
+  "title": "DeviceAuthSessionResponse",
+  "description": "Session established response containing a short-lived bearer token and server mutual proof.",
+  "type": "object",
+  "required": [
+    "session_token",
+    "token_type",
+    "expires_in",
+    "server_michi_id",
+    "server_membership",
+    "server_signature"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "session_token": {
+      "type": "string",
+      "description": "Short-lived opaque bearer token stored only in RAM with TTL.",
+      "minLength": 16,
+      "maxLength": 512
+    },
+    "token_type": {
+      "type": "string",
+      "description": "Authorization token type.",
+      "enum": [
+        "Bearer"
+      ]
+    },
+    "expires_in": {
+      "type": "integer",
+      "description": "Session lifetime in seconds (e.g. 3600).",
+      "minimum": 1
+    },
+    "server_michi_id": {
+      "type": "string",
+      "description": "Server or receiver michi_id (43 chars base64url).",
+      "pattern": "^[A-Za-z0-9_-]{43}$"
+    },
+    "server_membership": {
+      "$ref": "michi-membership.schema.json",
+      "description": "Valid membership certificate of the server/receiver issued by the Home Root Authority proving membership in the same Home."
+    },
+    "server_signature": {
+      "type": "string",
+      "description": "Ed25519 confirmation signature by server completing mutual authentication (86 chars base64url).",
+      "pattern": "^[A-Za-z0-9_-]{86}$"
+    }
+  }
+}

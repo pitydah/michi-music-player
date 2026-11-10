@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/michi-identity.schema.json",
+  "title": "MichiIdentity",
+  "description": "Public Ed25519 identity document for the Michi ecosystem. michi_id is derived as base64url(BLAKE3(public_key)), always 43 chars.",
+  "type": "object",
+  "required": ["identity_scheme", "michi_id", "public_key"],
+  "additionalProperties": false,
+  "properties": {
+    "identity_scheme": {
+      "type": "string",
+      "description": "Cryptographic identity scheme",
+      "enum": ["ed25519-blake3-v1"],
+      "examples": ["ed25519-blake3-v1"]
+    },
+    "michi_id": {
+      "type": "string",
+      "description": "Identity derived as base64url(BLAKE3(public_key)), 43 chars",
+      "pattern": "^[A-Za-z0-9_-]{43}$",
+      "examples": ["QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays"]
+    },
+    "public_key": {
+      "type": "string",
+      "description": "Ed25519 public key in base64url, 43 chars",
+      "pattern": "^[A-Za-z0-9_-]{43}$",
+      "examples": ["KJN5aOu4gWhA0clmvmwqprYcwYI013vDNPx1jf90CpQ"]
+    },
+    "device_name": {
+      "type": "string",
+      "description": "Human-readable device name",
+      "minLength": 1,
+      "maxLength": 128,
+      "examples": ["Michi Music Player"]
+    },
+    "created_at": {
+      "type": "string",
+      "description": "ISO 8601 timestamp of key generation",
+      "format": "date-time",
+      "examples": ["2026-08-05T10:00:00Z"]
+    }
+  }
+}

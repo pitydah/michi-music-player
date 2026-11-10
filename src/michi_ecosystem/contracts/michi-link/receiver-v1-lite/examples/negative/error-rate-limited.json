@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "RATE_LIMITED",
+    "message": "too many pairing attempts",
+    "request_id": "550e8400-e29b-41d4-a716-446655440105"
+  }
+}

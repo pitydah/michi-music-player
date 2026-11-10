@@ -33,7 +33,8 @@ MichiGlassSurface {
     readonly property var _routes: [
         { id: "now_playing", label: "Now Playing", icon: "play" },
         { id: "library", label: "Library", icon: "library" },
-        { id: "playlists", label: "Playlists", icon: "playlist" }
+        { id: "playlists", label: "Playlists", icon: "playlist" },
+        { id: "ecosystem", label: "Ecosystem", icon: "device" }
     ]
 
     readonly property var _bottom_routes: [

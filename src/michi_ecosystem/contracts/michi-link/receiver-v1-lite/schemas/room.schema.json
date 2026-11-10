@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/room.schema.json",
+  "title": "Room",
+  "description": "A logical room or zone grouping devices and receivers",
+  "type": "object",
+  "required": ["id", "name", "devices", "receivers"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique room identifier",
+      "minLength": 1,
+      "examples": ["room_living_room"]
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable room name",
+      "minLength": 1,
+      "maxLength": 128,
+      "examples": ["Living Room"]
+    },
+    "devices": {
+      "type": "array",
+      "description": "List of device identifiers associated with this room",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "examples": [["michi-server-01"]]
+    },
+    "receivers": {
+      "type": "array",
+      "description": "List of receiver device identifiers in this room",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "examples": [["receiver_living_01", "receiver_living_02"]]
+    },
+    "active_chain_id": {
+      "type": "string",
+      "description": "Identifier of the currently active audio chain",
+      "examples": ["chain_p7q8r9s0"]
+    },
+    "volume": {
+      "type": "integer",
+      "description": "Room-wide volume level (0–100)",
+      "minimum": 0,
+      "maximum": 100,
+      "examples": [60]
+    },
+    "is_playing": {
+      "type": "boolean",
+      "description": "Whether audio is currently playing in this room"
+    },
+    "current_track": {
+      "description": "Currently playing track in this room",
+      "$ref": "track.schema.json"
+    },
+    "created_at": {
+      "type": "string",
+      "description": "ISO 8601 timestamp when the room was created",
+      "format": "date-time",
+      "examples": ["2025-06-01T12:00:00Z"]
+    }
+  }
+}

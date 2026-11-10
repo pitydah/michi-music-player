@@ -1,0 +1,29 @@
+"""Ports for E11.5 local accounts."""
+
+from __future__ import annotations
+
+from typing import Protocol
+
+from michi_ecosystem.domain.account import LocalAccount
+
+
+class LocalAccountRepositoryPort(Protocol):
+    def count_accounts(self) -> int: ...
+
+    def first_account(self) -> LocalAccount | None: ...
+
+    def create(self, account: LocalAccount) -> None: ...
+
+    def get_by_id(self, account_id: str) -> LocalAccount | None: ...
+
+    def get_by_username(self, username: str) -> LocalAccount | None: ...
+
+    def update_verifier(
+        self, account_id: str, password_verifier: str, updated_at: str
+    ) -> None: ...
+
+    def bind_home_owner(self, account_id: str, michi_home_id: str) -> None: ...
+
+    def owner_for_home(self, michi_home_id: str) -> str | None: ...
+
+    def home_for_owner(self, account_id: str) -> str | None: ...

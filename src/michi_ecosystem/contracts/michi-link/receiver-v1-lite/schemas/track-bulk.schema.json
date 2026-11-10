@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/track-bulk.schema.json",
+  "title": "TrackBulkCreateRequest",
+  "description": "Bulk create multiple tracks at once",
+  "type": "object",
+  "required": ["tracks"],
+  "additionalProperties": false,
+  "properties": {
+    "tracks": {
+      "type": "array",
+      "description": "List of tracks to create",
+      "items": {
+        "$ref": "track.schema.json"
+      },
+      "minItems": 1,
+      "maxItems": 500
+    }
+  }
+}

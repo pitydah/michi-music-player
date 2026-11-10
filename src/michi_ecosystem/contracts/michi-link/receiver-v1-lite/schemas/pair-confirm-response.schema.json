@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/pair-confirm-response.schema.json",
+  "title": "PairConfirmResponse",
+  "description": "Canonical v1 response to POST /api/v1/pair/confirm. token is an opaque string; refresh_token is optional.",
+  "type": "object",
+  "required": ["token", "expires_in", "device_id", "server_id"],
+  "additionalProperties": false,
+  "properties": {
+    "token": {
+      "type": "string",
+      "description": "Opaque bearer token issued for the paired device",
+      "minLength": 1,
+      "examples": ["tok_michi_7f3a9c2e4b8d1f6a5c3e9b7d2a4f8c1e"]
+    },
+    "refresh_token": {
+      "type": "string",
+      "description": "Opaque refresh token, present when the server supports token refresh",
+      "minLength": 1,
+      "examples": ["tok_michi_refresh_9c4e2a7f1d8b3e6a5c0f2d4b8a1e7c3f"]
+    },
+    "expires_in": {
+      "type": "integer",
+      "description": "Token lifetime in seconds. 0 means no automatic expiry: valid until revocation or factory reset (receiver-issued tokens).",
+      "minimum": 0,
+      "examples": [3600]
+    },
+    "device_id": {
+      "type": "string",
+      "description": "Stable identifier assigned to the paired device",
+      "minLength": 1,
+      "examples": ["stable-device-id"]
+    },
+    "server_id": {
+      "type": "string",
+      "description": "Stable identifier of the server that issued the token",
+      "minLength": 1,
+      "examples": ["stable-server-id"]
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/queue-add-request.schema.json",
+  "title": "QueueAddRequest",
+  "description": "Add one or more tracks to the playback queue",
+  "type": "object",
+  "required": ["track_ids"],
+  "additionalProperties": false,
+  "properties": {
+    "track_ids": {
+      "type": "array",
+      "description": "List of track IDs to add to the queue",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1,
+      "maxItems": 100
+    },
+    "position": {
+      "type": "string",
+      "enum": ["next", "end"],
+      "description": "Where to insert the tracks: 'next' (after current) or 'end' (at the end)"
+    }
+  }
+}

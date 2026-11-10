@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/library-stats.schema.json",
+  "title": "LibraryStats",
+  "description": "Library statistics response",
+  "type": "object",
+  "required": ["total_tracks", "total_albums", "total_artists"],
+  "additionalProperties": false,
+  "properties": {
+    "total_tracks": { "type": "integer", "minimum": 0 },
+    "total_albums": { "type": "integer", "minimum": 0 },
+    "total_artists": { "type": "integer", "minimum": 0 },
+    "total_playlists": { "type": "integer", "minimum": 0 },
+    "total_duration_seconds": { "type": "integer", "minimum": 0 },
+    "total_size_bytes": { "type": "integer", "minimum": 0 },
+    "last_scan": { "type": "string", "format": "date-time" },
+    "scan_in_progress": { "type": "boolean" }
+  }
+}

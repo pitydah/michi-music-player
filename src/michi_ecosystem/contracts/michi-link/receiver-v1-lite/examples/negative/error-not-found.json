@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "session not found",
+    "request_id": "550e8400-e29b-41d4-a716-446655440103"
+  }
+}

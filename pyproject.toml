@@ -17,6 +17,15 @@ requires-python = ">=3.11"
 dependencies = [
     "PySide6>=6.6",
     "mutagen>=1.47",
+    # E14-M1: the Ecosystem control plane is part of the Player runtime.
+    # Crypto is used for Home membership and Michi Link verification; serial
+    # and esptool are the real Stream factory adapters, never fake ones.
+    "argon2-cffi>=23",
+    "blake3>=0.4",
+    "cryptography>=42",
+    "esptool>=5,<6",
+    "jsonschema>=4",
+    "pyserial>=3.5",
     # DAC-V35-010 (§0G.2): hotplug observation only — never identity,
     # output policy, formats or playback authority.
     "pyudev>=0.24; sys_platform == 'linux'",
@@ -53,6 +62,8 @@ michi = [
     "presentation/qml/assets/*.svg",
     "presentation/qml/controls/*.qml",
     "presentation/qml/enrichment/*.qml",
+    "presentation/qml/ecosystem/*.qml",
+    "presentation/qml/ecosystem/*/*.qml",
     "presentation/qml/media/*.qml",
     "presentation/qml/patterns/*.qml",
     "presentation/qml/playlists/*.qml",
@@ -70,6 +81,17 @@ michi = [
 # EXPLÍCITA aunque un glob amplio o un archivo trackeado por git lo
 # arrastre (el parity gate bidireccional de verify_wheel_resources.py
 # también lo comprueba sobre el wheel construido).
+michi_ecosystem = [
+    "ECOSYSTEM_HOST_COMPATIBILITY.json",
+    "contracts/README.md",
+    "contracts/michi-link/UPSTREAM_COMMIT",
+    "contracts/michi-link/receiver-v1-lite/*",
+    "contracts/michi-link/receiver-v1-lite/*/*",
+    "contracts/michi-link/receiver-v1-lite/*/*/*",
+    "qml/ecosystem/*.qml",
+    "qml/ecosystem/*/*.qml",
+]
+
 [tool.setuptools.exclude-package-data]
 michi = [
     "presentation/qml/dev/*.qml",
@@ -86,6 +108,7 @@ target-version = "py311"
 select = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]
 
 [tool.ruff.lint.per-file-ignores]
+"src/michi_ecosystem/presentation/*_bridge.py" = ["N802", "N815"]
 # M11.3F/F42 frozen adapter: byte checksum is enforced independently. The
 # single inherited SIM102 site is grandfathered here, not in the source.
 # NO blanket ignore and NO authorized change to the sealed audio adapter.

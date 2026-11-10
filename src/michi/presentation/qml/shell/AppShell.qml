@@ -81,6 +81,7 @@ Item {
 
         ContentHost {
             id: contentHost
+            objectName: "contentHost"
             SplitView.fillWidth: true
             SplitView.minimumWidth: MichiMetrics.contentMinimum
             currentRoute: root.currentRoute === "queue" ? root.lastContentRoute : root.currentRoute
@@ -262,6 +263,11 @@ Item {
         }
         if (currentRoute === "queue") {
             navigationRequested(lastContentRoute)
+            return
+        }
+        if (currentRoute === "ecosystem") {
+            navigationRequested(navigation.ecosystemRoute === "ecosystem"
+                ? "library" : "ecosystem")
             return
         }
         navigationRequested("library")

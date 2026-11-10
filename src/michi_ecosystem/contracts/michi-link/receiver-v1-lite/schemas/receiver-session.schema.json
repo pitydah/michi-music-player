@@ -1,0 +1,258 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/receiver-session.schema.json",
+  "title": "ReceiverSession",
+  "description": "Receiver audio session representations. Discriminated union: the created form (POST /api/v1/receiver-lite/session response, with session_token, lease_seconds and effective) and the state form (GET/PATCH /api/v1/receiver-lite/session response). The session_token is returned once at creation and never appears in the state form.",
+  "type": "object",
+  "oneOf": [
+    {
+      "description": "Created form returned by POST /api/v1/receiver-lite/session (201).",
+      "required": [
+        "session_id",
+        "session_token",
+        "lease_seconds",
+        "effective"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "description": "Session identifier",
+          "format": "uuid",
+          "examples": [
+            "550e8400-e29b-41d4-a716-446655440003"
+          ]
+        },
+        "session_token": {
+          "type": "string",
+          "description": "Session mutation token: 32 random bytes, base64url without padding (43 chars). RAM-only, returned exactly once.",
+          "pattern": "^[A-Za-z0-9_-]{43}$",
+          "examples": [
+            "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+          ]
+        },
+        "lease_seconds": {
+          "type": "integer",
+          "description": "Initial lease duration in seconds. Frozen at 30.",
+          "const": 30,
+          "examples": [
+            30
+          ]
+        },
+        "effective": {
+          "type": "object",
+          "description": "Negotiated session parameters actually in effect",
+          "required": [
+            "transport",
+            "codec",
+            "sample_rate",
+            "bit_depth",
+            "channels",
+            "packet_ms",
+            "buffer_ms",
+            "payload_type",
+            "ssrc",
+            "stream_port",
+            "volume"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "transport": {
+              "type": "string",
+              "const": "rtp_udp",
+              "examples": [
+                "rtp_udp"
+              ]
+            },
+            "codec": {
+              "type": "string",
+              "const": "pcm_s16le",
+              "examples": [
+                "pcm_s16le"
+              ]
+            },
+            "sample_rate": {
+              "type": "integer",
+              "const": 48000,
+              "examples": [
+                48000
+              ]
+            },
+            "bit_depth": {
+              "type": "integer",
+              "const": 16,
+              "examples": [
+                16
+              ]
+            },
+            "channels": {
+              "type": "integer",
+              "const": 2,
+              "examples": [
+                2
+              ]
+            },
+            "packet_ms": {
+              "type": "integer",
+              "const": 10,
+              "examples": [
+                10
+              ]
+            },
+            "buffer_ms": {
+              "type": "integer",
+              "minimum": 50,
+              "maximum": 500,
+              "examples": [
+                120
+              ]
+            },
+            "payload_type": {
+              "type": "integer",
+              "const": 97,
+              "examples": [
+                97
+              ]
+            },
+            "ssrc": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295,
+              "examples": [
+                305419896
+              ]
+            },
+            "stream_port": {
+              "type": "integer",
+              "description": "UDP port the receiver listens on for RTP",
+              "minimum": 49152,
+              "maximum": 65535,
+              "examples": [
+                55300
+              ]
+            },
+            "volume": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100,
+              "examples": [
+                70
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "State form returned by GET and PATCH /api/v1/receiver-lite/session (200).",
+      "required": [
+        "session_id",
+        "state",
+        "lease_remaining_ms",
+        "volume",
+        "paused",
+        "stream_port",
+        "ssrc",
+        "packets_received",
+        "packets_rejected",
+        "packets_lost",
+        "underruns"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "format": "uuid",
+          "examples": [
+            "550e8400-e29b-41d4-a716-446655440003"
+          ]
+        },
+        "state": {
+          "type": "string",
+          "description": "Session lifecycle state",
+          "enum": [
+            "starting",
+            "playing",
+            "paused",
+            "stopping"
+          ],
+          "examples": [
+            "playing"
+          ]
+        },
+        "lease_remaining_ms": {
+          "type": "integer",
+          "description": "Milliseconds until the lease expires",
+          "minimum": 0,
+          "examples": [
+            24500
+          ]
+        },
+        "volume": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "examples": [
+            70
+          ]
+        },
+        "paused": {
+          "type": "boolean",
+          "description": "Whether playback is paused",
+          "examples": [
+            false
+          ]
+        },
+        "stream_port": {
+          "type": "integer",
+          "description": "UDP port the receiver listens on for RTP",
+          "minimum": 49152,
+          "maximum": 65535,
+          "examples": [
+            55300
+          ]
+        },
+        "ssrc": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4294967295,
+          "examples": [
+            305419896
+          ]
+        },
+        "packets_received": {
+          "type": "integer",
+          "description": "Total RTP packets accepted",
+          "minimum": 0,
+          "examples": [
+            1250
+          ]
+        },
+        "packets_rejected": {
+          "type": "integer",
+          "description": "Total RTP packets rejected (source, PT, SSRC or size mismatch)",
+          "minimum": 0,
+          "examples": [
+            0
+          ]
+        },
+        "packets_lost": {
+          "type": "integer",
+          "description": "Detected RTP packet loss",
+          "minimum": 0,
+          "examples": [
+            0
+          ]
+        },
+        "underruns": {
+          "type": "integer",
+          "description": "Audio buffer underruns",
+          "minimum": 0,
+          "examples": [
+            0
+          ]
+        }
+      }
+    }
+  ]
+}

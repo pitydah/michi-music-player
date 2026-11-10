@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/audio-chain.schema.json",
+  "title": "AudioChain",
+  "description": "Configuration for an audio processing chain: source → controller → output. Profiles are documented in AUDIO_CHAINS.md.",
+  "type": "object",
+  "required": ["id", "name", "source", "controller", "output"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique audio chain identifier",
+      "minLength": 1,
+      "examples": ["chain_p7q8r9s0"]
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable chain name",
+      "minLength": 1,
+      "maxLength": 128,
+      "examples": ["Living Room HiFi Chain"]
+    },
+    "source": {
+      "type": "object",
+      "description": "Audio source configuration",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Source type (see AUDIO_CHAINS.md)",
+          "enum": ["local", "stream", "radio", "playlist"],
+          "examples": ["playlist"]
+        },
+        "config": {
+          "type": "object",
+          "description": "Source-specific configuration parameters",
+          "additionalProperties": true
+        }
+      }
+    },
+    "controller": {
+      "type": "object",
+      "description": "Audio processing / controller configuration",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Controller type (see AUDIO_CHAINS.md)",
+          "enum": ["builtin", "equalizer", "crossfade", "normalize"],
+          "examples": ["equalizer"]
+        },
+        "config": {
+          "type": "object",
+          "description": "Controller-specific configuration parameters",
+          "additionalProperties": true
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "description": "Audio output configuration",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Output type (see AUDIO_CHAINS.md)",
+          "enum": ["local", "receiver", "room", "multiroom"],
+          "examples": ["multiroom"]
+        },
+        "config": {
+          "type": "object",
+          "description": "Output-specific configuration parameters",
+          "additionalProperties": true
+        }
+      }
+    },
+    "profile": {
+      "type": "string",
+      "description": "Named profile preset combining source, controller and output",
+      "enum": ["standard", "high", "lossless", "custom", "party"],
+      "examples": ["party"]
+    }
+  }
+}

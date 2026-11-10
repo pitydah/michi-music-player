@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/pair-start.schema.json",
+  "title": "PairStart",
+  "description": "Canonical v1 request to initiate a pairing handshake. Strict snake_case field names; camelCase variants (e.g. deviceId) are rejected.",
+  "type": "object",
+  "required": ["device_name", "device_type", "roles", "auth_strategy", "michi_id", "public_key", "challenge_nonce", "challenge_signature"],
+  "additionalProperties": false,
+  "properties": {
+    "device_name": {
+      "type": "string",
+      "description": "Initiating device display name",
+      "minLength": 1,
+      "maxLength": 128,
+      "examples": ["Michi Mobile"]
+    },
+    "device_type": {
+      "type": "string",
+      "description": "Initiating device type. 'server' represents Michi Micro Server pairing a receiver.",
+      "enum": ["mobile", "desktop", "receiver", "server"],
+      "examples": ["mobile"]
+    },
+    "roles": {
+      "type": "array",
+      "description": "Requested canonical roles for this device",
+      "items": {
+        "type": "string",
+        "enum": ["desktop_player", "library_master", "sync_host", "music_server", "library_host", "playback_host", "mobile_player", "remote_controller", "sync_client", "audio_receiver"]
+      },
+      "minItems": 1,
+      "uniqueItems": true,
+      "examples": [["mobile_player", "remote_controller", "sync_client"]]
+    },
+    "auth_strategy": {
+      "type": "string",
+      "description": "Desired authentication strategy",
+      "enum": ["PLAYER_PASSWORD", "SERVER_CODE", "ED25519_CHALLENGE", "RECEIVER_BUTTON", "HOME_MEMBERSHIP", "LEGACY"],
+      "examples": ["ED25519_CHALLENGE"]
+    },
+    "michi_id": {
+      "type": "string",
+      "description": "Identity derived as base64url(BLAKE3(public_key)), exactly 43 chars, no padding",
+      "pattern": "^[A-Za-z0-9_-]{43}$",
+      "examples": ["97ryPKOLZ-JgVKQFc2ZuuSk0alWzxagdNILuDW26jEc"]
+    },
+    "public_key": {
+      "type": "string",
+      "description": "Ed25519 public key in base64url, exactly 43 chars, no padding",
+      "pattern": "^[A-Za-z0-9_-]{43}$",
+      "examples": ["fDBBmExOH6h74KpGq2ckfDNN0Mzi7oMN4g_V2IKAR8Y"]
+    },
+    "challenge_nonce": {
+      "type": "string",
+      "description": "Random nonce in base64url (at least 16 bytes, 22 chars), for ED25519_CHALLENGE challenge-response",
+      "minLength": 22,
+      "pattern": "^[A-Za-z0-9_-]{22,}$",
+      "examples": ["VFfZjzw8JeAM7-RFiTSrMA"]
+    },
+    "challenge_signature": {
+      "type": "string",
+      "description": "Ed25519 signature of the nonce in base64url, exactly 86 chars, no padding. Proves possession of the secret key.",
+      "pattern": "^[A-Za-z0-9_-]{86}$",
+      "examples": ["DTlMt9BYH_TnYgKAeGd8zTpza-w5b8BDm9AyIoAW2p0clD7JrzwN9cwPY5y48K14x_0z2TPq7-LTXdNTqmhr-w"]
+    }
+  }
+}

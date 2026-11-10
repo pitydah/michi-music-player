@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/queue-jump-request.schema.json",
+  "title": "QueueJumpRequest",
+  "description": "Jump to a specific position in the playback queue",
+  "type": "object",
+  "required": ["queue_item_id"],
+  "additionalProperties": false,
+  "properties": {
+    "queue_item_id": {
+      "type": "string",
+      "description": "ID of the queue item to jump to",
+      "minLength": 1
+    },
+    "position_ms": {
+      "type": "integer",
+      "description": "Optional position within the track in milliseconds",
+      "minimum": 0
+    }
+  }
+}

@@ -19,7 +19,8 @@ Item {
         case "library":     return 1
         case "queue":       return 2
         case "settings":    return 3
-        case "playlists":   return 4
+        case "ecosystem":   return 4
+        case "playlists":   return 5
         default:            return 1
         }
     }
@@ -45,6 +46,31 @@ Item {
         LibraryView { }
         QueueView { }
         SettingsView { }
+
+        // E14: the Ecosystem package registers the active page asset through
+        // NavigationBridge. There is still one navigation owner: the service.
+        Loader {
+            id: ecosystemContentLoader
+            objectName: "ecosystemContentLoader"
+            source: navigation && navigation.currentRoute === "ecosystem"
+                ? navigation.ecosystemPageSource
+                : ""
+            asynchronous: false
+
+            onLoaded: {
+                if (!item)
+                    return
+                if (item.navigationRequested !== undefined)
+                    item.navigationRequested.connect(navigation.navigate)
+                var route = navigation.ecosystemRoute
+                if (route === "ecosystem/micro-server")
+                    item.server = Qt.binding(() => navigation.ecosystemServer)
+                else if (route === "ecosystem/michi-link")
+                    item.linkState = Qt.binding(() => navigation.ecosystemLinkState)
+                else if (route === "ecosystem/mobile")
+                    item.mobile = Qt.binding(() => navigation.ecosystemMobile)
+            }
+        }
 
         // PLAYLISTS route host: All Playlists or Detail by playlist target.
         Item {
