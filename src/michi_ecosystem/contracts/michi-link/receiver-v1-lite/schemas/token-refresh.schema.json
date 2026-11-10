@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/token-refresh.schema.json",
+  "title": "TokenRefresh",
+  "description": "Token refresh request and response payload",
+  "type": "object",
+  "required": ["token", "device_id"],
+  "additionalProperties": false,
+  "properties": {
+    "token": {
+      "type": "string",
+      "description": "The current session token (request) or new session token (response)",
+      "minLength": 1,
+      "examples": ["eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"]
+    },
+    "device_id": {
+      "type": "string",
+      "description": "Device identifier requesting the refresh",
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9_-]+$"
+    },
+    "expires_in": {
+      "type": "integer",
+      "description": "Token validity duration in seconds (response only)",
+      "minimum": 60,
+      "maximum": 86400,
+      "examples": [3600]
+    }
+  }
+}

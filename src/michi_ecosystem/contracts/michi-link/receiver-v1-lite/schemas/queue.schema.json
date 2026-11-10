@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/queue.schema.json",
+  "title": "Queue",
+  "description": "Current playback queue with track listing and state",
+  "type": "object",
+  "required": ["items", "current_index"],
+  "additionalProperties": false,
+  "properties": {
+    "items": {
+      "type": "array",
+      "description": "Ordered list of tracks in the queue",
+      "items": {
+        "$ref": "track.schema.json"
+      }
+    },
+    "current_index": {
+      "type": "integer",
+      "description": "Index of the currently playing track in the items array, -1 if nothing selected",
+      "minimum": -1,
+      "examples": [0]
+    },
+    "shuffle": {
+      "type": "boolean",
+      "description": "Whether shuffle mode is enabled"
+    },
+    "repeat": {
+      "type": "string",
+      "description": "Current repeat mode",
+      "enum": ["off", "one", "all"],
+      "default": "off"
+    }
+  }
+}

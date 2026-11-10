@@ -1,0 +1,145 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/discovery-announce.schema.json",
+  "title": "DiscoveryAnnounce",
+  "description": "UDP multicast announce payload for device discovery. Multicast group 224.0.0.167:53318, interval 30s, offline timeout 90s, max 8KiB. Signed announces require the full signature group (all-or-nothing).",
+  "type": "object",
+  "required": ["device_id", "name", "service", "roles", "api_version", "host", "port", "features"],
+  "additionalProperties": false,
+  "properties": {
+    "device_id": {
+      "type": "string",
+      "description": "Stable unique identifier for this device",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "examples": ["michi-player-01"]
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable device name",
+      "minLength": 1,
+      "maxLength": 128,
+      "examples": ["Michi Music Player"]
+    },
+    "service": {
+      "type": "string",
+      "description": "Service identifier",
+      "enum": ["michi-music-player", "michi-micro-server", "michi-mobile", "michi-stream-standard", "michi-stream-hifi"],
+      "examples": ["michi-music-player"]
+    },
+    "roles": {
+      "type": "array",
+      "description": "Roles this device fulfills on the network",
+      "items": {
+        "type": "string",
+        "enum": ["desktop_player", "library_master", "sync_host", "music_server", "library_host", "playback_host", "mobile_player", "remote_controller", "sync_client", "audio_receiver"]
+      },
+      "uniqueItems": true,
+      "minItems": 1,
+      "examples": [["desktop_player", "library_master", "sync_host"]]
+    },
+    "api_version": {
+      "type": "string",
+      "description": "API contract version",
+      "enum": ["v1", "v1-lite"],
+      "examples": ["v1"]
+    },
+    "host": {
+      "type": "string",
+      "description": "IP address or hostname for API connections",
+      "minLength": 1,
+      "maxLength": 255,
+      "examples": ["192.168.1.100"]
+    },
+    "port": {
+      "type": "integer",
+      "description": "TCP port for API connections",
+      "minimum": 1,
+      "maximum": 65535,
+      "examples": [8400]
+    },
+    "features": {
+      "type": "object",
+      "description": "Boolean capability flags for quick filtering",
+      "additionalProperties": { "type": "boolean" },
+      "minProperties": 1,
+      "examples": [{ "library": true, "streaming": true, "remote_control": true, "events": false }]
+    },
+    "michi_id": {
+      "type": "string",
+      "description": "Identity derived as base64url(BLAKE3(public_key)), 43 chars",
+      "pattern": "^[A-Za-z0-9_-]{43}$"
+    },
+    "public_key": {
+      "type": "string",
+      "description": "Ed25519 public key in base64url, exactly 43 chars, no padding",
+      "pattern": "^[A-Za-z0-9_-]{43}$"
+    },
+    "signature": {
+      "type": "string",
+      "description": "Ed25519 signature of the announce payload in base64url, exactly 86 chars, no padding",
+      "pattern": "^[A-Za-z0-9_-]{86}$"
+    },
+    "timestamp_ms": {
+      "type": "integer",
+      "description": "Epoch milliseconds when the announce was signed",
+      "minimum": 0,
+      "examples": [1785974884586]
+    },
+    "nonce": {
+      "type": "string",
+      "description": "Random nonce in base64url, at least 22 chars (16 bytes)",
+      "minLength": 22,
+      "pattern": "^[A-Za-z0-9_-]{22,}$"
+    },
+    "michi_home_id": {
+      "type": "string",
+      "description": "Michi Home ID that this device belongs to (43 chars base64url).",
+      "pattern": "^[A-Za-z0-9_-]{43}$"
+    },
+    "membership_fingerprint": {
+      "type": "string",
+      "description": "Fingerprint of the device membership certificate in base64url.",
+      "pattern": "^[A-Za-z0-9_-]{16,43}$"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "michi_id": {},
+          "public_key": {},
+          "signature": {},
+          "timestamp_ms": {},
+          "nonce": {}
+        },
+        "anyOf": [
+          { "properties": { "michi_id": {} }, "required": ["michi_id"] },
+          { "properties": { "public_key": {} }, "required": ["public_key"] },
+          { "properties": { "signature": {} }, "required": ["signature"] },
+          { "properties": { "timestamp_ms": {} }, "required": ["timestamp_ms"] },
+          { "properties": { "nonce": {} }, "required": ["nonce"] }
+        ]
+      },
+      "then": {
+        "required": ["michi_id", "public_key", "signature", "timestamp_ms", "nonce"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "service": {
+            "enum": ["michi-stream-standard", "michi-stream-hifi"]
+          }
+        },
+        "required": ["service"],
+        "type": "object"
+      },
+      "then": {
+        "description": "The signed identity group is mandatory for michi-stream-* announces.",
+        "required": ["michi_id", "public_key", "signature", "timestamp_ms", "nonce"]
+      }
+    }
+  ]
+}

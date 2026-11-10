@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/receiver-session-patch.schema.json",
+  "title": "ReceiverSessionPatch",
+  "description": "Canonical request to PATCH /api/v1/receiver-lite/session. At least one property; only volume (0..100) and paused are accepted. There is no separate volume endpoint.",
+  "type": "object",
+  "required": [],
+  "minProperties": 1,
+  "additionalProperties": false,
+  "properties": {
+    "volume": {
+      "type": "integer",
+      "description": "Volume level (0 = mute, 100 = maximum)",
+      "minimum": 0,
+      "maximum": 100,
+      "examples": [
+        55
+      ]
+    },
+    "paused": {
+      "type": "boolean",
+      "description": "Whether playback should be paused",
+      "examples": [
+        true
+      ]
+    }
+  }
+}

@@ -1,0 +1,144 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/audio-capabilities.schema.json",
+  "title": "AudioCapabilities",
+  "description": "Reproducible audio capability for the receiver v1-lite profile. Declares playable capacity, not the DAC's theoretical capacity. Standard and Hi-Fi initially announce the same certified audio; a new capability requires schema, vectors, engine, tests and physical evidence.",
+  "type": "object",
+  "required": [
+    "transports",
+    "codecs",
+    "sample_rates",
+    "bit_depths",
+    "channels",
+    "packet_ms",
+    "payload_types",
+    "buffer_ms_min",
+    "buffer_ms_max"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "transports": {
+      "type": "array",
+      "description": "Supported RTP transports. Exactly rtp_udp for v1-lite.",
+      "items": {
+        "const": "rtp_udp"
+      },
+      "minItems": 1,
+      "maxItems": 1,
+      "uniqueItems": true,
+      "examples": [
+        [
+          "rtp_udp"
+        ]
+      ]
+    },
+    "codecs": {
+      "type": "array",
+      "description": "Supported codecs. Exactly pcm_s16le for v1-lite; no lossy codecs and no 24-bit PCM.",
+      "items": {
+        "enum": [
+          "pcm_s16le"
+        ]
+      },
+      "minItems": 1,
+      "maxItems": 1,
+      "uniqueItems": true,
+      "examples": [
+        [
+          "pcm_s16le"
+        ]
+      ]
+    },
+    "sample_rates": {
+      "type": "array",
+      "description": "Supported sample rates in Hz. Exactly 48000 for v1-lite.",
+      "items": {
+        "const": 48000
+      },
+      "minItems": 1,
+      "maxItems": 1,
+      "uniqueItems": true,
+      "examples": [
+        [
+          48000
+        ]
+      ]
+    },
+    "bit_depths": {
+      "type": "array",
+      "description": "Supported bit depths. Exactly 16 for v1-lite.",
+      "items": {
+        "const": 16
+      },
+      "minItems": 1,
+      "maxItems": 1,
+      "uniqueItems": true,
+      "examples": [
+        [
+          16
+        ]
+      ]
+    },
+    "channels": {
+      "type": "array",
+      "description": "Supported channel counts. Exactly stereo (2) for v1-lite.",
+      "items": {
+        "const": 2
+      },
+      "minItems": 1,
+      "maxItems": 1,
+      "uniqueItems": true,
+      "examples": [
+        [
+          2
+        ]
+      ]
+    },
+    "packet_ms": {
+      "type": "array",
+      "description": "Supported RTP packet durations in milliseconds. Exactly 10 ms for v1-lite.",
+      "items": {
+        "const": 10
+      },
+      "minItems": 1,
+      "maxItems": 1,
+      "uniqueItems": true,
+      "examples": [
+        [
+          10
+        ]
+      ]
+    },
+    "payload_types": {
+      "type": "array",
+      "description": "Supported RTP payload types. Exactly 97 for v1-lite.",
+      "items": {
+        "const": 97
+      },
+      "minItems": 1,
+      "maxItems": 1,
+      "uniqueItems": true,
+      "examples": [
+        [
+          97
+        ]
+      ]
+    },
+    "buffer_ms_min": {
+      "type": "integer",
+      "description": "Minimum accepted jitter buffer in milliseconds. Frozen at 50.",
+      "const": 50,
+      "examples": [
+        50
+      ]
+    },
+    "buffer_ms_max": {
+      "type": "integer",
+      "description": "Maximum accepted jitter buffer in milliseconds. Frozen at 500.",
+      "const": 500,
+      "examples": [
+        500
+      ]
+    }
+  }
+}

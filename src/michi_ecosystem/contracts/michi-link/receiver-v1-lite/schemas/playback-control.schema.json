@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/playback-control.schema.json",
+  "title": "PlaybackControl",
+  "description": "Playback control command. Official field is 'command'. Field 'action' is legacy/fallback.",
+  "type": "object",
+  "required": ["command"],
+  "additionalProperties": false,
+  "properties": {
+    "command": {
+      "type": "string",
+      "description": "Playback control command (official field)",
+      "minLength": 1,
+      "enum": ["play", "pause", "toggle", "stop", "next", "previous", "seek", "set_volume", "mute", "unmute", "shuffle", "repeat"]
+    },
+    "position_ms": {
+      "type": "integer",
+      "description": "Seek position in milliseconds (for seek command)",
+      "minimum": 0,
+      "examples": [90000]
+    },
+    "volume": {
+      "type": "integer",
+      "description": "Volume level 0-100 (for set_volume command)",
+      "minimum": 0,
+      "maximum": 100,
+      "examples": [70]
+    },
+    "value": {
+      "description": "Legacy fallback parameter. New implementations MUST use position_ms or volume instead.",
+      "oneOf": [
+        { "type": "integer", "minimum": 0 },
+        { "type": "string", "enum": ["off", "one", "all"] },
+        { "type": "boolean" },
+        { "type": "null" }
+      ]
+    }
+  }
+}

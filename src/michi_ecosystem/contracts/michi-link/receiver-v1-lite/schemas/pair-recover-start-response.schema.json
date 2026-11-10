@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/pair-recover-start-response.schema.json",
+  "title": "PairRecoverStartResponse",
+  "description": "Response to POST /api/v1/pair/recover/start containing a receiver-issued single-use challenge nonce.",
+  "type": "object",
+  "required": ["challenge_nonce", "expires_at", "server_michi_id", "server_public_key"],
+  "additionalProperties": false,
+  "properties": {
+    "challenge_nonce": {
+      "type": "string",
+      "description": "Random single-use nonce in base64url (at least 16 bytes, 22 chars), issued by receiver",
+      "minLength": 22,
+      "pattern": "^[A-Za-z0-9_-]{22,}$",
+      "examples": ["CxIZICcuNTxDSlFYX2ZtdA"]
+    },
+    "expires_at": {
+      "type": "string",
+      "description": "Challenge expiry timestamp (RFC 3339)",
+      "format": "date-time",
+      "examples": ["2026-08-05T10:05:00Z"]
+    },
+    "server_michi_id": {
+      "type": "string",
+      "description": "Server identity derived as base64url(BLAKE3(public_key)), exactly 43 chars, no padding",
+      "pattern": "^[A-Za-z0-9_-]{43}$",
+      "examples": ["f2UwxQaeA6vA8LO7Cr1nGRr5MStned_Gbmc_ua48qUc"]
+    },
+    "server_public_key": {
+      "type": "string",
+      "description": "Server Ed25519 public key in base64url, exactly 43 chars, no padding",
+      "pattern": "^[A-Za-z0-9_-]{43}$",
+      "examples": ["RpHnJr9oP1DXBkPuIMuk0hJ2hAJ5SiWO2hAQVCMGREE"]
+    }
+  }
+}

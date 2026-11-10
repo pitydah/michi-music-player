@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/device-auth-session-request.schema.json",
+  "title": "DeviceAuthSessionRequest",
+  "description": "Client proof and membership submission answering a challenge to obtain a short-lived session token.",
+  "type": "object",
+  "required": [
+    "challenge_id",
+    "client_michi_id",
+    "membership",
+    "client_signature"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "challenge_id": {
+      "type": "string",
+      "description": "UUID of the challenge being answered.",
+      "format": "uuid"
+    },
+    "client_michi_id": {
+      "type": "string",
+      "description": "Client device michi_id (43 chars base64url).",
+      "pattern": "^[A-Za-z0-9_-]{43}$"
+    },
+    "membership": {
+      "$ref": "michi-membership.schema.json",
+      "description": "Valid membership certificate of the client issued by the Home Root Authority."
+    },
+    "client_signature": {
+      "type": "string",
+      "description": "Ed25519 signature by client over domain separation string michi-link-device-auth-v1||home_id||server_michi_id||client_michi_id||challenge_id||challenge_nonce (86 chars base64url).",
+      "pattern": "^[A-Za-z0-9_-]{86}$"
+    }
+  }
+}

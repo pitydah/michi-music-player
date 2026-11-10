@@ -14,9 +14,13 @@ class AppRoute(StrEnum):
     QUEUE = "queue"
     SETTINGS = "settings"
     PLAYLISTS = "playlists"
+    # E14: the Ecosystem surface is one Player route with an explicit
+    # sub-route identity. The sub-route never becomes a second navigator.
+    ECOSYSTEM = "ecosystem"
 
 
 @dataclass
 class NavigationState:
     current_route: AppRoute = AppRoute.LIBRARY
     playlist_id: str | None = None
+    ecosystem_route: str = "ecosystem"

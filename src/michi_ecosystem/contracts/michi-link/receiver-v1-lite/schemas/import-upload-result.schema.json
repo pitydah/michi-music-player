@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/import-upload-result.schema.json",
+  "title": "ImportUploadResult",
+  "description": "Result of a single track upload via POST /api/v1/import/track/upload",
+  "type": "object",
+  "required": ["local_track_id", "remote_track_id", "status"],
+  "additionalProperties": false,
+  "properties": {
+    "local_track_id": { "type": "string" },
+    "remote_track_id": {
+      "description": "Remote track UUID, or null when MAPPING_UNCONFIRMED",
+      "type": ["string", "null"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["uploaded", "already_present", "accepted"]
+    },
+    "checksum": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "warning": {
+      "type": "string",
+      "enum": ["MAPPING_UNCONFIRMED"],
+      "description": "Warning when remote_track_id could not be determined immediately"
+    }
+  }
+}

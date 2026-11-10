@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/import-preflight-response.schema.json",
+  "title": "ImportPreflightResponse",
+  "description": "Response from import preflight check",
+  "type": "object",
+  "required": ["preflight_id", "total", "already_present", "needs_upload", "conflicts", "results"],
+  "additionalProperties": false,
+  "properties": {
+    "preflight_id": { "type": "string", "description": "Preflight session identifier", "minLength": 1 },
+    "total": { "type": "integer", "description": "Total tracks checked", "minimum": 0 },
+    "already_present": { "type": "integer", "description": "Tracks already on server", "minimum": 0 },
+    "needs_upload": { "type": "integer", "description": "Tracks that need upload", "minimum": 0 },
+    "conflicts": { "type": "integer", "description": "Tracks with conflicts", "minimum": 0 },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["index", "status", "michi_track_id", "match_type", "confidence"],
+        "additionalProperties": false,
+        "properties": {
+          "index": { "type": "integer", "minimum": 0 },
+          "status": { "type": "string", "enum": ["already_present", "needs_upload", "conflict"] },
+          "michi_track_id": { "type": "string", "minLength": 1 },
+          "server_track_id": { "type": "string", "minLength": 1 },
+          "match_type": { "type": "string", "enum": ["exact_hash", "metadata_match", "duration_match", "conflict", "not_found"] },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+          "conflicting_tracks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "server_track_id": { "type": "string", "minLength": 1 },
+                "title": { "type": "string", "minLength": 1 },
+                "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+              }
+            }
+          },
+          "resolution": { "type": "string", "enum": ["skip", "upload", "manual"] }
+        }
+      }
+    }
+  }
+}

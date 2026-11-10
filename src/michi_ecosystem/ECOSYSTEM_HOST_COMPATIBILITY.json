@@ -1,0 +1,248 @@
+{
+  "schema": 1,
+  "module": "michi-ecosystem",
+  "moduleVersion": "0.0.1.dev0",
+  "hostApiVersion": 1,
+  "requires": {
+    "python": ">=3.11",
+    "pyside6": ">=6.6"
+  },
+  "linkContract": {
+    "bundle": "receiver-v1-lite",
+    "version": "1.0.0-alpha.5",
+    "upstreamCommit": "60e8da6198f6e540dc429186dd1943054f0b7138",
+    "schemas": 60
+  },
+  "contextProperties": [
+    "ecosystem",
+    "streamFactory",
+    "home",
+    "localAccount",
+    "streamDevice",
+    "homeAssistant",
+    "ecosystemOperations"
+  ],
+  "bridges": [
+    {
+      "name": "ecosystem",
+      "nullable": false
+    },
+    {
+      "name": "streamFactory",
+      "nullable": false
+    },
+    {
+      "name": "home",
+      "nullable": false,
+      "note": "inert bridge without HomeEnvironment"
+    },
+    {
+      "name": "localAccount",
+      "nullable": true
+    },
+    {
+      "name": "streamDevice",
+      "nullable": false
+    },
+    {
+      "name": "homeAssistant",
+      "nullable": false,
+      "note": "available=false without MQTT transport"
+    },
+    {
+      "name": "ecosystemOperations",
+      "nullable": false
+    }
+  ],
+  "externalRoutes": [
+    "devices",
+    "devices/mobile"
+  ],
+  "routes": [
+    {
+      "routeId": "ecosystem",
+      "qml": "EcosystemPage.qml",
+      "requiredBridges": [
+        "ecosystem"
+      ],
+      "optionalBridges": [],
+      "modelProperty": "",
+      "returnRoute": ""
+    },
+    {
+      "routeId": "ecosystem/home",
+      "qml": "home/HomePage.qml",
+      "requiredBridges": [
+        "home"
+      ],
+      "optionalBridges": [],
+      "modelProperty": "",
+      "returnRoute": "ecosystem"
+    },
+    {
+      "routeId": "ecosystem/diagnostics",
+      "qml": "diagnostics/DiagnosticsPage.qml",
+      "requiredBridges": [
+        "ecosystemOperations"
+      ],
+      "optionalBridges": [],
+      "modelProperty": "",
+      "returnRoute": "ecosystem"
+    },
+    {
+      "routeId": "ecosystem/spaces",
+      "qml": "spaces/SpacesPage.qml",
+      "requiredBridges": [
+        "ecosystemOperations"
+      ],
+      "optionalBridges": [],
+      "modelProperty": "",
+      "returnRoute": "ecosystem"
+    },
+    {
+      "routeId": "ecosystem/devices",
+      "qml": "devices/DeviceLifecyclePage.qml",
+      "requiredBridges": [
+        "ecosystemOperations"
+      ],
+      "optionalBridges": [],
+      "modelProperty": "",
+      "returnRoute": "ecosystem"
+    },
+    {
+      "routeId": "ecosystem/discovery",
+      "qml": "discovery/DiscoveryPage.qml",
+      "requiredBridges": [
+        "ecosystemOperations"
+      ],
+      "optionalBridges": [],
+      "modelProperty": "",
+      "returnRoute": "ecosystem"
+    },
+    {
+      "routeId": "ecosystem/streams",
+      "qml": "stream/StreamDetailPage.qml",
+      "requiredBridges": [
+        "streamDevice"
+      ],
+      "optionalBridges": [],
+      "modelProperty": "",
+      "returnRoute": "ecosystem"
+    },
+    {
+      "routeId": "ecosystem/micro-server",
+      "qml": "micro/MicroServerDetailPage.qml",
+      "requiredBridges": [],
+      "optionalBridges": [],
+      "modelProperty": "server",
+      "returnRoute": "ecosystem"
+    },
+    {
+      "routeId": "ecosystem/michi-link",
+      "qml": "link/MichiLinkDetailPage.qml",
+      "requiredBridges": [],
+      "optionalBridges": [],
+      "modelProperty": "linkState",
+      "returnRoute": "ecosystem"
+    },
+    {
+      "routeId": "ecosystem/mobile",
+      "qml": "mobile/MobileDetailPage.qml",
+      "requiredBridges": [],
+      "optionalBridges": [],
+      "modelProperty": "mobile",
+      "returnRoute": "ecosystem"
+    },
+    {
+      "routeId": "ecosystem/account",
+      "qml": "account/LocalAccountPage.qml",
+      "requiredBridges": [
+        "localAccount"
+      ],
+      "optionalBridges": [
+        "home"
+      ],
+      "modelProperty": "",
+      "returnRoute": "ecosystem"
+    },
+    {
+      "routeId": "ecosystem/integrations",
+      "qml": "integrations/IntegrationsPage.qml",
+      "requiredBridges": [
+        "ecosystem"
+      ],
+      "optionalBridges": [],
+      "modelProperty": "",
+      "returnRoute": "ecosystem"
+    },
+    {
+      "routeId": "ecosystem/integrations/home-assistant",
+      "qml": "integrations/HomeAssistantPage.qml",
+      "requiredBridges": [
+        "homeAssistant"
+      ],
+      "optionalBridges": [
+        "home"
+      ],
+      "modelProperty": "",
+      "returnRoute": "ecosystem"
+    },
+    {
+      "routeId": "ecosystem/music-stream/create",
+      "qml": "factory/StreamFactoryWizard.qml",
+      "requiredBridges": [
+        "streamFactory"
+      ],
+      "optionalBridges": [],
+      "modelProperty": "",
+      "returnRoute": "ecosystem"
+    }
+  ],
+  "capabilities": {
+    "available": [
+      "dashboard",
+      "device-registry",
+      "capability-resolution",
+      "operation-history",
+      "discovery-udp",
+      "stream-factory",
+      "spaces",
+      "local-account",
+      "home-authority"
+    ],
+    "optional": [
+      "home-assistant",
+      "stream-commands",
+      "mdns-hints",
+      "micro-server-client",
+      "micro-playback-endpoint"
+    ],
+    "externalDependencies": [
+      "STREAM-REQ-002",
+      "STREAM-REQ-004",
+      "STREAM-REQ-005",
+      "STREAM-REQ-006",
+      "STREAM-REQ-007",
+      "STREAM-REQ-008",
+      "MICRO-REQ-001",
+      "MICRO-REQ-002"
+    ]
+  },
+  "resources": {
+    "qmlRoot": "michi_ecosystem/qml/ecosystem",
+    "qmlPages": 14,
+    "contracts": "michi_ecosystem/contracts/michi-link/receiver-v1-lite",
+    "contractSchemas": 60
+  },
+  "shutdown": {
+    "phases": [
+      "running",
+      "quiescing",
+      "waiting_for_operations",
+      "safe_to_close",
+      "closed"
+    ],
+    "force": "waits for active operations; never destroys in-use resources",
+    "retryable": true
+  }
+}

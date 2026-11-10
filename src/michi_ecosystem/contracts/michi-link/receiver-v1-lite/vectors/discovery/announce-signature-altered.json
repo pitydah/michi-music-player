@@ -1,0 +1,21 @@
+{
+  "device_id": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "Michi Stream Cocina",
+  "service": "michi-stream-standard",
+  "roles": [
+    "audio_receiver"
+  ],
+  "api_version": "v1-lite",
+  "host": "192.168.1.102",
+  "port": 8600,
+  "features": {
+    "heartbeat": true,
+    "session": true,
+    "volume": true
+  },
+  "michi_id": "f2UwxQaeA6vA8LO7Cr1nGRr5MStned_Gbmc_ua48qUc",
+  "public_key": "RpHnJr9oP1DXBkPuIMuk0hJ2hAJ5SiWO2hAQVCMGREE",
+  "signature": "92hYMykseCzFm6Znbd7HT1-9fx8IqJybF6qRV8xb0Da2X7mYoBVO29f5rixgDcxOlakewOXCfgbXqNZGf3iEBQ",
+  "timestamp_ms": 1767225600000,
+  "nonce": "ChEYHyYtNDtCSVBXXmVscw"
+}

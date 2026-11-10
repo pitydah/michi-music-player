@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/pair-recover-start.schema.json",
+  "title": "PairRecoverStart",
+  "description": "Request to initiate an authenticated token recovery handshake. Returns a single-use challenge nonce.",
+  "type": "object",
+  "required": ["michi_id", "public_key"],
+  "additionalProperties": false,
+  "properties": {
+    "michi_id": {
+      "type": "string",
+      "description": "Identity derived as base64url(BLAKE3(public_key)), exactly 43 chars, no padding",
+      "pattern": "^[A-Za-z0-9_-]{43}$",
+      "examples": ["JXcHys3oHoK2xsmQqlWEKi-KH_s4TrxJGw3YbiKP9-U"]
+    },
+    "public_key": {
+      "type": "string",
+      "description": "Ed25519 public key in base64url, exactly 43 chars, no padding",
+      "pattern": "^[A-Za-z0-9_-]{43}$",
+      "examples": ["j8oIHv906goIsvcANXl_SZX8-OPcZftDkTPwTYaQQ7E"]
+    }
+  }
+}

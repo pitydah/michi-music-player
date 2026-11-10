@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/pair-confirm.schema.json",
+  "title": "PairConfirm",
+  "description": "Canonical v1 request to confirm a pairing handshake with the 6-digit PIN. Legacy code-based and proof-based pairing fields are rejected by additionalProperties: false.",
+  "type": "object",
+  "required": [
+    "session_id",
+    "pin",
+    "michi_id",
+    "public_key"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "Pairing session identifier from the /pair/start response",
+      "format": "uuid",
+      "examples": [
+        "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      ]
+    },
+    "pin": {
+      "type": "string",
+      "description": "Six-digit numeric PIN displayed by the server",
+      "pattern": "^[0-9]{6}$",
+      "examples": [
+        "482391"
+      ]
+    },
+    "michi_id": {
+      "type": "string",
+      "description": "Identity derived as base64url(BLAKE3(public_key)), exactly 43 chars, no padding",
+      "pattern": "^[A-Za-z0-9_-]{43}$",
+      "examples": [
+        "97ryPKOLZ-JgVKQFc2ZuuSk0alWzxagdNILuDW26jEc"
+      ]
+    },
+    "public_key": {
+      "type": "string",
+      "description": "Ed25519 public key in base64url, exactly 43 chars, no padding",
+      "pattern": "^[A-Za-z0-9_-]{43}$",
+      "examples": [
+        "fDBBmExOH6h74KpGq2ckfDNN0Mzi7oMN4g_V2IKAR8Y"
+      ]
+    }
+  }
+}

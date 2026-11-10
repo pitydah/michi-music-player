@@ -114,7 +114,13 @@ def test_motion_loops_are_reduced_motion_aware() -> None:
 
 
 def test_deferred_capabilities_have_no_qml_shells() -> None:
-    filenames = {path.name.casefold() for path in QML.rglob("*.qml")}
+    # E14 publishes the Ecosystem control-plane surface as a supported runtime
+    # integration. The remaining deferred capabilities still have no QML shell.
+    filenames = {
+        path.name.casefold()
+        for path in QML.rglob("*.qml")
+        if path.relative_to(QML).parts[0] != "ecosystem"
+    }
     forbidden_fragments = (
         "audiolab",
         "michiai",

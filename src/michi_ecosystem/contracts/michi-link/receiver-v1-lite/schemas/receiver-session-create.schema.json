@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/receiver-session-create.schema.json",
+  "title": "ReceiverSessionCreate",
+  "description": "Canonical request to POST /api/v1/receiver-lite/session. Every field is mandatory and exact; invalid values are rejected with 400 INVALID_REQUEST, never rounded or corrected.",
+  "type": "object",
+  "required": [
+    "transport",
+    "codec",
+    "sample_rate",
+    "bit_depth",
+    "channels",
+    "packet_ms",
+    "buffer_ms",
+    "payload_type",
+    "ssrc",
+    "volume"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "transport": {
+      "type": "string",
+      "description": "Streaming transport. Exactly rtp_udp.",
+      "const": "rtp_udp",
+      "examples": [
+        "rtp_udp"
+      ]
+    },
+    "codec": {
+      "type": "string",
+      "description": "Audio codec. Exactly pcm_s16le.",
+      "const": "pcm_s16le",
+      "examples": [
+        "pcm_s16le"
+      ]
+    },
+    "sample_rate": {
+      "type": "integer",
+      "description": "Sample rate in Hz. Exactly 48000.",
+      "const": 48000,
+      "examples": [
+        48000
+      ]
+    },
+    "bit_depth": {
+      "type": "integer",
+      "description": "Bit depth. Exactly 16.",
+      "const": 16,
+      "examples": [
+        16
+      ]
+    },
+    "channels": {
+      "type": "integer",
+      "description": "Channel count. Exactly stereo (2).",
+      "const": 2,
+      "examples": [
+        2
+      ]
+    },
+    "packet_ms": {
+      "type": "integer",
+      "description": "RTP packet duration in milliseconds. Exactly 10 (480 frames, 960 samples, 1920 payload bytes).",
+      "const": 10,
+      "examples": [
+        10
+      ]
+    },
+    "buffer_ms": {
+      "type": "integer",
+      "description": "Jitter buffer size in milliseconds",
+      "minimum": 50,
+      "maximum": 500,
+      "examples": [
+        120
+      ]
+    },
+    "payload_type": {
+      "type": "integer",
+      "description": "RTP payload type. Exactly 97.",
+      "const": 97,
+      "examples": [
+        97
+      ]
+    },
+    "ssrc": {
+      "type": "integer",
+      "description": "RTP synchronization source, unsigned 32-bit. Exactly the SSRC the sender will use; no first-packet-wins.",
+      "minimum": 1,
+      "maximum": 4294967295,
+      "examples": [
+        305419896
+      ]
+    },
+    "volume": {
+      "type": "integer",
+      "description": "Initial volume level (0 = mute, 100 = maximum)",
+      "minimum": 0,
+      "maximum": 100,
+      "examples": [
+        70
+      ]
+    }
+  }
+}

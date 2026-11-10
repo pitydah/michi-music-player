@@ -1,0 +1,71 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/artwork.schema.json",
+  "title": "Artwork",
+  "description": "Reference to cover art or artist image. Images are resolved by endpoint (/artwork/{id}); no local paths are exposed.",
+  "type": "object",
+  "required": [
+    "id"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique artwork identifier",
+      "minLength": 1,
+      "examples": [
+        "artwork_a1b2c3d4"
+      ]
+    },
+    "mime_type": {
+      "type": "string",
+      "description": "MIME type of the image",
+      "enum": [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/tiff"
+      ]
+    },
+    "width": {
+      "type": "integer",
+      "description": "Image width in pixels",
+      "minimum": 0,
+      "examples": [
+        500
+      ]
+    },
+    "height": {
+      "type": "integer",
+      "description": "Image height in pixels",
+      "minimum": 0,
+      "examples": [
+        500
+      ]
+    },
+    "size_bytes": {
+      "type": "integer",
+      "description": "Image file size in bytes",
+      "minimum": 0,
+      "examples": [
+        102400
+      ]
+    },
+    "md5_hash": {
+      "type": "string",
+      "description": "MD5 checksum of the image file",
+      "pattern": "^[a-fA-F0-9]{32}$",
+      "examples": [
+        "e99a18c428cb38d5f260853678922e03"
+      ]
+    },
+    "added_at": {
+      "type": "string",
+      "description": "ISO 8601 timestamp when the artwork was added",
+      "format": "date-time",
+      "examples": [
+        "2025-06-01T12:00:00Z"
+      ]
+    }
+  }
+}

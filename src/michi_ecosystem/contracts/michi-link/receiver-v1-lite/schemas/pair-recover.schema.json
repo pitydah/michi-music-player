@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/pair-recover.schema.json",
+  "title": "PairRecover",
+  "description": "Canonical request to complete authenticated token recovery using receiver-issued challenge.",
+  "type": "object",
+  "required": ["michi_id", "public_key", "challenge_nonce", "challenge_signature"],
+  "additionalProperties": false,
+  "properties": {
+    "michi_id": {
+      "type": "string",
+      "description": "Identity derived as base64url(BLAKE3(public_key)), exactly 43 chars, no padding",
+      "pattern": "^[A-Za-z0-9_-]{43}$",
+      "examples": ["JXcHys3oHoK2xsmQqlWEKi-KH_s4TrxJGw3YbiKP9-U"]
+    },
+    "public_key": {
+      "type": "string",
+      "description": "Ed25519 public key in base64url, exactly 43 chars, no padding",
+      "pattern": "^[A-Za-z0-9_-]{43}$",
+      "examples": ["j8oIHv906goIsvcANXl_SZX8-OPcZftDkTPwTYaQQ7E"]
+    },
+    "challenge_nonce": {
+      "type": "string",
+      "description": "Receiver-issued nonce in base64url (at least 16 bytes, 22 chars)",
+      "minLength": 22,
+      "pattern": "^[A-Za-z0-9_-]{22,}$",
+      "examples": ["CxIZICcuNTxDSlFYX2ZtdA"]
+    },
+    "challenge_signature": {
+      "type": "string",
+      "description": "Ed25519 signature of the challenge_nonce in base64url, exactly 86 chars, no padding",
+      "pattern": "^[A-Za-z0-9_-]{86}$",
+      "examples": ["5Hg1TwCbzj-x6MaU7mvToRCALEyQXtRKmeJWLmShuXuJWSes16wGptbq573FfY3_H5VWRxPU9LI8hanyNfbXCA"]
+    }
+  }
+}

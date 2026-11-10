@@ -1997,6 +1997,7 @@ class ApplicationContainer:
         self._enrichment_settings: SettingsService | None = None
         self._eb: EnrichmentBridge | None = None
         self._library_enrichment: LibraryEnrichmentProjection | None = None
+        self._ecosystem_host: object | None = None
         self._qml_teardown_keepalive: tuple[object, ...] = ()
         self._lifecycle = ContainerLifecycle.CREATED
         # NEGATIVE-EVIDENCE SEAL §40: ownership artwork DECLARADA en
@@ -2035,6 +2036,7 @@ class ApplicationContainer:
                 getattr(self, "_spb", None),
                 getattr(self, "_eb", None),
                 getattr(self, "_library_enrichment", None),
+                getattr(self, "_ecosystem_host", None),
             )
             if item is not None
         )
@@ -2300,6 +2302,19 @@ class ApplicationContainer:
         # authority: it only orchestrates PlaylistService + NavigationService.
         playlist_nav = PlaylistNavigationCoordinator(playlist_service, navigation)
         nb = NavigationBridge(navigation, playlist_navigation=playlist_nav)
+        # E14: one Player-owned host exposes the Ecosystem control plane. It
+        # never owns playback, queue, DAC, DSP or Signal Truth. Construction
+        # is fail-closed: an unavailable Ecosystem must not break audio.
+        try:
+            from michi.integration.ecosystem_host import EcosystemPlayerHost
+
+            self._ecosystem_host = EcosystemPlayerHost(
+                player_qml_root=Path(__file__).parent.parent / "presentation" / "qml",
+                state_root=_data_dir() / "ecosystem",
+            )
+        except Exception:
+            logger.exception("Ecosystem host unavailable; continuing without it")
+            self._ecosystem_host = None
         # M9-R1: first-class Playlists presentation bridge — canonical
         # playlist projection lives here, not in LibraryBridge.
         # PLAYLISTS IDENTITY RECOVERY: el bridge resuelve cada miembro
@@ -2337,6 +2352,21 @@ class ApplicationContainer:
         ctx.setContextProperty("signalPath", spb)
         ctx.setContextProperty("enrichment", self._eb)
         ctx.setContextProperty("libraryEnrichment", self._library_enrichment)
+
+        if self._ecosystem_host is not None:
+            try:
+                host = self._ecosystem_host
+                host.bind(ctx)
+                host.register_routes(nb.register_ecosystem_route)
+                host.connect_navigation(navigation.navigate)
+                host.connect_models(nb.set_ecosystem_model)
+            except Exception:
+                logger.exception("Ecosystem host failed to bind; disabling it")
+                try:
+                    self._ecosystem_host.close(force=True)
+                except Exception:
+                    logger.exception("Ecosystem host close after bind failure")
+                self._ecosystem_host = None
 
         # M6.9 policy wiring (composition root): SettingsBridge stays
         # Settings-only; the EnrichmentBridge reacts to the CURRENT value
@@ -2452,6 +2482,17 @@ class ApplicationContainer:
                 vol, muted = self._playback.snapshot_volume()
                 self._settings.set_playback_preferences(vol, muted)
                 self._settings.save()
+        except Exception as exc:
+            error = error or exc
+
+        # E14: close the Ecosystem control plane before QML teardown. It has
+        # no playback/queue authority; any busy operation is forced closed so
+        # app shutdown remains deterministic.
+        try:
+            ecosystem_host = getattr(self, "_ecosystem_host", None)
+            if ecosystem_host is not None:
+                ecosystem_host.close(force=True)
+                self._ecosystem_host = None
         except Exception as exc:
             error = error or exc
 

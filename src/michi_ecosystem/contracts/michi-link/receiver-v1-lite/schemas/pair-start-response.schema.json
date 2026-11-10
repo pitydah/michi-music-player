@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/pair-start-response.schema.json",
+  "title": "PairStartResponse",
+  "description": "Canonical v1 response to POST /api/v1/pair/start. Server identity fields are base64url, 43 chars, no padding.",
+  "type": "object",
+  "required": ["session_id", "expires_at", "attempts_remaining", "server_michi_id", "server_public_key"],
+  "additionalProperties": false,
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "Pairing session identifier",
+      "format": "uuid",
+      "examples": ["a1b2c3d4-e5f6-7890-abcd-ef1234567890"]
+    },
+    "expires_at": {
+      "type": "string",
+      "description": "Session expiry timestamp (RFC 3339)",
+      "format": "date-time",
+      "examples": ["2026-08-05T10:05:00Z"]
+    },
+    "attempts_remaining": {
+      "type": "integer",
+      "description": "PIN attempts remaining for this session",
+      "minimum": 1,
+      "maximum": 5,
+      "examples": [5]
+    },
+    "server_michi_id": {
+      "type": "string",
+      "description": "Server identity derived as base64url(BLAKE3(public_key)), exactly 43 chars, no padding",
+      "pattern": "^[A-Za-z0-9_-]{43}$",
+      "examples": ["QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays"]
+    },
+    "server_public_key": {
+      "type": "string",
+      "description": "Server Ed25519 public key in base64url, exactly 43 chars, no padding",
+      "pattern": "^[A-Za-z0-9_-]{43}$",
+      "examples": ["KJN5aOu4gWhA0clmvmwqprYcwYI013vDNPx1jf90CpQ"]
+    }
+  }
+}

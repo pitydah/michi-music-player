@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/track-identity.schema.json",
+  "title": "TrackIdentity",
+  "description": "Unified track identity for deduplication and handoff across the Michi ecosystem",
+  "type": "object",
+  "required": ["michi_track_id", "source_device", "source_track_id"],
+  "additionalProperties": false,
+  "properties": {
+    "michi_track_id": {
+      "type": "string",
+      "description": "Unified track identifier across the ecosystem",
+      "format": "uuid",
+      "examples": ["a1b2c3d4-e5f6-7890-abcd-ef1234567890"]
+    },
+    "content_hash": {
+      "type": "string",
+      "description": "SHA-256 hash of the file content for exact matching",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "examples": ["sha256:a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2"]
+    },
+    "file_size": {
+      "type": "integer",
+      "description": "File size in bytes for quick matching",
+      "minimum": 0,
+      "examples": [42345678]
+    },
+    "duration_ms": {
+      "type": "integer",
+      "description": "Duration in milliseconds",
+      "minimum": 0,
+      "examples": [245000]
+    },
+    "musicbrainz_track_id": {
+      "type": "string",
+      "description": "MusicBrainz track ID if available",
+      "examples": ["mbid-00000000-0000-0000-0000-000000000000"]
+    },
+    "normalized_title": {
+      "type": "string",
+      "description": "Lowercase, punctuation-stripped title for fuzzy matching",
+      "examples": ["neon lights"]
+    },
+    "normalized_artist": {
+      "type": "string",
+      "description": "Lowercase, punctuation-stripped artist for fuzzy matching",
+      "examples": ["luna swift"]
+    },
+    "normalized_album": {
+      "type": "string",
+      "description": "Lowercase, punctuation-stripped album for fuzzy matching",
+      "examples": ["imaginary cities"]
+    },
+    "source_device": {
+      "type": "string",
+      "description": "Device that originated this track identity",
+      "examples": ["michi-music-player"]
+    },
+    "source_track_id": {
+      "type": "string",
+      "description": "Track ID on the source device",
+      "examples": ["track_001"]
+    }
+  }
+}

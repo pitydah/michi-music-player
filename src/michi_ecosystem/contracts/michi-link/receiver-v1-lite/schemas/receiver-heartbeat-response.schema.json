@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/receiver-heartbeat-response.schema.json",
+  "title": "ReceiverHeartbeatResponse",
+  "description": "Canonical response to POST /api/v1/receiver-lite/heartbeat. A valid heartbeat renews the lease to 30 seconds.",
+  "type": "object",
+  "required": [
+    "session_id",
+    "status",
+    "lease_seconds",
+    "receiver_uptime_ms"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "Active session identifier",
+      "format": "uuid",
+      "examples": [
+        "550e8400-e29b-41d4-a716-446655440003"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "description": "Session liveness status",
+      "enum": [
+        "alive"
+      ],
+      "examples": [
+        "alive"
+      ]
+    },
+    "lease_seconds": {
+      "type": "integer",
+      "description": "Lease duration after renewal. Frozen at 30.",
+      "const": 30,
+      "examples": [
+        30
+      ]
+    },
+    "receiver_uptime_ms": {
+      "type": "integer",
+      "description": "Receiver uptime in milliseconds",
+      "minimum": 0,
+      "examples": [
+        918273
+      ]
+    }
+  }
+}

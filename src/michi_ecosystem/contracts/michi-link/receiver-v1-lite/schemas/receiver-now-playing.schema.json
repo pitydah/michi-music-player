@@ -1,0 +1,10 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/receiver-now-playing.schema.json",
+  "title": "ReceiverNowPlaying",
+  "description": "Optional now-playing metadata extension (PUT /api/v1/receiver-lite/now-playing, feature flag now_playing). The payload shape is not frozen by ADR-0001 and will be defined when the extension is certified; until then the body must be an empty JSON object.",
+  "type": "object",
+  "required": [],
+  "additionalProperties": false,
+  "properties": {}
+}

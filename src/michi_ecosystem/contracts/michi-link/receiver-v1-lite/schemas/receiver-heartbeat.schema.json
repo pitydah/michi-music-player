@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/receiver-heartbeat.schema.json",
+  "title": "ReceiverHeartbeat",
+  "description": "Canonical request to POST /api/v1/receiver-lite/heartbeat, sent every 10 seconds. sequence is unsigned and strictly increasing within the session; a repeated or older heartbeat responds 409 CONFLICT and does not renew the lease.",
+  "type": "object",
+  "required": [
+    "session_id",
+    "sequence",
+    "sent_at_ms"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "Active session identifier",
+      "format": "uuid",
+      "examples": [
+        "550e8400-e29b-41d4-a716-446655440003"
+      ]
+    },
+    "sequence": {
+      "type": "integer",
+      "description": "Unsigned, strictly increasing heartbeat sequence within the session",
+      "minimum": 0,
+      "examples": [
+        7
+      ]
+    },
+    "sent_at_ms": {
+      "type": "integer",
+      "description": "Unix epoch milliseconds when the heartbeat was sent; informational, not used for the local lease timeout",
+      "minimum": 0,
+      "examples": [
+        1786564800000
+      ]
+    }
+  }
+}
