@@ -79,14 +79,60 @@ pages, the compatibility JSON and the contract assets.
 
 ## Certification separation
 
-- `integration_code`: implemented on the integration branch.
-- `certification_software`: pending the full checkout suite and exact-SHA CI.
+- `integration_code`: implemented on `main` after merge `d2385fe`.
+- `certification_software`: the full checkout suite passed before the final small
+  UX/lifecycle fixes; the exact-SHA CI on the corrective HEAD is the release gate.
 - `certification_physical`: NOT_RUN. No ecosystem hardware, Home Assistant broker,
   micro-server or multi-device network was exercised.
 - `ap2_freeze`: preserved; no Audio Phase 2 phase-state change.
 
 ## Rollback
 
-The integration is isolated on `e14/ecosystem-integration-20261109`. Reverting the branch
-commit removes the package, QML tree, host and navigation wiring without touching audio
-services or phase state.
+E14 was integrated with merge commit `d2385fe`. `git revert -m 1 d2385fe` removes the
+package, QML tree, host and navigation wiring without touching audio services or phase
+state. The source branch is retained only for provenance.
+
+## QML mirror and startup weight (M11)
+
+The canonical, tested Ecosystem QML lives in
+`src/michi/presentation/qml/ecosystem/`. The independent package copy at
+`src/michi_ecosystem/qml/ecosystem/` is kept only for standalone package
+compatibility. `scripts/verify_ecosystem_qml_mirror.py` compares all 31 files by
+SHA-256; CI fails on missing, extra or divergent files. `--sync` copies the
+canonical Player tree into the package mirror when a reviewed change is ready.
+
+The Ecosystem pages use only the Player's canonical controls, primitives,
+layout and theme; they contain no NowPlayingBar, playback bridge, queue bridge,
+audio engine or media player. Ecosystem buttons that have no host destination
+are disabled with an explanation instead of remaining silent no-ops.
+
+Startup flashing weight is already deferred: `EsptoolBackend` calls the esptool
+CLI through `subprocess` and never imports the esptool Python package; the
+serial scanner is constructed without opening a port, and no scan starts until
+the user presses `Buscar ahora`. Home cryptography, Argon2id and contract
+validation load because the host must create a safe Home/Registry runtime, not
+because of the flashing wizard.
+
+
+## Corrective hardening after the E14 merge
+
+The mainline corrective pass keeps the same authority boundaries and adds:
+
+- Symmetric, bounded Home backup read/write contracts (plaintext, ciphertext,
+  envelope, file and entry limits) and permission-preserving atomic export.
+- Coordinated `quiescing -> cancel -> wait -> close` shutdown while the Qt
+  dispatcher is still available; no force-dependent invariant break.
+- Exact `canonical_id` device selection for Mobile and Micro Server detail
+  models, with invalidation when the selected device leaves the registry.
+- Mobile diagnostics/open-in-Devices disabled with explanation where no Player
+  destination exists; Home revoke routed through `HomeBridge` and OWNER
+  authorization, without claiming AirCat equivalence.
+- Factory flashing failures return to the review step with preserved inputs,
+  visible error text and a safe explicit retry.
+- Packaged Micro/Link contract bundle validation, with safe degradation when
+  the bundle is absent or incompatible.
+- Manual discovery with a bounded session deadline, real searching/expired/
+  error/stopped states and a non-blocking stop path.
+- Verified, reversible migration from incubator XDG Home/account paths into
+  the Player's Ecosystem state root; existing targets are never overwritten.
+- A CI-enforced AP2 research-freeze guard and a SHA-256 QML mirror check.

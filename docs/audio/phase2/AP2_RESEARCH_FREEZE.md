@@ -14,3 +14,21 @@ firmware stream or Link identity authority. Those remain with their existing
 Player owners. The Ecosystem host only exposes Home, Registry, Discovery, Stream,
 Micro, Link, Mobile, Spaces, diagnostics and Home Assistant surfaces through the
 single Player navigation authority.
+
+## Verifiable guard
+
+`scripts/verify_ap2_research_freeze.py` compares the current tree with the E14
+merge baseline (`d2385fea2bd0a229ff8bce24000dcd07e895e0c1`) and fails when a
+productive Audio Phase 2 or DAC file changes without an explicit owner-approved
+exception. Tests, evidence under `docs/audio/phase2/evidence/`, artifacts,
+shared Player shell/navigation and Ecosystem control-plane files are outside the
+frozen surface.
+
+The exception ledger is `docs/audio/phase2/AP2_RESEARCH_FREEZE_EXCEPTIONS.json`.
+An exception requires the exact path, `authorization: OWNER_APPROVED`, a named
+`authorized_by` and a non-empty reason. The CI `check` job runs the guard with
+full history; a malformed ledger or any unapproved productive change fails.
+
+This guard is policy evidence, not a substitute for GitHub branch protection.
+It does not change any phase state: F03-F10 remain CLOSED, F11 remains ACTIVE
+with productive work paused, and F12-F15 remain LOCKED.

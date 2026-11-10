@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -51,6 +53,12 @@ jobs:
         run: |
           pyside6-qmllint -I src/michi/presentation/qml \
             src/michi/presentation/qml/**/*.qml
+
+      - name: Ecosystem QML mirror
+        run: python scripts/verify_ecosystem_qml_mirror.py
+
+      - name: AP2 research freeze
+        run: python scripts/verify_ap2_research_freeze.py --base d2385fea2bd0a229ff8bce24000dcd07e895e0c1
 
       - name: Negative control for the Library layout gate
         run: |
