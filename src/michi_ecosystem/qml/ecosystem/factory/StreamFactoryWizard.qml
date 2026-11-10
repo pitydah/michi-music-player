@@ -473,7 +473,9 @@ Item {
                     }
                     MichiButton {
                         visible: stepId() === "review"
-                        text: qsTr("Iniciar flasheo")
+                        text: streamFactory.errorMessage.length > 0
+                            ? qsTr("Reintentar flasheo")
+                            : qsTr("Iniciar flasheo")
                         enabled: streamFactory.canStartFlash
                         onClicked: streamFactory.startFlash()
                     }

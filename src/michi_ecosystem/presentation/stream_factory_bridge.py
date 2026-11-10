@@ -550,6 +550,9 @@ class StreamFactoryBridge(QObject):
             self._busy = False
             self._error = _clean_error(exc)
             self._last_error_code = exc.code
+            self._phase = ""
+            self._stage = ""
+            self._step_index = self._sequence().index("review")
             self.finished.emit(False, self._error)
             self._emit()
             return
@@ -637,6 +640,12 @@ class StreamFactoryBridge(QObject):
             self._step_index = self._sequence().index("intro")
         else:
             self._error = result.error or "El flasheo falló."
+            # A failed flash must be actionable, never a terminal progress
+            # state. Return to review with the real error; inputs are intact
+            # and the orchestrator re-validates before any retry write.
+            self._phase = ""
+            self._stage = ""
+            self._step_index = self._sequence().index("review")
         self.finished.emit(result.ok, self._error)
         self._emit()
 
