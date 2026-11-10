@@ -9,7 +9,10 @@ thread-safe in DeviceRegistryService (atomic batch + queued GUI refresh).
 
 from __future__ import annotations
 
+import contextlib
+import os
 import threading
+import time
 from collections.abc import Callable
 
 from michi_ecosystem.application.device_registry_service import (
@@ -19,6 +22,7 @@ from michi_ecosystem.application.discovery_service import DiscoveryService
 
 DEFAULT_INTERVAL_SECONDS = 0.25
 DEFAULT_STOP_TIMEOUT_SECONDS = 5.0
+DEFAULT_MAX_SESSION_SECONDS = 120.0
 
 
 class DiscoveryRunner:
@@ -30,10 +34,19 @@ class DiscoveryRunner:
         *,
         registry: DeviceRegistryService | None = None,
         interval_seconds: float = DEFAULT_INTERVAL_SECONDS,
+        max_session_seconds: float | None = None,
     ) -> None:
         self._discovery = discovery
         self._registry = registry
         self._interval = max(0.05, float(interval_seconds))
+        configured = os.environ.get("MICHI_DISCOVERY_MAX_SECONDS", "").strip()
+        if max_session_seconds is None and configured:
+            with contextlib.suppress(ValueError):
+                max_session_seconds = float(configured)
+        limit = max_session_seconds or DEFAULT_MAX_SESSION_SECONDS
+        self._max_session = max(0.05, float(limit))
+        self._deadline = 0.0
+        self._expired = False
         self._stop = threading.Event()
         self._poll_lock = threading.Lock()
         self._lock = threading.Lock()
@@ -51,6 +64,8 @@ class DiscoveryRunner:
             if self._thread is not None and self._thread.is_alive():
                 return False
             self._stop.clear()
+            self._expired = False
+            self._deadline = time.monotonic() + self._max_session
             self._thread = threading.Thread(
                 target=self._run,
                 name="michi-ecosystem-discovery",
@@ -80,6 +95,10 @@ class DiscoveryRunner:
 
     def _run(self) -> None:
         while not self._stop.wait(self._interval):
+            if time.monotonic() >= self._deadline:
+                with self._lock:
+                    self._expired = True
+                break
             try:
                 with self._poll_lock:
                     count = self._discovery.poll()
@@ -122,15 +141,35 @@ class DiscoveryRunner:
             running = self._thread is not None and self._thread.is_alive()
             polls, datagrams = self._polls, self._datagrams
             errors, last_error = self._errors, self._last_error
-        # Serialize with the worker: ui_state() reads the node map.
-        try:
-            with self._poll_lock:
+            expired = self._expired
+            remaining = max(0.0, self._deadline - time.monotonic()) if running else 0.0
+            session_state = (
+                "searching"
+                if running
+                else "expired"
+                if expired
+                else "error"
+                if errors
+                else "stopped"
+            )
+        # Never wait behind a network poll from the GUI thread. When the
+        # worker is busy, report the honest in-flight state and refresh the
+        # source view on the next non-blocking opportunity.
+        state = "searching" if running else "stopped"
+        if self._poll_lock.acquire(blocking=False):
+            try:
                 state = self._discovery.ui_state()
-        except Exception:
-            state = "unknown"
+            except Exception:
+                state = "unknown"
+            finally:
+                self._poll_lock.release()
         return {
             "running": running,
             "state": state,
+            "sessionState": session_state,
+            "expired": expired,
+            "remainingSeconds": round(remaining, 3),
+            "maxSessionSeconds": self._max_session,
             "polls": polls,
             "datagrams": datagrams,
             "errors": errors,

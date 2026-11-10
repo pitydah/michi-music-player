@@ -15,6 +15,59 @@ EcosystemDetailShell {
     iconName: "search"
     onBackRequested: root.navigationRequested("ecosystem")
 
+    function discoveryStateLabel() {
+        if (!ecosystemOperations.discoveryAvailable)
+            return qsTr("Descubrimiento no disponible en este host")
+        switch (ecosystemOperations.discoveryState) {
+        case "searching":
+            return qsTr("Búsqueda manual activa")
+        case "expired":
+            return qsTr("La búsqueda alcanzó el tiempo máximo y se detuvo")
+        case "error":
+            return qsTr("La búsqueda informó un error")
+        default:
+            return qsTr("Búsqueda detenida")
+        }
+    }
+
+    MichiGlassSurface {
+        Layout.fillWidth: true
+        implicitHeight: discoveryControls.implicitHeight + 2 * contentPadding
+        elevation: "subtle"
+        ColumnLayout {
+            id: discoveryControls
+            anchors.fill: parent
+            spacing: MichiSpacing.sm
+            MichiText {
+                Layout.fillWidth: true
+                text: root.discoveryStateLabel()
+                role: "section"
+            }
+            MichiText {
+                Layout.fillWidth: true
+                text: qsTr("La búsqueda sólo se ejecuta cuando la inicias. Puedes detenerla en cualquier momento.")
+                role: "secondary"
+                wrapMode: Text.WordWrap
+            }
+            RowLayout {
+                spacing: MichiSpacing.sm
+                MichiButton {
+                    text: qsTr("Buscar ahora")
+                    enabled: ecosystemOperations.discoveryAvailable
+                        && !ecosystemOperations.discoveryRunning
+                    onClicked: ecosystemOperations.startDiscovery()
+                }
+                MichiButton {
+                    text: qsTr("Detener búsqueda")
+                    variant: "ghost"
+                    enabled: ecosystemOperations.discoveryRunning
+                    onClicked: ecosystemOperations.stopDiscovery()
+                }
+                Item { Layout.fillWidth: true }
+            }
+        }
+    }
+
     MichiText {
         Layout.fillWidth: true
         text: qsTr("Los anuncios mDNS y Whisker no conceden confianza por sí solos. Michi Home determina la membresía.")

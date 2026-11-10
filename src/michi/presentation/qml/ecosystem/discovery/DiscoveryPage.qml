@@ -18,9 +18,16 @@ EcosystemDetailShell {
     function discoveryStateLabel() {
         if (!ecosystemOperations.discoveryAvailable)
             return qsTr("Descubrimiento no disponible en este host")
-        if (ecosystemOperations.discoveryRunning)
+        switch (ecosystemOperations.discoveryState) {
+        case "searching":
             return qsTr("Búsqueda manual activa")
-        return qsTr("Búsqueda detenida")
+        case "expired":
+            return qsTr("La búsqueda alcanzó el tiempo máximo y se detuvo")
+        case "error":
+            return qsTr("La búsqueda informó un error")
+        default:
+            return qsTr("Búsqueda detenida")
+        }
     }
 
     MichiGlassSurface {
