@@ -43,7 +43,14 @@ from michi_ecosystem.ports.home import (
 )
 
 BACKUP_FORMAT_VERSION = 1
-MAX_HOME_BACKUP_BYTES = 4 * 1024 * 1024  # never parse unbounded external files
+# The backup JSON, its base64 envelope and the decrypted payload all share one
+# explicit contract: a backup we create is always within the bounds we accept.
+MAX_BACKUP_PLAINTEXT_BYTES = 2 * 1024 * 1024
+MAX_BACKUP_CIPHERTEXT_BYTES = MAX_BACKUP_PLAINTEXT_BYTES + 1024
+MAX_BACKUP_ENVELOPE_BYTES = 4 * 1024 * 1024
+MAX_BACKUP_ENVELOPE_CHARS = (MAX_BACKUP_ENVELOPE_BYTES * 4 // 3) + 16
+MAX_HOME_BACKUP_BYTES = 8 * 1024 * 1024  # never parse unbounded external files
+MAX_BACKUP_ENTRIES = 10_000
 
 
 class BackupError(RuntimeError):
@@ -63,6 +70,26 @@ def _check_backup_size(path: Path) -> None:
             "BACKUP_TOO_LARGE",
             f"el backup excede {MAX_HOME_BACKUP_BYTES} bytes",
         )
+
+
+def _check_declared_counts(header: dict) -> None:
+    for key in ("roster_count", "revocation_count"):
+        value = header.get(key)
+        if value is None:
+            continue
+        if not isinstance(value, int) or isinstance(value, bool):
+            raise BackupError("BACKUP_INVALID", f"{key} inválido")
+        if value < 0 or value > MAX_BACKUP_ENTRIES:
+            raise BackupError("BACKUP_TOO_LARGE", f"{key} excede el límite")
+
+
+def _check_payload_entries(payload: dict) -> None:
+    for key in ("roster", "revocations"):
+        value = payload.get(key, [])
+        if not isinstance(value, list):
+            raise BackupError("BACKUP_INVALID", f"{key} inválido")
+        if len(value) > MAX_BACKUP_ENTRIES:
+            raise BackupError("BACKUP_TOO_LARGE", f"{key} excede el límite")
 
 
 def _b64e(data: bytes) -> str:
@@ -111,6 +138,13 @@ class HomeBackupService:
         profile = self._profiles.load_profile()
         if envelope is None or profile is None:
             raise BackupError("HOME_MISSING", "no hay un Home para respaldar")
+        entries = list(roster.list_entries())
+        records = list(revocations.list_records())
+        if len(entries) > MAX_BACKUP_ENTRIES or len(records) > MAX_BACKUP_ENTRIES:
+            raise BackupError(
+                "BACKUP_TOO_LARGE",
+                f"el roster o las revocaciones exceden {MAX_BACKUP_ENTRIES} entradas",
+            )
         payload = {
             "backup_version": BACKUP_FORMAT_VERSION,
             "home_id": profile.home_id.value,
@@ -122,13 +156,19 @@ class HomeBackupService:
                 "key_scheme": profile.root.key_scheme,
                 "created_at": profile.created_at,
             },
-            "roster": [self._dump_entry(entry) for entry in roster.list_entries()],
-            "revocations": [
-                self._dump_record(record) for record in revocations.list_records()
-            ],
+            "roster": [self._dump_entry(entry) for entry in entries],
+            "revocations": [self._dump_record(record) for record in records],
         }
+        plaintext = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+        if len(plaintext) > MAX_BACKUP_PLAINTEXT_BYTES:
+            raise BackupError(
+                "BACKUP_TOO_LARGE",
+                f"el contenido excede {MAX_BACKUP_PLAINTEXT_BYTES} bytes",
+            )
         sealed = seal(
-            json.dumps(payload, separators=(",", ":")).encode("utf-8"), password
+            plaintext,
+            password,
+            max_plaintext_bytes=MAX_BACKUP_PLAINTEXT_BYTES,
         )
         metadata = {
             "format_version": BACKUP_FORMAT_VERSION,
@@ -136,9 +176,17 @@ class HomeBackupService:
             "created_at": self._clock(),
             "kdf": "argon2id",
             "includes_roster": True,
+            "roster_count": len(entries),
+            "revocation_count": len(records),
         }
         document = {"michi_backup": metadata, "envelope": _b64e(sealed)}
-        _atomic_write(path, json.dumps(document, separators=(",", ":")).encode())
+        encoded = json.dumps(document, separators=(",", ":")).encode()
+        if len(encoded) > MAX_HOME_BACKUP_BYTES:
+            raise BackupError(
+                "BACKUP_TOO_LARGE",
+                f"el backup excede {MAX_HOME_BACKUP_BYTES} bytes",
+            )
+        _atomic_write(path, encoded, preserve_parent_permissions=True)
         return HomeBackupMetadata(
             format_version=BACKUP_FORMAT_VERSION,
             home_id=profile.home_id,
@@ -178,7 +226,20 @@ class HomeBackupService:
             raise BackupError(
                 "BACKUP_HOME_MISMATCH", "el perfil no pertenece a este Home"
             )
-        for item in payload.get("revocations", []):
+        roster = payload.get("roster", [])
+        revocations = payload.get("revocations", [])
+        if "roster_count" in header and int(header["roster_count"]) != len(roster):
+            raise BackupError(
+                "BACKUP_INVALID", "el conteo del roster no coincide con el contenido"
+            )
+        if "revocation_count" in header and int(header["revocation_count"]) != len(
+            revocations
+        ):
+            raise BackupError(
+                "BACKUP_INVALID",
+                "el conteo de revocaciones no coincide con el contenido",
+            )
+        for item in revocations:
             if str(item.get("home_id", "")) != home_id.value:
                 raise BackupError(
                     "BACKUP_HOME_MISMATCH",
@@ -196,6 +257,7 @@ class HomeBackupService:
                 f"versión {header.get('format_version')} no soportada",
             )
         payload = self._decrypt_payload(path, password)
+        _check_payload_entries(payload)
         version = int(payload.get("backup_version", 0))
         if version != BACKUP_FORMAT_VERSION:
             raise BackupError(
@@ -283,17 +345,30 @@ class HomeBackupService:
         _check_backup_size(path)
         try:
             document = json.loads(path.read_text(encoding="utf-8"))
-            sealed = _b64d(str(document["envelope"]))
+            header = document["michi_backup"]
+            _check_declared_counts(header)
+            envelope_text = str(document["envelope"])
+            if len(envelope_text) > MAX_BACKUP_ENVELOPE_CHARS:
+                raise BackupError("BACKUP_TOO_LARGE", "sobre cifrado demasiado grande")
+            sealed = _b64d(envelope_text)
         except (OSError, KeyError, json.JSONDecodeError, ValueError) as exc:
             raise BackupError("BACKUP_INVALID", "archivo de backup inválido") from exc
         try:
-            payload = json.loads(open_sealed(sealed, password).decode("utf-8"))
+            payload = json.loads(
+                open_sealed(
+                    sealed,
+                    password,
+                    max_ciphertext_bytes=MAX_BACKUP_CIPHERTEXT_BYTES,
+                    max_envelope_bytes=MAX_BACKUP_ENVELOPE_BYTES,
+                ).decode("utf-8")
+            )
         except (EnvelopeError, json.JSONDecodeError) as exc:
             raise BackupError(
                 "BACKUP_OPEN_FAILED", "contraseña incorrecta o backup dañado"
             ) from exc
         if not isinstance(payload, dict):
             raise BackupError("BACKUP_INVALID", "payload inválido")
+        _check_payload_entries(payload)
         return payload
 
     @staticmethod

@@ -31,9 +31,13 @@ def default_home_dir(environ: Mapping[str, str] | None = None) -> Path:
     return Path(base) / "michi" / "home"
 
 
-def _atomic_write(path: Path, payload: bytes) -> None:
+def _atomic_write(
+    path: Path, payload: bytes, *, preserve_parent_permissions: bool = False
+) -> None:
+    parent_existed = path.parent.exists()
     path.parent.mkdir(parents=True, exist_ok=True)
-    os.chmod(path.parent, 0o700)
+    if not parent_existed or not preserve_parent_permissions:
+        os.chmod(path.parent, 0o700)
     descriptor, temp_name = tempfile.mkstemp(
         dir=path.parent, prefix=f".{path.name}-", suffix=".tmp"
     )

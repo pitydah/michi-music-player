@@ -67,7 +67,15 @@ def derive_key(password: str, salt: bytes, params: KdfParams) -> bytes:
     )
 
 
-def seal(plaintext: bytes, password: str, *, params: KdfParams = DEFAULT_KDF) -> bytes:
+def seal(
+    plaintext: bytes,
+    password: str,
+    *,
+    params: KdfParams = DEFAULT_KDF,
+    max_plaintext_bytes: int | None = None,
+) -> bytes:
+    if max_plaintext_bytes is not None and len(plaintext) > max_plaintext_bytes:
+        raise EnvelopeError("plaintext demasiado grande")
     salt = os.urandom(_SALT_BYTES)
     nonce = os.urandom(_NONCE_BYTES)
     key = derive_key(password, salt, params)
@@ -85,8 +93,14 @@ def seal(plaintext: bytes, password: str, *, params: KdfParams = DEFAULT_KDF) ->
     return json.dumps(envelope, separators=(",", ":")).encode("utf-8")
 
 
-def open_sealed(envelope: bytes, password: str) -> bytes:
-    if len(envelope) > MAX_ENVELOPE_BYTES:
+def open_sealed(
+    envelope: bytes,
+    password: str,
+    *,
+    max_ciphertext_bytes: int = MAX_CIPHERTEXT_BYTES,
+    max_envelope_bytes: int = MAX_ENVELOPE_BYTES,
+) -> bytes:
+    if len(envelope) > max_envelope_bytes:
         raise EnvelopeError("envelope demasiado grande")
     try:
         data = json.loads(envelope.decode("utf-8"))
@@ -117,7 +131,7 @@ def open_sealed(envelope: bytes, password: str) -> bytes:
         raise EnvelopeError("salt de tamaño inválido")
     if len(nonce) != _NONCE_BYTES:
         raise EnvelopeError("nonce de tamaño inválido")
-    if len(ciphertext) > MAX_CIPHERTEXT_BYTES:
+    if len(ciphertext) > max_ciphertext_bytes:
         raise EnvelopeError("ciphertext demasiado grande")
 
     key = derive_key(password, salt, params)
