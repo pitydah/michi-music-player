@@ -1,0 +1,291 @@
+{
+  "environment": {
+    "platform": "offscreen",
+    "python": "3.11.15",
+    "qt": "6.11.1"
+  },
+  "generated_at_utc": "2026-11-09T02:39:14Z",
+  "measurements": {
+    "bursts": [
+      {
+        "batch": 1,
+        "cold_us": 391.01,
+        "count": 400,
+        "max_us": 459.91,
+        "p50_us": 373.09,
+        "p95_us": 378.99,
+        "p99_us": 384.75
+      },
+      {
+        "batch": 10,
+        "cold_us": 386.52,
+        "count": 400,
+        "max_us": 434.29,
+        "p50_us": 368.47,
+        "p95_us": 373.37,
+        "p99_us": 401.7
+      },
+      {
+        "batch": 100,
+        "cold_us": 386.66,
+        "count": 400,
+        "max_us": 416.54,
+        "p50_us": 370.62,
+        "p95_us": 377.31,
+        "p99_us": 393.6
+      }
+    ],
+    "publish_truth_frame_5_stages": {
+      "count": 20000,
+      "max_us": 863.49,
+      "p50_us": 368.51,
+      "p95_us": 377.19,
+      "p99_us": 411.91
+    },
+    "qml": {
+      "canonical_projection": {
+        "scope": "FIVE_ANCHORS_PLUS_THREE_DYNAMIC_IDS",
+        "stage_counts": [
+          5,
+          8
+        ]
+      },
+      "create_delete_20_stages": {
+        "cycles": 10,
+        "deferred_delete_flushed": true,
+        "destroyed_objects": 10,
+        "destruction_verified": true,
+        "rss_after_kib": 103672,
+        "rss_before_kib": 103728,
+        "rss_delta_kib": -56,
+        "total": {
+          "count": 10,
+          "max_ms": 41.149,
+          "over_16_67_ms": 10,
+          "p50_ms": 39.113,
+          "p95_ms": 41.149,
+          "p99_ms": 41.149
+        }
+      },
+      "interpretation": "initial_materialize creates the stable StageData objects and the Repeater delegates once per popup opening. update_changed_steady mutates those stable objects, so a content-only update does not rebuild the delegate list. event_loop covers queued polish and layout. The 5/10/20-stage QML counts are synthetic presentation stress; canonical TruthFrame measurements are limited to 5-8 valid stage IDs. This is not DAC latency or XRUN.",
+      "stage_model": {
+        "qml_counts": [
+          5,
+          10,
+          20
+        ],
+        "scope": "SYNTHETIC_PRESENTATION_STRESS_ONLY"
+      },
+      "stages": {
+        "10": {
+          "create": {
+            "count": 10,
+            "max_ms": 0.163,
+            "over_16_67_ms": 0,
+            "p50_ms": 0.142,
+            "p95_ms": 0.163,
+            "p99_ms": 0.163
+          },
+          "event_loop": {
+            "count": 100,
+            "max_ms": 1.039,
+            "over_16_67_ms": 0,
+            "p50_ms": 0.004,
+            "p95_ms": 0.713,
+            "p99_ms": 1.039
+          },
+          "initial_materialize": {
+            "count": 10,
+            "max_ms": 18.19,
+            "over_16_67_ms": 2,
+            "p50_ms": 16.291,
+            "p95_ms": 18.19,
+            "p99_ms": 18.19
+          },
+          "property_set": {
+            "count": 100,
+            "max_ms": 17.259,
+            "over_16_67_ms": 1,
+            "p50_ms": 0.227,
+            "p95_ms": 15.55,
+            "p99_ms": 17.259
+          },
+          "update_changed": {
+            "count": 100,
+            "max_ms": 18.19,
+            "over_16_67_ms": 2,
+            "p50_ms": 0.231,
+            "p95_ms": 16.291,
+            "p99_ms": 18.19
+          },
+          "update_changed_steady": {
+            "count": 90,
+            "max_ms": 0.382,
+            "over_16_67_ms": 0,
+            "p50_ms": 0.228,
+            "p95_ms": 0.313,
+            "p99_ms": 0.382
+          },
+          "update_unchanged_control": {
+            "count": 50,
+            "max_ms": 0.101,
+            "over_16_67_ms": 0,
+            "p50_ms": 0.054,
+            "p95_ms": 0.066,
+            "p99_ms": 0.101
+          }
+        },
+        "20": {
+          "create": {
+            "count": 10,
+            "max_ms": 0.228,
+            "over_16_67_ms": 0,
+            "p50_ms": 0.182,
+            "p95_ms": 0.228,
+            "p99_ms": 0.228
+          },
+          "event_loop": {
+            "count": 100,
+            "max_ms": 1.975,
+            "over_16_67_ms": 0,
+            "p50_ms": 0.004,
+            "p95_ms": 1.61,
+            "p99_ms": 1.975
+          },
+          "initial_materialize": {
+            "count": 10,
+            "max_ms": 37.447,
+            "over_16_67_ms": 10,
+            "p50_ms": 32.994,
+            "p95_ms": 37.447,
+            "p99_ms": 37.447
+          },
+          "property_set": {
+            "count": 100,
+            "max_ms": 35.472,
+            "over_16_67_ms": 10,
+            "p50_ms": 0.441,
+            "p95_ms": 31.37,
+            "p99_ms": 35.472
+          },
+          "update_changed": {
+            "count": 100,
+            "max_ms": 37.447,
+            "over_16_67_ms": 10,
+            "p50_ms": 0.446,
+            "p95_ms": 32.994,
+            "p99_ms": 37.447
+          },
+          "update_changed_steady": {
+            "count": 90,
+            "max_ms": 1.777,
+            "over_16_67_ms": 0,
+            "p50_ms": 0.443,
+            "p95_ms": 1.572,
+            "p99_ms": 1.777
+          },
+          "update_unchanged_control": {
+            "count": 50,
+            "max_ms": 0.117,
+            "over_16_67_ms": 0,
+            "p50_ms": 0.106,
+            "p95_ms": 0.117,
+            "p99_ms": 0.117
+          }
+        },
+        "5": {
+          "create": {
+            "count": 10,
+            "max_ms": 11.205,
+            "over_16_67_ms": 0,
+            "p50_ms": 0.117,
+            "p95_ms": 11.205,
+            "p99_ms": 11.205
+          },
+          "event_loop": {
+            "count": 100,
+            "max_ms": 0.315,
+            "over_16_67_ms": 0,
+            "p50_ms": 0.004,
+            "p95_ms": 0.271,
+            "p99_ms": 0.315
+          },
+          "initial_materialize": {
+            "count": 10,
+            "max_ms": 33.097,
+            "over_16_67_ms": 1,
+            "p50_ms": 7.352,
+            "p95_ms": 33.097,
+            "p99_ms": 33.097
+          },
+          "property_set": {
+            "count": 100,
+            "max_ms": 32.844,
+            "over_16_67_ms": 1,
+            "p50_ms": 0.133,
+            "p95_ms": 7.344,
+            "p99_ms": 32.844
+          },
+          "update_changed": {
+            "count": 100,
+            "max_ms": 33.097,
+            "over_16_67_ms": 1,
+            "p50_ms": 0.137,
+            "p95_ms": 7.352,
+            "p99_ms": 33.097
+          },
+          "update_changed_steady": {
+            "count": 90,
+            "max_ms": 0.824,
+            "over_16_67_ms": 0,
+            "p50_ms": 0.135,
+            "p95_ms": 0.665,
+            "p99_ms": 0.824
+          },
+          "update_unchanged_control": {
+            "count": 50,
+            "max_ms": 0.727,
+            "over_16_67_ms": 0,
+            "p50_ms": 0.03,
+            "p95_ms": 0.044,
+            "p99_ms": 0.727
+          }
+        }
+      },
+      "status": "MEASURED"
+    },
+    "rss_kib_after": 19216,
+    "rss_kib_before": 15772,
+    "total_elapsed_s": 27.06,
+    "tracemalloc_peak_kib": 1384.5,
+    "truth_frame_canonical_stages": [
+      {
+        "count": 2000,
+        "max_us": 412.23,
+        "p50_us": 380.74,
+        "p95_us": 388.23,
+        "p99_us": 393.77,
+        "stage_count": 5
+      },
+      {
+        "count": 2000,
+        "max_us": 1071.11,
+        "p50_us": 500.98,
+        "p95_us": 514.51,
+        "p99_us": 524.24,
+        "stage_count": 8
+      }
+    ]
+  },
+  "schema": "michi.ap2f11.st_r2_performance.v1",
+  "scope": {
+    "measures": "Python TruthFrame construction and offscreen Qt Quick item updates",
+    "not_measured": "DAC latency, ALSA XRUN, true peak, LUFS, KWin composition, physical output"
+  },
+  "truth": {
+    "dac_latency_claim": "NOT_RUN",
+    "kwin_live_claim": "NOT_RUN",
+    "software_benchmark": "PASS",
+    "xrun_claim": "NOT_RUN"
+  }
+}

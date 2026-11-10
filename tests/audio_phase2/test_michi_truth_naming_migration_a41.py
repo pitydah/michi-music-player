@@ -301,3 +301,9 @@ def test_verify_fails_on_reintroduced_legacy_token(tmp_path):
     moved.write_text(moved.read_text() + "# legacy " + mig.OLD_SNAKE + "\n")
     assert any("retired API token" in problem for problem in mig.verify_worktree(repo))
     assert mig.main(["--repo", str(repo), "--mode", "verify"]) == 2
+
+
+def test_wrapped_and_sentence_case_names_are_retired():
+    for text in ("signal\n" + "path", "Signal " + "path"):
+        rewritten = mig._replace(text, "src/michi/domain/" + mig.OLD_SNAKE + ".py")
+        assert not mig.RESTRICTED.search(rewritten), rewritten

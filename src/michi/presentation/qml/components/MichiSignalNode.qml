@@ -68,6 +68,27 @@ Item {
     Keys.onSpacePressed: event => {
         if (root.expandable) { root.toggleRequested(); event.accepted = true }
     }
+    Keys.onDownPressed: event => {
+        if (!root.expandable) return
+        const next = root.nextItemInFocusChain(true)
+        if (next) { next.forceActiveFocus(); event.accepted = true }
+    }
+    Keys.onUpPressed: event => {
+        if (!root.expandable) return
+        const previous = root.nextItemInFocusChain(false)
+        if (previous) { previous.forceActiveFocus(); event.accepted = true }
+    }
+
+    // Keyboard focus must be visible without relying on color alone: the
+    // border encloses the whole stage and remains readable in both densities.
+    Rectangle {
+        objectName: "stageFocusRing"
+        anchors.fill: parent
+        color: "transparent"
+        radius: 12
+        border.width: root.activeFocus && root.expandable ? 2 : 0
+        border.color: MichiPalette.auroraCyan
+    }
 
     // EXCLUSIVE mouse owner. Unlike a passive TapHandler, this accepts the
     // event; no TrackRow beneath this popup may receive the same pointer tap.
@@ -210,6 +231,7 @@ Item {
             }
 
             MichiText {
+                objectName: "stageDetailText"
                 visible: root.expanded && root.detail !== ""
                 text: root.detail
                 role: "secondary"

@@ -32,7 +32,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest>=8", "ruff>=0.9", "build>=1", "numpy>=1.26"]
+test = ["pytest>=8", "ruff==0.17.4", "build>=1", "numpy>=1.26"]
 
 [project.scripts]
 michi = "michi.__main__:main"
