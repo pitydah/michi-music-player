@@ -681,11 +681,20 @@ class EcosystemRuntime:
             "operationHistory": {"available": self.operation_history is not None},
         }
 
-    def close(self, *, force: bool = False, timeout: float = 5.0) -> None:
+    def close(
+        self,
+        *,
+        force: bool = False,
+        timeout: float = 5.0,
+        process_pending: Callable[[], None] | None = None,
+        cancel_operations: Callable[[], None] | None = None,
+    ) -> None:
         """Deterministic shutdown (§14): close persistent adapters.
 
         Propagates HOME_BUSY while an operation is active; the host must
-        settle (or safe-cancel pre-destructive) before closing.
+        settle (or safe-cancel pre-destructive) before closing. When
+        ``process_pending`` is supplied, the host keeps a valid event-dispatch
+        path open while queued Qt completion slots clear their busy state.
         """
         with self.lifecycle.lock:
             if self.lifecycle.closed:
@@ -693,24 +702,31 @@ class EcosystemRuntime:
         # Barrier FIRST: never close resources owned by a live operation.
         reasons = self._busy_reasons()
         if reasons:
-            if not force:
+            if not force and process_pending is None:
                 code, message = reasons[0]
                 raise EcosystemBusyError(
                     code, message + "; espera a que termine antes de cerrar"
                 )
             with self.lifecycle.lock:
+                self.lifecycle.close_requested = True
                 self.lifecycle.phase = ShutdownPhase.WAITING_FOR_OPERATIONS
+            if cancel_operations is not None:
+                with contextlib.suppress(Exception):
+                    cancel_operations()
             deadline = time.monotonic() + max(0.0, float(timeout))
             while reasons and time.monotonic() < deadline:
-                time.sleep(0.02)
+                if process_pending is not None:
+                    process_pending()
+                else:
+                    time.sleep(0.02)
                 reasons = self._busy_reasons()
             if reasons:
                 with self.lifecycle.lock:
-                    self.lifecycle.phase = ShutdownPhase.RUNNING
+                    self.lifecycle.phase = ShutdownPhase.QUIESCING
                 code, message = reasons[0]
                 raise EcosystemBusyError(
                     code,
-                    message + f"; el cierre forzado esperó {timeout:.1f}s sin poder "
+                    message + f"; el cierre esperó {timeout:.1f}s sin poder "
                     "cerrar recursos en uso",
                 )
         with self.lifecycle.lock:

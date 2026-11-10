@@ -41,6 +41,7 @@ class EcosystemOperationsBridge(QObject):
     auditWarning = Signal(str)
     navigationRequested = Signal(str)
     streamSelectionRequested = Signal(str)
+    selectionChanged = Signal()
     _auditFailed = Signal(str)
 
     def __init__(
@@ -78,6 +79,7 @@ class EcosystemOperationsBridge(QObject):
         self._operation_busy = operation_busy or (lambda: False)
         self._support_destination = support_destination
         self._discovery = None
+        self._selected_device_id = ""
         self._auditFailed.connect(
             self._on_audit_failure, Qt.ConnectionType.QueuedConnection
         )
@@ -87,6 +89,19 @@ class EcosystemOperationsBridge(QObject):
     @Property(bool, notify=busyChanged)
     def busy(self) -> bool:
         return self._busy
+
+    @Property(str, notify=selectionChanged)
+    def selectedDeviceId(self) -> str:
+        return self._selected_device_id
+
+    def _select_device(self, canonical_id: str) -> None:
+        if self._selected_device_id == canonical_id:
+            return
+        self._selected_device_id = canonical_id
+        self.selectionChanged.emit()
+
+    def clear_device_selection(self) -> None:
+        self._select_device("")
 
     def attach_discovery(self, controller: object) -> None:
         """Attach the host discovery controller (manual start/stop only)."""
@@ -354,6 +369,7 @@ class EcosystemOperationsBridge(QObject):
     def openDevice(self, canonical_id: str) -> None:
         device = self._registry.get(canonical_id)
         if device is None:
+            self.clear_device_selection()
             self.errorOccurred.emit("DEVICE_NOT_FOUND", "Dispositivo no disponible.")
             return
         from michi_ecosystem.domain.device_registry import DeviceType
@@ -373,6 +389,7 @@ class EcosystemOperationsBridge(QObject):
             return
         if device.type is DeviceType.MUSIC_STREAM:
             self.streamSelectionRequested.emit(canonical_id)
+        self._select_device(device.canonical_id)
         self._record_navigation("DEVICE_DETAIL_OPENED")
         self.navigationRequested.emit(route)
 

@@ -9,11 +9,18 @@ second playback, queue, DAC, DSP or Signal Truth authority.
 from __future__ import annotations
 
 import contextlib
+import logging
 import os
 from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 
+from michi.integration.storage_migration import (
+    MigrationResult,
+    StorageMigrationError,
+    migrate_state,
+)
+from michi_ecosystem.infrastructure.michi_link.contracts import load_bundle
 from michi_ecosystem.infrastructure.michi_link.transport import (
     CompositeDiscoverySource,
     UdpDiscoverySource,
@@ -30,6 +37,8 @@ from michi_ecosystem.integration.player_host import (
     register_player_routes,
     route_errors,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class EcosystemIntegrationError(RuntimeError):
@@ -77,7 +86,12 @@ class DiscoveryControl:
     def state(self) -> str:
         if not self.available:
             return "unavailable"
-        return "running" if self.running else "stopped"
+        if self.running:
+            return "searching"
+        session_state = self.health.get("sessionState")
+        if session_state in {"expired", "error"}:
+            return str(session_state)
+        return "stopped"
 
     @property
     def health(self) -> dict[str, Any]:
@@ -94,7 +108,10 @@ class DiscoveryControl:
         stop = getattr(runner, "stop", None)
         if not callable(stop):
             return True
-        stop()
+        # Never block the GUI for the full worker timeout. A slow poll is
+        # stopped asynchronously; the runner reports its real state and the
+        # host close path performs the final bounded join.
+        stop(timeout=0.1)
         return not self.running
 
 
@@ -138,6 +155,8 @@ class EcosystemPlayerHost:
         micro_client: object | None = None,
         home_automation: object | None = None,
         home_automation_settings: object | None = None,
+        legacy_home_dir: Path | None = None,
+        legacy_account_dir: Path | None = None,
     ) -> None:
         from PySide6.QtGui import QGuiApplication
 
@@ -161,11 +180,49 @@ class EcosystemPlayerHost:
         if os.name == "posix":
             self._state_root.chmod(0o700)
 
+        # M9: legacy incubator state lives below $XDG_DATA_HOME/michi.  Move
+        # it exactly once, keep an untouched backup, and never merge two Home
+        # authorities.  A failed migration stops host construction; bootstrap
+        # then leaves the legacy Home untouched and boots without Ecosystem.
+        self.storage_migration: dict[str, MigrationResult] = {}
+        backup_root = self._state_root / "migration-backups"
+        try:
+            self.storage_migration["home"] = migrate_state(
+                source=legacy_home_dir,
+                target=self._state_root / "home",
+                backup_root=backup_root,
+            )
+            self.storage_migration["account"] = migrate_state(
+                source=legacy_account_dir,
+                target=self._state_root / "account",
+                backup_root=backup_root,
+            )
+        except StorageMigrationError as exc:
+            raise EcosystemIntegrationError(
+                f"Legacy Ecosystem state cannot be migrated safely: {exc}"
+            ) from exc
+
         configured_micro = micro_client
+        self.micro_contract_status: dict[str, Any] = {
+            "state": "injected" if micro_client is not None else "not_configured",
+        }
         if configured_micro is None:
             micro_url = os.environ.get("MICHI_MICRO_SERVER_URL", "").strip()
             if micro_url:
-                configured_micro = MicroServerClient(micro_url)
+                try:
+                    built = self._build_micro_client(micro_url)
+                    configured_micro, self.micro_contract_status = built
+                except Exception as exc:
+                    # A missing/incompatible bundle must degrade safely: the
+                    # Micro surface stays unavailable and never claims
+                    # conformance without the current vendored contracts.
+                    self.micro_contract_status = {
+                        "state": "invalid_bundle",
+                        "reason": type(exc).__name__,
+                    }
+                    logger.warning(
+                        "Micro Server contract bundle rejected; Micro disabled: %s", exc
+                    )
 
         self._dashboard_service = (
             dashboard_service
@@ -191,6 +248,18 @@ class EcosystemPlayerHost:
         self._registered_routes: tuple[str, ...] = ()
         self._apply_model: Callable[[str, dict[str, Any]], None] | None = None
         self._cards_changed: object | None = None
+
+    @staticmethod
+    def _build_micro_client(micro_url: str) -> tuple[MicroServerClient, dict[str, Any]]:
+        """Load the packaged bundle before constructing the Micro client."""
+        bundle = load_bundle()
+        client = MicroServerClient(micro_url, contracts=bundle)
+        return client, {
+            "state": "validated",
+            "version": bundle.version,
+            "upstream_commit": bundle.upstream_commit,
+            "schema_count": bundle.schema_count,
+        }
 
     @property
     def runtime(self) -> object:
@@ -247,6 +316,10 @@ class EcosystemPlayerHost:
         )
         if cards_changed is not None:
             cards_changed.connect(self.refresh_models)
+        operations = getattr(self._kit.runtime, "operations_bridge", None)
+        selection_changed = getattr(operations, "selectionChanged", None)
+        if selection_changed is not None:
+            selection_changed.connect(self.refresh_models)
         self.refresh_models()
 
     def refresh_models(self) -> None:
@@ -270,10 +343,16 @@ class EcosystemPlayerHost:
         from michi_ecosystem.domain.device_registry import DeviceType
 
         registry = self._kit.runtime.device_registry
-        micro = self._runtime_model(registry, DeviceType.MICRO_SERVER)
+        operations = getattr(self._kit.runtime, "operations_bridge", None)
+        selected_id = str(getattr(operations, "selectedDeviceId", "") or "")
+        micro = self._runtime_model(registry, DeviceType.MICRO_SERVER, selected_id)
         servers = snapshot.get("servers")
         micro_snapshot = servers.get("micro") if isinstance(servers, Mapping) else None
-        if isinstance(micro_snapshot, Mapping):
+        micro_matches = (
+            isinstance(micro_snapshot, Mapping)
+            and str(micro_snapshot.get("canonicalId", "")) == selected_id
+        )
+        if micro and micro_matches:
             services = micro_snapshot.get("services")
             services = services if isinstance(services, Mapping) else {}
             micro.update(
@@ -288,12 +367,13 @@ class EcosystemPlayerHost:
                     "linkReady": bool(services.get("michi_link", False)),
                 }
             )
-        micro.setdefault("name", "Michi Micro Server")
-        micro.setdefault("platform", "")
-        micro.setdefault("online", False)
-        micro.setdefault("apiReady", False)
-        micro.setdefault("streamingReady", False)
-        micro.setdefault("linkReady", False)
+        if micro:
+            micro.setdefault("name", "Michi Micro Server")
+            micro.setdefault("platform", "")
+            micro.setdefault("online", False)
+            micro.setdefault("apiReady", False)
+            micro.setdefault("streamingReady", False)
+            micro.setdefault("linkReady", False)
 
         link = snapshot.get("link")
         link_model = dict(link) if isinstance(link, Mapping) else {}
@@ -309,10 +389,7 @@ class EcosystemPlayerHost:
             "offline": "error",
         }.get(state, "neutral")
 
-        mobile = self._runtime_model(registry, DeviceType.MOBILE)
-        mobile_snapshot = snapshot.get("mobile")
-        if not mobile and isinstance(mobile_snapshot, Mapping):
-            mobile = dict(mobile_snapshot)
+        mobile = self._runtime_model(registry, DeviceType.MOBILE, selected_id)
         return {
             "ecosystem/micro-server": micro,
             "ecosystem/michi-link": link_model,
@@ -320,16 +397,20 @@ class EcosystemPlayerHost:
         }
 
     @staticmethod
-    def _runtime_model(registry: object, device_type: object) -> dict[str, Any]:
-        by_type = getattr(registry, "by_type", None)
-        projection = getattr(registry, "ecosystem_projection", None)
-        if not callable(by_type) or not callable(projection):
+    def _runtime_model(
+        registry: object, device_type: object, canonical_id: str
+    ) -> dict[str, Any]:
+        if not canonical_id:
             return {}
-        for device in by_type(device_type):
-            model = projection(device.canonical_id)
-            if isinstance(model, Mapping):
-                return dict(model)
-        return {}
+        get = getattr(registry, "get", None)
+        projection = getattr(registry, "ecosystem_projection", None)
+        if not callable(get) or not callable(projection):
+            return {}
+        device = get(canonical_id)
+        if device is None or getattr(device, "type", None) is not device_type:
+            return {}
+        model = projection(canonical_id)
+        return dict(model) if isinstance(model, Mapping) else {}
 
     def connect_page(self, page: object, navigate: Callable[[str], None]) -> bool:
         return connect_page_navigation(page, navigate)
@@ -342,8 +423,17 @@ class EcosystemPlayerHost:
     def availability(self) -> dict[str, object]:
         return self._kit.availability()
 
+    def _cancel_safe_operations(self) -> None:
+        """Cancel only operations whose authority defines safe cancellation."""
+        factory = getattr(self._kit.runtime, "factory", None)
+        bridge = getattr(factory, "bridge", None)
+        cancel = getattr(bridge, "cancel", None)
+        if callable(cancel):
+            with contextlib.suppress(Exception):
+                cancel()
+
     def close(self, *, force: bool = False, timeout: float = 5.0) -> None:
-        """Stop manual discovery first, then close every owned adapter."""
+        """Quiesce, settle queued completions, then close owned adapters."""
         if self._closed:
             return
         if self._cards_changed is not None:
@@ -352,8 +442,21 @@ class EcosystemPlayerHost:
             self._cards_changed = None
         if self._discovery.running:
             self._discovery.stop()
-        if force:
-            self._kit.runtime.close(force=True, timeout=timeout)
-        else:
-            self._kit.close(timeout=timeout)
+
+        # aboutToQuit still has a valid Qt dispatcher. Pump it while the
+        # runtime waits so queued busy-clearing slots can run before stores
+        # close. Outside a Qt application this stays a plain bounded wait.
+        process_pending = None
+        try:
+            from PySide6.QtCore import QCoreApplication
+
+            process_pending = QCoreApplication.processEvents
+        except ImportError:
+            process_pending = None
+        self._kit.close(
+            timeout=timeout,
+            force=force,
+            process_pending=process_pending,
+            cancel_operations=self._cancel_safe_operations,
+        )
         self._closed = True

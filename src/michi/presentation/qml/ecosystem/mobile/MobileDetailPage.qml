@@ -10,9 +10,9 @@ EcosystemDetailShell {
     signal navigationRequested(string routeId)
     onBackRequested: root.navigationRequested("ecosystem")
     property var mobile: ({})
-    signal openInDevicesRequested(string michiId)
-    signal diagnosticsRequested(string michiId)
-    signal revokeRequested(string michiId)
+    signal openInDevicesRequested(string canonicalId)
+    signal diagnosticsRequested(string canonicalId)
+    signal revokeRequested(string canonicalId)
 
     readonly property bool revoked: (mobile.homeMembership ?? "") === "revoked"
     readonly property bool trusted: (mobile.homeMembership ?? "") === "active"
@@ -24,15 +24,35 @@ EcosystemDetailShell {
     statusText: revoked ? qsTr("Revocado") : mobile.online ? qsTr("Conectado") : qsTr("Sin conexión")
     statusTone: revoked ? "error" : mobile.online ? "success" : "neutral"
     primaryAction: qsTr("Diagnóstico")
-    primaryEnabled: (mobile.michiId ?? "").length > 0
+    readonly property string canonicalId: mobile.canonicalId ?? ""
+    readonly property bool homeCanAdminister: (home.configured ?? false)
+        && !(home.locked ?? true)
+    primaryEnabled: false
     secondaryAction: qsTr("Abrir en Michi Devices")
-    secondaryEnabled: trusted && (mobile.michiId ?? "").length > 0
-    dangerVisible: !revoked && (mobile.michiId ?? "").length > 0
-    dangerMessage: qsTr("Revocar elimina su confianza en este Michi Home. La sincronización AirCat dejará de estar permitida.")
+    secondaryEnabled: false
+    dangerVisible: !revoked && canonicalId.length > 0
+    dangerEnabled: homeCanAdminister
+    dangerMessage: qsTr("Revocar elimina su confianza en este Michi Home. Michi Devices y AirCat conservan sus propias reglas; la sincronización puede dejar de estar permitida si dependía de esta membresía.")
     dangerAction: qsTr("Revocar dispositivo")
-    onPrimaryRequested: root.diagnosticsRequested(mobile.michiId ?? "")
-    onSecondaryRequested: root.openInDevicesRequested(mobile.michiId ?? "")
-    onDangerRequested: root.revokeRequested(mobile.michiId ?? "")
+    onPrimaryRequested: root.diagnosticsRequested(root.canonicalId)
+    onSecondaryRequested: root.openInDevicesRequested(root.canonicalId)
+    onDangerRequested: root.revokeRequested(root.canonicalId)
+
+    MichiText {
+        Layout.fillWidth: true
+        visible: true
+        text: qsTr("El diagnóstico por dispositivo y Michi Devices todavía no están disponibles como destinos dentro del Player.")
+        role: "secondary"
+        wrapMode: Text.WordWrap
+    }
+    MichiText {
+        Layout.fillWidth: true
+        visible: home.errorMessage.length > 0
+        text: home.errorMessage
+        role: "secondary"
+        color: MichiPalette.error
+        wrapMode: Text.WordWrap
+    }
 
     MichiGlassSurface {
         implicitHeight: michiDetailsLayout1.implicitHeight + 2 * contentPadding

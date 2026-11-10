@@ -62,6 +62,11 @@ Item {
                     return
                 if (item.navigationRequested !== undefined)
                     item.navigationRequested.connect(navigation.navigate)
+                if (item.revokeRequested !== undefined)
+                    item.revokeRequested.connect(function(canonicalId) {
+                        if (home && home.configured)
+                            home.revokeDevice(canonicalId, "revocado desde Ecosystem")
+                    })
                 var route = navigation.ecosystemRoute
                 if (route === "ecosystem/micro-server")
                     item.server = Qt.binding(() => navigation.ecosystemServer)

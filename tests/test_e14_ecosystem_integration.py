@@ -23,8 +23,16 @@ from michi.integration.ecosystem_host import (
     EcosystemPlayerHost,
 )
 from michi.presentation.navigation_bridge import NavigationBridge
+from michi_ecosystem.application.device_registry_service import DeviceSource
 from michi_ecosystem.application.discovery_runner import DiscoveryRunner
 from michi_ecosystem.composition import FactoryEnvironment
+from michi_ecosystem.domain.device_registry import (
+    DeviceDescriptor,
+    DeviceType,
+    HomeMembershipState,
+    canonical_id_for,
+)
+from michi_ecosystem.infrastructure.michi_link.contracts import load_bundle
 from michi_ecosystem.integration.player_host import (
     CONTEXT_PROPERTIES,
     PAGE_ROUTES,
@@ -257,23 +265,72 @@ def test_host_registers_routes_binds_seven_properties_and_starts_stopped(
     assert discovery.closed is True
 
 
-def test_host_publishes_canonical_detail_models(qapp, tmp_path: Path):
+def _ingest_device(
+    host: EcosystemPlayerHost, device_type: DeviceType, michi_id: str, name: str
+) -> str:
+    canonical_id = canonical_id_for(michi_id=michi_id)
+    host.runtime.device_registry.ingest(
+        DeviceSource.HOME_ROSTER,
+        DeviceDescriptor(
+            canonical_id=canonical_id,
+            michi_id=michi_id,
+            michi_home_id="home-1",
+            home_membership=HomeMembershipState.ACTIVE,
+            name=name,
+            type=device_type,
+            online=True,
+        ),
+    )
+    return canonical_id
+
+
+def test_host_publishes_only_the_selected_canonical_devices(qapp, tmp_path: Path):
     host = _host(tmp_path, _Discovery(), _DetailDashboard())
     published: dict[str, dict] = {}
     try:
+        first_mobile = _ingest_device(
+            host, DeviceType.MOBILE, "michi-mobile-1", "Teléfono 1"
+        )
+        second_mobile = _ingest_device(
+            host, DeviceType.MOBILE, "michi-mobile-2", "Teléfono 2"
+        )
+        first_server = _ingest_device(
+            host, DeviceType.MICRO_SERVER, "michi-server-1", "Servidor 1"
+        )
+        second_server = _ingest_device(
+            host, DeviceType.MICRO_SERVER, "michi-server-2", "Servidor 2"
+        )
         host.connect_models(
             lambda route_id, model: published.__setitem__(route_id, model)
         )
+        operations = host.runtime.operations_bridge
+
+        operations.openDevice(second_mobile)
+        assert published["ecosystem/mobile"]["canonicalId"] == second_mobile
+        assert published["ecosystem/mobile"]["name"] == "Teléfono 2"
+
+        operations.openDevice(first_mobile)
+        assert published["ecosystem/mobile"]["canonicalId"] == first_mobile
+        assert published["ecosystem/mobile"]["name"] == "Teléfono 1"
+
+        operations.openDevice(second_server)
+        assert published["ecosystem/micro-server"]["canonicalId"] == second_server
+        assert published["ecosystem/micro-server"]["name"] == "Servidor 2"
+        assert published["ecosystem/micro-server"]["online"] is True
+
+        operations.openDevice(first_server)
+        assert published["ecosystem/micro-server"]["canonicalId"] == first_server
+        assert published["ecosystem/micro-server"]["name"] == "Servidor 1"
+        assert published["ecosystem/michi-link"]["status"] == "Con incidencias"
+        assert published["ecosystem/michi-link"]["tone"] == "warning"
+
+        host.runtime.device_registry.remove_evidence(
+            DeviceSource.HOME_ROSTER, first_mobile
+        )
+        operations.openDevice(first_mobile)
+        assert published["ecosystem/mobile"] == {}
     finally:
         host.close(force=True)
-
-    assert published["ecosystem/micro-server"]["name"] == "Sala"
-    assert published["ecosystem/micro-server"]["online"] is True
-    assert published["ecosystem/micro-server"]["apiReady"] is True
-    assert published["ecosystem/micro-server"]["linkReady"] is False
-    assert published["ecosystem/michi-link"]["status"] == "Con incidencias"
-    assert published["ecosystem/michi-link"]["tone"] == "warning"
-    assert published["ecosystem/mobile"]["name"] == "Teléfono"
 
 
 def test_host_rejects_a_missing_qml_surface(qapp, tmp_path: Path):
@@ -285,6 +342,62 @@ def test_host_rejects_a_missing_qml_surface(qapp, tmp_path: Path):
             factory=_factory(),
             discovery_source=_Discovery(),
         )
+
+
+def test_mobile_revoke_is_consumed_by_the_home_authority() -> None:
+    content = (ROOT / "src/michi/presentation/qml/shell/ContentHost.qml").read_text()
+    mobile = (
+        ROOT / "src/michi/presentation/qml/ecosystem/mobile/MobileDetailPage.qml"
+    ).read_text()
+    micro = (
+        ROOT / "src/michi/presentation/qml/ecosystem/micro/MicroServerDetailPage.qml"
+    ).read_text()
+    assert "item.revokeRequested.connect" in content
+    assert "home.revokeDevice(canonicalId" in content
+    assert "primaryEnabled: false" in mobile
+    assert "secondaryEnabled: false" in mobile
+    assert "dangerEnabled: homeCanAdminister" in mobile
+    assert "AirCat conservan sus propias reglas" in mobile
+    assert "primaryEnabled: false" in micro
+    assert "Michi Control todavía no está disponible" in micro
+
+
+def test_micro_client_receives_the_packaged_contract_bundle():
+    bundle = load_bundle()
+    assert bundle.schema_count >= 60
+    client, status = EcosystemPlayerHost._build_micro_client("http://micro.local:8080")
+    assert client._contracts is not None
+    assert client._contracts.root == bundle.root
+    assert client._contracts.version == bundle.version
+    assert client._contracts.schema_count == bundle.schema_count
+    assert status == {
+        "state": "validated",
+        "version": bundle.version,
+        "upstream_commit": bundle.upstream_commit,
+        "schema_count": bundle.schema_count,
+    }
+
+
+def test_invalid_micro_bundle_degrades_without_claiming_conformance(
+    qapp, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setenv("MICHI_MICRO_SERVER_URL", "http://micro.local:8080")
+
+    def reject(_url: str):
+        raise RuntimeError("bundle mismatch")
+
+    monkeypatch.setattr(
+        EcosystemPlayerHost, "_build_micro_client", staticmethod(reject)
+    )
+    host = _host(tmp_path, _Discovery())
+    try:
+        assert host.micro_contract_status == {
+            "state": "invalid_bundle",
+            "reason": "RuntimeError",
+        }
+
+    finally:
+        host.close(force=True)
 
 
 def test_integration_has_no_timer_polling_or_second_playback_authority():

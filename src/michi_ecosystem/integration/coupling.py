@@ -137,8 +137,20 @@ class EcosystemCouplingKit:
         runner = self._runtime.discovery_runner
         return runner.stop() if runner is not None else True
 
-    def close(self, *, timeout: float = 5.0) -> None:
-        self._runtime.close(timeout=timeout)
+    def close(
+        self,
+        *,
+        timeout: float = 5.0,
+        force: bool = False,
+        process_pending: Callable[[], None] | None = None,
+        cancel_operations: Callable[[], None] | None = None,
+    ) -> None:
+        self._runtime.close(
+            force=force,
+            timeout=timeout,
+            process_pending=process_pending,
+            cancel_operations=cancel_operations,
+        )
 
     def availability(self) -> dict[str, object]:
         return self._runtime.availability()

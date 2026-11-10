@@ -2009,7 +2009,25 @@ class ApplicationContainer:
 
     def _on_about_to_quit(self) -> None:
         self._lifecycle = ContainerLifecycle.ABOUT_TO_QUIT
+        # Keep the Qt dispatcher alive while Ecosystem settles queued
+        # completions; force-after-exec() cannot clear GUI-bound busy flags.
+        self._shutdown_ecosystem_host(force=False)
         self._schedule_qml_teardown()
+
+    def _shutdown_ecosystem_host(self, *, force: bool = False) -> bool:
+        """Close the control plane once; retain it if it is still in use."""
+        host = getattr(self, "_ecosystem_host", None)
+        if host is None:
+            return True
+        try:
+            host.close(force=force)
+        except Exception:
+            logger.exception(
+                "Ecosystem host did not close deterministically; retaining it"
+            )
+            return False
+        self._ecosystem_host = None
+        return True
 
     def _schedule_qml_teardown(self) -> None:
         """Queue QML ownership release while Qt can drain deferred deletes."""
@@ -2307,10 +2325,14 @@ class ApplicationContainer:
         # is fail-closed: an unavailable Ecosystem must not break audio.
         try:
             from michi.integration.ecosystem_host import EcosystemPlayerHost
+            from michi_ecosystem.infrastructure.account import default_account_dir
+            from michi_ecosystem.infrastructure.home.keystore import default_home_dir
 
             self._ecosystem_host = EcosystemPlayerHost(
                 player_qml_root=Path(__file__).parent.parent / "presentation" / "qml",
                 state_root=_data_dir() / "ecosystem",
+                legacy_home_dir=default_home_dir(),
+                legacy_account_dir=default_account_dir(),
             )
         except Exception:
             logger.exception("Ecosystem host unavailable; continuing without it")
@@ -2485,14 +2507,11 @@ class ApplicationContainer:
         except Exception as exc:
             error = error or exc
 
-        # E14: close the Ecosystem control plane before QML teardown. It has
-        # no playback/queue authority; any busy operation is forced closed so
-        # app shutdown remains deterministic.
+        # E14/M4: the normal path closed the control plane from aboutToQuit
+        # while Qt could still dispatch completions. This fallback never
+        # forces resources closed while an operation may still own them.
         try:
-            ecosystem_host = getattr(self, "_ecosystem_host", None)
-            if ecosystem_host is not None:
-                ecosystem_host.close(force=True)
-                self._ecosystem_host = None
+            self._shutdown_ecosystem_host(force=False)
         except Exception as exc:
             error = error or exc
 

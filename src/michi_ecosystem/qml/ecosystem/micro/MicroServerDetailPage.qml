@@ -17,8 +17,15 @@ EcosystemDetailShell {
     statusText: server.online ? qsTr("En línea") : qsTr("Sin conexión")
     statusTone: server.online ? "success" : "error"
     primaryAction: qsTr("Controlar con Michi Control")
-    primaryEnabled: !!server.online && !!(server.michiId || server.serverId)
-    onPrimaryRequested: root.michiControlRequested(server.michiId || server.serverId)
+    primaryEnabled: false
+    onPrimaryRequested: root.michiControlRequested(server.canonicalId ?? "")
+
+    MichiText {
+        Layout.fillWidth: true
+        text: qsTr("Michi Control todavía no está disponible como destino dentro del Player.")
+        role: "secondary"
+        wrapMode: Text.WordWrap
+    }
 
     MichiGlassSurface {
         implicitHeight: michiDetailsLayout1.implicitHeight + 2 * contentPadding
