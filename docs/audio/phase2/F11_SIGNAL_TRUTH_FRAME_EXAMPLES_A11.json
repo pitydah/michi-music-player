@@ -1,0 +1,264 @@
+{
+  "schema_version": "michi.truth_frame.examples.v1",
+  "examples": {
+    "idle": {
+      "schema": "michi.truth_frame.v1",
+      "capture_revision": 0,
+      "temporal": "NOT_ACTIVE",
+      "consistency": "RECORDER_ONLY",
+      "identity": null,
+      "family": "UNKNOWN",
+      "source": {
+        "kind": "UNKNOWN",
+        "codec": null,
+        "container": null,
+        "nominal_pcm": null,
+        "nominal_dsd_hz": null
+      },
+      "dsp": {
+        "state": "UNKNOWN",
+        "correlation": "UNCORRELATED",
+        "readback_proven": false,
+        "processing_plan_id": null,
+        "processing_generation": null,
+        "host_generation": null,
+        "pipeline_generation": null,
+        "runtime_identity": null,
+        "source_execution_ref": null,
+        "last_event_sequence": null
+      },
+      "route": {
+        "last_observed_boundary": "NONE",
+        "negotiated_pcm": null,
+        "carrier_pcm": null,
+        "dac_interpretation": "UNKNOWN"
+      },
+      "quality": {
+        "nominal_class": "UNKNOWN",
+        "path_verdict": "unknown",
+        "fidelity_proof": "NOT_ESTABLISHED",
+        "proof_authority": null
+      },
+      "operations": [],
+      "stages": [
+        {
+          "id": "SOURCE",
+          "state": "UNKNOWN",
+          "summary": "Not observed",
+          "configuration_action": "NONE"
+        },
+        {
+          "id": "DECODE",
+          "state": "UNKNOWN",
+          "summary": "Not observed",
+          "configuration_action": "OPEN_ENGINE"
+        },
+        {
+          "id": "PROCESSING",
+          "state": "UNKNOWN",
+          "summary": "Not observed",
+          "configuration_action": "OPEN_PROCESSING"
+        },
+        {
+          "id": "OUTPUT",
+          "state": "UNKNOWN",
+          "summary": "Not observed",
+          "configuration_action": "OPEN_OUTPUT"
+        },
+        {
+          "id": "DEVICE",
+          "state": "UNKNOWN",
+          "summary": "Not observed",
+          "configuration_action": "OPEN_DEVICE_SETUP"
+        }
+      ],
+      "reason_codes": [],
+      "provenance": [],
+      "blockers": []
+    },
+    "direct_pcm": {
+      "schema": "michi.truth_frame.v1",
+      "capture_revision": 21,
+      "temporal": "ACTIVE",
+      "consistency": "CORRELATED",
+      "identity": {
+        "plan_id": "output:plan-a",
+        "execution_generation": 3,
+        "port_generation": 3,
+        "binding_generation": 1,
+        "stable_device_id": "device:opaque-test",
+        "stable_endpoint_signature": "ep:opaque-test"
+      },
+      "family": "DIRECT_PCM",
+      "source": {
+        "kind": "PCM",
+        "codec": "flac",
+        "container": "flac",
+        "nominal_pcm": {
+          "transport_format": "S32_LE",
+          "rate_hz": 96000,
+          "channels": 2,
+          "significant_bits": 24
+        },
+        "nominal_dsd_hz": null
+      },
+      "dsp": {
+        "state": "UNKNOWN",
+        "correlation": "UNCORRELATED",
+        "readback_proven": false,
+        "processing_plan_id": null,
+        "processing_generation": null,
+        "host_generation": null,
+        "pipeline_generation": null,
+        "runtime_identity": null,
+        "source_execution_ref": null,
+        "last_event_sequence": null
+      },
+      "route": {
+        "last_observed_boundary": "ALSA",
+        "negotiated_pcm": {
+          "transport_format": "S32_LE",
+          "rate_hz": 96000,
+          "channels": 2,
+          "significant_bits": 24
+        },
+        "carrier_pcm": null,
+        "dac_interpretation": "UNKNOWN"
+      },
+      "quality": {
+        "nominal_class": "PCM_HIRES",
+        "path_verdict": "direct",
+        "fidelity_proof": "NOT_ESTABLISHED",
+        "proof_authority": null
+      },
+      "operations": [],
+      "stages": [
+        {
+          "id": "SOURCE",
+          "state": "OBSERVED",
+          "summary": "Read-only observed facts",
+          "configuration_action": "NONE"
+        },
+        {
+          "id": "DECODE",
+          "state": "OBSERVED",
+          "summary": "Read-only observed facts",
+          "configuration_action": "OPEN_ENGINE"
+        },
+        {
+          "id": "PROCESSING",
+          "state": "OBSERVED",
+          "summary": "Read-only observed facts",
+          "configuration_action": "OPEN_PROCESSING"
+        },
+        {
+          "id": "OUTPUT",
+          "state": "OBSERVED",
+          "summary": "Read-only observed facts",
+          "configuration_action": "OPEN_OUTPUT"
+        },
+        {
+          "id": "DEVICE",
+          "state": "OBSERVED",
+          "summary": "Read-only observed facts",
+          "configuration_action": "OPEN_DEVICE_SETUP"
+        }
+      ],
+      "reason_codes": [],
+      "provenance": [
+        {
+          "boundary": "ALSA",
+          "owner": "DAC_V35",
+          "evidence_ref": "receipt:alsa:test1",
+          "generation": 3
+        }
+      ],
+      "blockers": []
+    },
+    "dop_pending": {
+      "schema": "michi.truth_frame.v1",
+      "capture_revision": 2,
+      "temporal": "PENDING",
+      "consistency": "PARTIAL",
+      "identity": {
+        "plan_id": "output:plan-a",
+        "execution_generation": 12,
+        "port_generation": 12,
+        "binding_generation": 1,
+        "stable_device_id": "device:opaque-test",
+        "stable_endpoint_signature": "ep:opaque-test"
+      },
+      "family": "DOP",
+      "source": {
+        "kind": "DSD",
+        "codec": "dsf",
+        "container": "dsf",
+        "nominal_pcm": null,
+        "nominal_dsd_hz": 2822400
+      },
+      "dsp": {
+        "state": "UNKNOWN",
+        "correlation": "UNCORRELATED",
+        "readback_proven": false,
+        "processing_plan_id": null,
+        "processing_generation": null,
+        "host_generation": null,
+        "pipeline_generation": null,
+        "runtime_identity": null,
+        "source_execution_ref": null,
+        "last_event_sequence": null
+      },
+      "route": {
+        "last_observed_boundary": "SOURCE",
+        "negotiated_pcm": null,
+        "carrier_pcm": null,
+        "dac_interpretation": "UNKNOWN"
+      },
+      "quality": {
+        "nominal_class": "DSD",
+        "path_verdict": "unknown",
+        "fidelity_proof": "NOT_ESTABLISHED",
+        "proof_authority": null
+      },
+      "operations": [],
+      "stages": [
+        {
+          "id": "SOURCE",
+          "state": "PENDING",
+          "summary": "Not observed",
+          "configuration_action": "NONE"
+        },
+        {
+          "id": "DECODE",
+          "state": "PENDING",
+          "summary": "Not observed",
+          "configuration_action": "OPEN_ENGINE"
+        },
+        {
+          "id": "PROCESSING",
+          "state": "PENDING",
+          "summary": "Not observed",
+          "configuration_action": "OPEN_PROCESSING"
+        },
+        {
+          "id": "OUTPUT",
+          "state": "PENDING",
+          "summary": "Not observed",
+          "configuration_action": "OPEN_OUTPUT"
+        },
+        {
+          "id": "DEVICE",
+          "state": "PENDING",
+          "summary": "Not observed",
+          "configuration_action": "OPEN_DEVICE_SETUP"
+        }
+      ],
+      "reason_codes": [],
+      "provenance": [],
+      "blockers": [
+        "DOP_CARRIER_NOT_OBSERVED",
+        "DAC_INTERPRETATION_NOT_PROVEN"
+      ]
+    }
+  }
+}

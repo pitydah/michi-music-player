@@ -1,0 +1,48 @@
+name: AP2-F11 A11 architecture contract
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "docs/audio/phase2/F11_SIGNAL_TRUTH_ARCHITECTURE_CLOSURE_A11.md"
+      - "docs/audio/phase2/F11_SIGNAL_TRUTH_FRAME_V1.schema.json"
+      - "docs/audio/phase2/F11_SIGNAL_TRUTH_FRAME_EXAMPLES_A11.json"
+      - "tests/phase2/test_f11_truth_architecture_contract.py"
+      - ".github/workflows/f11-truth-architecture-a11.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  a11-spec:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install documentation validators, not product runtime deps
+        run: python -m pip install 'pytest>=8' 'jsonschema>=4.20' 'ruff>=0.9'
+      - name: Test architecture invariants (stdlib fixtures)
+        run: python -m pytest -q --confcutdir=tests/phase2 tests/phase2/test_f11_truth_architecture_contract.py
+      - name: Validate JSON Schema 2020-12 and all fixtures
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from jsonschema import Draft202012Validator
+          p = Path('docs/audio/phase2')
+          s = json.loads((p / 'F11_SIGNAL_TRUTH_FRAME_V1.schema.json').read_text())
+          Draft202012Validator.check_schema(s)
+          v = Draft202012Validator(s)
+          examples = json.loads((p / 'F11_SIGNAL_TRUTH_FRAME_EXAMPLES_A11.json').read_text())['examples']
+          for label, value in sorted(examples.items()):
+              errors = list(v.iter_errors(value))
+              assert not errors, (label, errors)
+              print(label, 'JSON_SCHEMA_PASS')
+          PY
+      - name: Ruff check and format on new A11 tests
+        run: |
+          ruff check tests/phase2/test_f11_truth_architecture_contract.py
+          ruff format --check tests/phase2/test_f11_truth_architecture_contract.py
