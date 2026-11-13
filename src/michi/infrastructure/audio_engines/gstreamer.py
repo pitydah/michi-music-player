@@ -4146,13 +4146,12 @@ class GStreamerAudioPort(AudioPort):
                 and self._current_state is not PlaybackStatus.STOPPED
             ):
                 self._deliver_state_if(PlaybackStatus.PAUSED)
-        elif status == PlaybackStatus.STOPPED:
+        elif status == PlaybackStatus.STOPPED and not self._pending_play:
             # Starting a retained source traverses NULL/READY on some real
             # runtimes.  Those transitional states are not a newer Stop and
             # must not create a second public STOPPED between replay intent
             # and the resulting PLAYING observation.
-            if not self._pending_play:
-                self._deliver_state_if(PlaybackStatus.STOPPED)
+            self._deliver_state_if(PlaybackStatus.STOPPED)
 
     def _commit_eos(self, event) -> None:
         """OWNER: EOS = fin natural del media ACEPTADO actual — converge a
